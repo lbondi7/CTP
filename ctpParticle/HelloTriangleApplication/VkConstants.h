@@ -2,7 +2,15 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include <vector>
+
+struct Devices
+{
+	VkDevice device;
+	VkPhysicalDevice physcialDevice;
+};
 
 struct SwapChainData
 {
@@ -26,4 +34,27 @@ struct GraphicsData
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
+};
+
+struct CmdAndDescData
+{
+	VkCommandPool commandPool;
+	std::vector<VkCommandBuffer> commandBuffers;
+	VkDescriptorPool descriptorPool;
+	VkDescriptorSet descriptorSet;
+};
+
+struct TextureData
+{
+	VkImage textureImage;
+	VkDeviceMemory textureImageMemory;
+
+	VkImageView textureImageView;
+	VkSampler textureSampler;
+};
+
+struct UniformBufferObject {
+	alignas(16) glm::mat4 model;
+	alignas(16) glm::mat4 view;
+	alignas(16) glm::mat4 proj;
 };

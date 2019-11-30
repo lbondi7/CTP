@@ -22,5 +22,7 @@ namespace VkHelper
 
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer, const VkDevice& device, VkCommandPool& cmdPool, int cmdBufferCount, const VkQueue graphicsQueue);
 
+	const VkVertexInputAttributeDescription& createVertexAttributeDescription(uint32_t binding, uint32_t location, VkFormat format, uint32_t offset);
+
 };
 

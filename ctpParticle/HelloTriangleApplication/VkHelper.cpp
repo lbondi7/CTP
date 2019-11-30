@@ -122,4 +122,13 @@ namespace VkHelper
 		vkFreeCommandBuffers(device, cmdPool, cmdBufferCount, &commandBuffer);
 	}
 
+	const VkVertexInputAttributeDescription& createVertexAttributeDescription(uint32_t binding, uint32_t location, VkFormat format, uint32_t offset) {
+		VkVertexInputAttributeDescription vertexAttributeDescription = {};
+		vertexAttributeDescription.binding = binding;
+		vertexAttributeDescription.location = location;
+		vertexAttributeDescription.format = format;
+		vertexAttributeDescription.offset = offset;
+		return vertexAttributeDescription;
+	}
+
 };

@@ -5,6 +5,8 @@
 #include "VkCmdAndDesc.h"
 #include "VkSetupHelper.h"
 #include "VkHelper.h"
+#include "Locator.h"
+#include "Timer.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -36,7 +38,7 @@ const int HEIGHT = 600;
 
 const int INSTANCE_COUNT = 100;
 
-const std::string MODEL_PATH = "models/cube.obj";
+const std::string MODEL_PATH = "../../../Models/cube.obj";
 const std::string TEXTURE_PATH = "textures/chalet.jpg";
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -78,6 +80,7 @@ struct InstanceBuffer {
 void CTPApp::run() {
 	initWindow();
 	initVulkan();
+	Locator::InitTimer(new Timer());
 	mainLoop();
 	cleanup();
 }
@@ -90,6 +93,7 @@ void CTPApp::initWindow() {
 	window = glfwCreateWindow(WIDTH, HEIGHT, "CTP Paticle System", nullptr, nullptr);
 	glfwSetWindowUserPointer(window, this);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+
 }
 
 void CTPApp::initVulkan() {
@@ -128,6 +132,7 @@ void CTPApp::initVulkan() {
 void CTPApp::mainLoop() {
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
+		Locator::GetTimer()->GetTimePoint();
 		drawFrame();
 	}
 
@@ -234,16 +239,16 @@ void CTPApp::createInstances()
 	particles.resize(INSTANCE_COUNT);
 
 	std::random_device rd;
-	std::uniform_real_distribution<float> uniformDist(-3.0, 3.0f);
+	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
 	std::uniform_real_distribution<float> uniformDist2(0.0f, 3.0f);
 
 	for (auto i = 0; i < INSTANCE_COUNT; i++) {
 
-		instanceData[i].pos = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
+		instanceData[i].pos = glm::vec3(0, 0, 0);
 		instanceData[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), uniformDist(rd));
 		instanceData[i].scale = 1.0f;
 		instanceData[i].texIndex = 0;
-		particles[i].maxLife = 2.0f;
+		particles[i].maxLife = 1.0f;
 		particles[i].currentLife = 0.0f;
 		particles[i].velocity = glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd));
 	}
@@ -259,8 +264,10 @@ void CTPApp::updateInstanceBuffer() {
 
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	ok += time;
-	if (ok > 0.5f && activeNum < INSTANCE_COUNT)
+	auto delTime = Locator::GetTimer()->DeltaTime();
+	std::cout << delTime << std::endl;
+	ok += delTime;
+	if (ok > 0.1f && activeNum < INSTANCE_COUNT)
 	{
 		particles[activeNum].active = true;
 		activeNum++;
@@ -271,17 +278,17 @@ void CTPApp::updateInstanceBuffer() {
 
 		if (particles[i].active)
 		{
-			particles[i].currentLife += 0.01f;
+			particles[i].currentLife += delTime;
 			if (particles[i].currentLife >= particles[i].maxLife)
 			{
 				particles[i].currentLife = 0.0f;
 				std::random_device rd;
-				std::uniform_real_distribution<float> uniformDist(-3.0, 3.0f);
-				std::uniform_real_distribution<float> uniformDist2(0.0f, 3.0f);
-				instanceData[i].pos = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
-				particles[i].velocity = glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd));
+				std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
+				std::uniform_real_distribution<float> uniformDist2(0.0f, 1.0f);
+				instanceData[i].pos = glm::vec3(0, 0, 0);
+				particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
 			}
-			instanceData[i].pos += (particles[i].velocity * 0.1f);
+			instanceData[i].pos += (particles[i].velocity * (10.0f * delTime));
 		}
 	}
 

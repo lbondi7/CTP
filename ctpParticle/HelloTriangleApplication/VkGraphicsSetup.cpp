@@ -162,8 +162,8 @@ namespace VkGraphicsSetup
 	}
 
 	void createGraphicsPipeline(const VkDevice& device, const VkExtent2D& swapChainExtent, GraphicsData& graphicsData) {
-		auto vertShaderCode = VkSetupHelper::readFile("shaders/vert.spv");
-		auto fragShaderCode = VkSetupHelper::readFile("shaders/frag.spv");
+		auto vertShaderCode = VkSetupHelper::readFile("shaders/basic/basicVert.spv");
+		auto fragShaderCode = VkSetupHelper::readFile("shaders/basic/basicFrag.spv");
 
 		VkShaderModule vertShaderModule = VkSetupHelper::createShaderModule(vertShaderCode, device);
 		VkShaderModule fragShaderModule = VkSetupHelper::createShaderModule(fragShaderCode, device);
@@ -203,7 +203,8 @@ namespace VkGraphicsSetup
 	Vertex::getBindingDescription(), InstanceData::getBindingDescription()
 		};
 
-		attributeDescriptions = { Vertex::getAttributeDescriptions()[0],
+		attributeDescriptions = { 
+			Vertex::getAttributeDescriptions()[0],
 			Vertex::getAttributeDescriptions()[1],
 			Vertex::getAttributeDescriptions()[2],
 			InstanceData::getAttributeDescriptions()[0],

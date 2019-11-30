@@ -54,6 +54,12 @@
     <ClCompile Include="Image.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Timer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Locator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
@@ -86,12 +92,18 @@
     <ClInclude Include="Image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Timer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Locator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\shader.frag">
+    <None Include="shaders\basic.frag">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\shader.vert">
+    <None Include="shaders\basic.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

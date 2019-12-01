@@ -97,53 +97,53 @@ namespace VkCmdAndDesc
 		}
 	}
 
-	void createDescriptorSets(const VkDevice& device, CmdAndDescData& cmdAndDescData, const TextureData& textureData, 
-		const SwapChainData& swapChainData, const GraphicsData& graphicsData, const std::vector<VkBuffer>& uniformBuffers) {
-		
-		std::vector<VkDescriptorSetLayout> layouts(swapChainData.swapChainImages.size(), graphicsData.descriptorSetLayout);
-		VkDescriptorSetAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = cmdAndDescData.descriptorPool;
-		allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainData.swapChainImages.size());
-		allocInfo.pSetLayouts = layouts.data();
+	//void createDescriptorSets(const VkDevice& device, CmdAndDescData& cmdAndDescData, const TextureData& textureData, 
+	//	const SwapChainData& swapChainData, const GraphicsData& graphicsData, const std::vector<VkBuffer>& uniformBuffers) {
+	//	
+	//	std::vector<VkDescriptorSetLayout> layouts(swapChainData.swapChainImages.size(), graphicsData.descriptorSetLayout);
+	//	VkDescriptorSetAllocateInfo allocInfo = {};
+	//	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	//	allocInfo.descriptorPool = cmdAndDescData.descriptorPool;
+	//	allocInfo.descriptorSetCount = static_cast<uint32_t>(swapChainData.swapChainImages.size());
+	//	allocInfo.pSetLayouts = layouts.data();
 
-		//cmdAndDescData.descriptorSets.resize(swapChainData.swapChainImages.size());
-		if (vkAllocateDescriptorSets(device, &allocInfo, &cmdAndDescData.descriptorSet) != VK_SUCCESS) {
-			throw std::runtime_error("failed to allocate descriptor sets!");
-		}
+	//	//cmdAndDescData.descriptorSets.resize(swapChainData.swapChainImages.size());
+	//	if (vkAllocateDescriptorSets(device, &allocInfo, &cmdAndDescData.descriptorSet) != VK_SUCCESS) {
+	//		throw std::runtime_error("failed to allocate descriptor sets!");
+	//	}
 
-		for (size_t i = 0; i < swapChainData.swapChainImages.size(); i++) {
+	//	for (size_t i = 0; i < swapChainData.swapChainImages.size(); i++) {
 
-			VkDescriptorBufferInfo bufferInfo = {};
-			bufferInfo.buffer = uniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
+	//		VkDescriptorBufferInfo bufferInfo = {};
+	//		bufferInfo.buffer = uniformBuffers[i];
+	//		bufferInfo.offset = 0;
+	//		bufferInfo.range = sizeof(UniformBufferObject);
 
-			VkDescriptorImageInfo imageInfo = {};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = textureData.textureImageView;
-			imageInfo.sampler = textureData.textureSampler;
+	//		VkDescriptorImageInfo imageInfo = {};
+	//		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	//		imageInfo.imageView = textureData.textureImageView;
+	//		imageInfo.sampler = textureData.textureSampler;
 
-			std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+	//		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
 
-			descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[0].dstSet = cmdAndDescData.descriptorSet;
-			descriptorWrites[0].dstBinding = 0;
-			descriptorWrites[0].dstArrayElement = 0;
-			descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			descriptorWrites[0].descriptorCount = 1;
-			descriptorWrites[0].pBufferInfo = &bufferInfo;
+	//		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	//		descriptorWrites[0].dstSet = cmdAndDescData.descriptorSet;
+	//		descriptorWrites[0].dstBinding = 0;
+	//		descriptorWrites[0].dstArrayElement = 0;
+	//		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	//		descriptorWrites[0].descriptorCount = 1;
+	//		descriptorWrites[0].pBufferInfo = &bufferInfo;
 
-			descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorWrites[1].dstSet = cmdAndDescData.descriptorSet;
-			descriptorWrites[1].dstBinding = 1;
-			descriptorWrites[1].dstArrayElement = 0;
-			descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorWrites[1].descriptorCount = 1;
-			descriptorWrites[1].pImageInfo = &imageInfo;
+	//		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	//		descriptorWrites[1].dstSet = cmdAndDescData.descriptorSet;
+	//		descriptorWrites[1].dstBinding = 1;
+	//		descriptorWrites[1].dstArrayElement = 0;
+	//		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	//		descriptorWrites[1].descriptorCount = 1;
+	//		descriptorWrites[1].pImageInfo = &imageInfo;
 
-			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-		}
-	}
+	//		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+	//	}
+	//}
 
 }

@@ -19,12 +19,7 @@ struct Vertex {
 	glm::vec2 texCoord;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
-		VkVertexInputBindingDescription bindingDescription = {};
-		bindingDescription.binding = 0;
-		bindingDescription.stride = sizeof(Vertex);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-		return bindingDescription;
+		return VkHelper::createVertexBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
 	}
 
 	static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
@@ -59,61 +54,17 @@ struct InstanceData {
 	uint32_t texIndex;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
-		VkVertexInputBindingDescription bindingDescription = {};
-		bindingDescription.binding = 1;
-		bindingDescription.stride = sizeof(InstanceData);
-		bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
-
-		return bindingDescription;
+		return VkHelper::createVertexBindingDescription(1, sizeof(InstanceData), VK_VERTEX_INPUT_RATE_INSTANCE);
 	}
 
 	static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
 		std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
 
-
-		attributeDescriptions[0] = VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32G32B32_SFLOAT, 0);
-		attributeDescriptions[1] = VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 3);
-		attributeDescriptions[2] = VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32_SFLOAT, sizeof(float) * 6);
-		attributeDescriptions[3] = VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32_SINT, sizeof(float) * 7);
-
-		//attributeDescriptions[0].binding = 1;
-		//attributeDescriptions[0].location = 3;
-		//attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-		//attributeDescriptions[0].offset = 0;
-
-		//attributeDescriptions[1].binding = 1;
-		//attributeDescriptions[1].location = 4;
-		//attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		//attributeDescriptions[1].offset = sizeof(float) * 3;
-
-		//attributeDescriptions[2].binding = 1;
-		//attributeDescriptions[2].location = 5;
-		//attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT;
-		//attributeDescriptions[2].offset = sizeof(float) * 6;
-
-		//attributeDescriptions[3].binding = 1;
-		//attributeDescriptions[3].location = 6;
-		//attributeDescriptions[3].format = VK_FORMAT_R32_SINT;
-		//attributeDescriptions[3].offset = sizeof(float) * 7;
+		attributeDescriptions[0] = VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceData, pos));
+		attributeDescriptions[1] = VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceData, rot));
+		attributeDescriptions[2] = VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32_SFLOAT, offsetof(InstanceData, scale));
+		attributeDescriptions[3] = VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32_SINT, offsetof(InstanceData, texIndex));
 
 		return attributeDescriptions;
 	}
 };
-
-//namespace extraFunc
-//{
-//
-//	VkVertexInputAttributeDescription vertexInputAttributeDescription(
-//		uint32_t binding,
-//		uint32_t location,
-//		VkFormat format,
-//		uint32_t offset)
-//	{
-//		VkVertexInputAttributeDescription vInputAttribDescription{};
-//		vInputAttribDescription.location = location;
-//		vInputAttribDescription.binding = binding;
-//		vInputAttribDescription.format = format;
-//		vInputAttribDescription.offset = offset;
-//		return vInputAttribDescription;
-//	}
-//}

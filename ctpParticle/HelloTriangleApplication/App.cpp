@@ -38,7 +38,7 @@ const int HEIGHT = 600;
 
 const int INSTANCE_COUNT = 100;
 
-const std::string MODEL_PATH = "../../../Models/cube.obj";
+const std::string MODEL_PATH = "../../../../Models/cube.obj";
 const std::string TEXTURE_PATH = "textures/chalet.jpg";
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -57,12 +57,6 @@ const int MAX_FRAMES_IN_FLIGHT = 2;
 //		func(instance, debugMessenger, pAllocator);
 //	}
 //}
-
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
 
 //struct UniformBufferObject {
 //	alignas(16) glm::mat4 model;
@@ -103,12 +97,13 @@ void CTPApp::initVulkan() {
 	VkSetup::createSurface(instance, window, surface);
 	VkSetup::pickPhysicalDevice(instance, physicalDevice, surface);
 	VkSetup::createLogicalDevice(physicalDevice, surface, device, graphicsQueue, presentQueue);
-	VkSetup::createSwapChain(physicalDevice, surface, device, swapChainData, window);
-	VkGraphicsSetup::createImageViews(device, swapChainData);
-	VkGraphicsSetup::createRenderPass(device, physicalDevice, swapChainData.swapChainImageFormat, graphicsData.renderPass);
-	VkGraphicsSetup::createDescriptorSetLayout(device, graphicsData.descriptorSetLayout);
-	VkGraphicsSetup::createGraphicsPipeline(device, swapChainData.swapChainExtent, graphicsData);
-	VkCmdAndDesc::createCommandPool(physicalDevice, device, surface, cmdAndDescData.commandPool);
+	graphics.createSwapChain(physicalDevice, surface, device, window);
+	graphics.createImageViews(device);
+	graphics.createRenderPass(device, physicalDevice);
+	createDescriptorSetLayout();
+	//createGraphicsPipeline();
+	createCommandPool();
+	createGraphicsPipeline();
 	createDepthResources();
 	createFramebuffers();
 
@@ -118,13 +113,10 @@ void CTPApp::initVulkan() {
 	createTextureSampler();
 	mesh.loadModel(MODEL_PATH.c_str());
 	createInstances();
-	//createVertexBuffer();
-	//createIndexBuffer();
-	//createUniformBuffers();
+
 	createBuffers();
 	createDescriptorPool();
-	VkCmdAndDesc::createDescriptorSets(device, cmdAndDescData, textureData, swapChainData, graphicsData, uniformBuffers);
-	//VkCmdAndDesc::createCommandBuffers(device, cmdAndDescData.commandPool, cmdAndDescData.commandBuffers, swapChainData, graphicsData, vertexBuffer, indexBuffer, cmdAndDescData.descriptorSets, mesh.indices);
+	createDescriptorSets();
 	createCommandBuffers();
 	createSyncObjects();
 }
@@ -189,16 +181,15 @@ void CTPApp::recreateSwapChain() {
 
 	cleanupSwapChain();
 
-	VkGraphicsSetup::createSwapChain(physicalDevice, surface, device, swapChainData, window);
-	VkGraphicsSetup::createImageViews(device, swapChainData);
-	VkGraphicsSetup::createRenderPass(device, physicalDevice, swapChainData.swapChainImageFormat, graphicsData.renderPass);
-	VkGraphicsSetup::createGraphicsPipeline(device, swapChainData.swapChainExtent, graphicsData);
+	graphics.createSwapChain(physicalDevice, surface, device, window);
+	graphics.createImageViews(device);
+	graphics.createRenderPass(device, physicalDevice);
+	createGraphicsPipeline();
 	createDepthResources();
 	createFramebuffers();
 	createUniformBuffers();
 	createDescriptorPool();
-	VkCmdAndDesc::createDescriptorSets(device, cmdAndDescData, textureData, swapChainData, graphicsData, uniformBuffers);
-	//VkCmdAndDesc::createCommandBuffers(device, cmdAndDescData.commandPool, cmdAndDescData.commandBuffers, swapChainData, graphicsData, vertexBuffer, indexBuffer, cmdAndDescData.descriptorSets, mesh.indices);
+	createDescriptorSets();
 	createCommandBuffers();
 
 }
@@ -209,7 +200,7 @@ void CTPApp::cleanupSwapChain() {
 	vkDestroyImage(device, depthImage, nullptr);
 	vkFreeMemory(device, depthImageMemory, nullptr);
 
-	for (auto framebuffer : swapChainData.swapChainFramebuffers) {
+	for (auto framebuffer : graphics.GetSwapChain().swapChainFramebuffers) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 	}
 
@@ -217,20 +208,207 @@ void CTPApp::cleanupSwapChain() {
 
 	vkDestroyPipeline(device, graphicsData.graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(device, graphicsData.pipelineLayout, nullptr);
-	vkDestroyRenderPass(device, graphicsData.renderPass, nullptr);
+	vkDestroyRenderPass(device, graphics.GetRenderPass(), nullptr);
 
-	for (auto imageView : swapChainData.swapChainImageViews) {
+	for (auto imageView : graphics.GetSwapChain().swapChainImageViews) {
 		vkDestroyImageView(device, imageView, nullptr);
 	}
 
-	vkDestroySwapchainKHR(device, swapChainData.swapChain, nullptr);
+	vkDestroySwapchainKHR(device, graphics.GetSwapChain().swapChain, nullptr);
 
-	for (size_t i = 0; i < swapChainData.swapChainImages.size(); i++) {
+	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
 		vkDestroyBuffer(device, uniformBuffers[i], nullptr);
 		vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
 	}
 
-	vkDestroyDescriptorPool(device, cmdAndDescData.descriptorPool, nullptr);
+	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+}
+
+void CTPApp::createDescriptorSetLayout() {
+
+	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoputBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, VK_SHADER_STAGE_VERTEX_BIT);
+
+	VkDescriptorSetLayoutBinding samplerLayoutBinding = VkHelper::createDescriptorLayoputBinding(1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding };
+	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
+
+	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &graphicsData.descriptorSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor set layout!");
+	}
+}
+
+void CTPApp::createDescriptorSets() {
+
+	std::vector<VkDescriptorSetLayout> layouts(graphics.GetSwapChain().swapChainImages.size(), graphicsData.descriptorSetLayout);
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = descriptorPool;
+	allocInfo.descriptorSetCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
+	allocInfo.pSetLayouts = layouts.data();
+
+	//particleSysDescs.resize(graphics.GetSwapChain().swapChainImages.size());
+	if (vkAllocateDescriptorSets(device, &allocInfo, &particleSysDesc) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate descriptor sets!");
+	}
+
+	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
+
+		VkDescriptorBufferInfo bufferInfo = {};
+		bufferInfo.buffer = uniformBuffers[i];
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(UniformBufferObject);
+
+		VkDescriptorImageInfo imageInfo = {};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = textureData.textureImageView;
+		imageInfo.sampler = textureData.textureSampler;
+
+		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+
+		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[0].dstSet = particleSysDesc;
+		descriptorWrites[0].dstBinding = 0;
+		descriptorWrites[0].dstArrayElement = 0;
+		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrites[0].descriptorCount = 1;
+		descriptorWrites[0].pBufferInfo = &bufferInfo;
+
+		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[1].dstSet = particleSysDesc;
+		descriptorWrites[1].dstBinding = 1;
+		descriptorWrites[1].dstArrayElement = 0;
+		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrites[1].descriptorCount = 1;
+		descriptorWrites[1].pImageInfo = &imageInfo;
+
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+	}
+}
+
+void CTPApp::createCommandPool() {
+	QueueFamilyIndices queueFamilyIndices = VkSetupHelper::findQueueFamilies(physicalDevice, surface);
+
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+
+	if (vkCreateCommandPool(device, &poolInfo, nullptr, &cmdAndDescData.commandPool) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create graphics command pool!");
+	}
+}
+
+void CTPApp::createGraphicsPipeline() {
+	auto vertShaderCode = VkSetupHelper::readFile("shaders/basic/basicVert.spv");
+	auto fragShaderCode = VkSetupHelper::readFile("shaders/basic/basicFrag.spv");
+
+	VkShaderModule vertShaderModule = VkSetupHelper::createShaderModule(vertShaderCode, device);
+	VkShaderModule fragShaderModule = VkSetupHelper::createShaderModule(fragShaderCode, device);
+
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo = VkHelper::createShaderStageInfo(
+		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		VK_SHADER_STAGE_VERTEX_BIT,
+		vertShaderModule,
+		"main");
+
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo = VkHelper::createShaderStageInfo(
+		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		VK_SHADER_STAGE_FRAGMENT_BIT,
+		fragShaderModule,
+		"main");
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+	std::vector<VkVertexInputBindingDescription> bindingDescriptions;
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+
+	bindingDescriptions = {
+		Vertex::getBindingDescription(),
+		InstanceData::getBindingDescription()
+	};
+
+	attributeDescriptions = {
+		Vertex::getAttributeDescriptions()[0],
+		Vertex::getAttributeDescriptions()[1],
+		Vertex::getAttributeDescriptions()[2],
+
+		InstanceData::getAttributeDescriptions()[0],
+		InstanceData::getAttributeDescriptions()[1],
+		InstanceData::getAttributeDescriptions()[2],
+		InstanceData::getAttributeDescriptions()[3] };
+
+	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	VkViewport viewport = VkHelper::createViewport(0.0f, 0.0f, (float)graphics.GetSwapChain().swapChainExtent.width, (float)graphics.GetSwapChain().swapChainExtent.height, 0.0f, 1.0f);
+
+	//VkViewport viewport = VkHelper::createViewport(0, 0, graphics.GetSwapChain().swapChainExtent.width, graphics.GetSwapChain().swapChainExtent.height, 0.0f, 1.0f);
+	VkRect2D scissor = VkHelper::createScissorRect({ 0, 0 }, graphics.GetSwapChain().swapChainExtent);
+
+	VkPipelineViewportStateCreateInfo viewportState = VkHelper::createViewPortStateInfo(1, 1, &viewport, &scissor);
+
+	VkPipelineRasterizationStateCreateInfo rasterizer = VkHelper::createRasteriser(
+		VK_FALSE, VK_FALSE,
+		VK_POLYGON_MODE_FILL, 1.0f,
+		VK_CULL_MODE_BACK_BIT,
+		VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		VK_FALSE);
+
+	VkPipelineMultisampleStateCreateInfo multisampling = 
+		VkHelper::createMultiSampling(VK_FALSE, VK_SAMPLE_COUNT_1_BIT);
+
+	VkPipelineColorBlendAttachmentState colorBlendAttachment = 
+		VkHelper::createColourBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
+
+	VkPipelineColorBlendStateCreateInfo colorBlending = VkHelper::createColourBlendStateInfo(
+		VK_FALSE, VK_LOGIC_OP_COPY, 1, &colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f });
+
+	VkPipelineDepthStencilStateCreateInfo depthStencil = VkHelper::createDepthStencilInfo(
+		VK_TRUE, VK_TRUE,
+		VK_COMPARE_OP_LESS,
+		VK_FALSE, VK_FALSE);
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &graphicsData.descriptorSetLayout;
+
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &graphicsData.pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create pipeline layout!");
+	}
+
+	VkGraphicsPipelineCreateInfo pipelineInfo = {};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.layout = graphicsData.pipelineLayout;
+	pipelineInfo.renderPass = graphics.GetRenderPass();
+	pipelineInfo.subpass = 0;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	pipelineInfo.pDepthStencilState = &depthStencil;
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsData.graphicsPipeline) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create graphics pipeline!");
+	}
+
+	vkDestroyShaderModule(device, fragShaderModule, nullptr);
+	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
 
 void CTPApp::createInstances()
@@ -299,7 +477,7 @@ void CTPApp::updateInstanceBuffer() {
 
 void CTPApp::createCommandBuffers() {
 
-	cmdAndDescData.commandBuffers.resize(swapChainData.swapChainFramebuffers.size());
+	cmdAndDescData.commandBuffers.resize(graphics.GetSwapChain().swapChainFramebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -321,10 +499,10 @@ void CTPApp::createCommandBuffers() {
 
 		VkRenderPassBeginInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = graphicsData.renderPass;
-		renderPassInfo.framebuffer = swapChainData.swapChainFramebuffers[i];
+		renderPassInfo.renderPass = graphics.GetRenderPass();
+		renderPassInfo.framebuffer = graphics.GetSwapChain().swapChainFramebuffers[i];
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = swapChainData.swapChainExtent;
+		renderPassInfo.renderArea.extent = graphics.GetSwapChain().swapChainExtent;
 
 		std::array<VkClearValue, 2> clearValues = {};
 		clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
@@ -336,18 +514,15 @@ void CTPApp::createCommandBuffers() {
 
 		vkCmdBeginRenderPass(cmdAndDescData.commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &cmdAndDescData.descriptorSet, 0, nullptr);
+		//vkCmdSetViewport(cmdAndDescData.commandBuffers[i], 0, 1, &m_Viewports[0]);
 
+		vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &particleSysDesc, 0, nullptr);
 		vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.graphicsPipeline);
-
-		VkBuffer vertexBuffers[] = { vertexBuffer };
 		VkDeviceSize offsets[] = { 0 };
+
 		vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &vertexBuffer, offsets);
-
 		vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 1, 1, &instanceBuffer.buffer, offsets);
-
 		vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
 		vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(mesh.indices.size()), INSTANCE_COUNT, 0, 0, 0);
 
 		vkCmdEndRenderPass(cmdAndDescData.commandBuffers[i]);
@@ -360,43 +535,47 @@ void CTPApp::createCommandBuffers() {
 
 void CTPApp::createDescriptorPool() {
 
-	std::array<VkDescriptorPoolSize, 2> poolSizes = {};
-	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[0].descriptorCount = static_cast<uint32_t>(swapChainData.swapChainImages.size());
-	poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[1].descriptorCount = static_cast<uint32_t>(swapChainData.swapChainImages.size());
+	std::array<VkDescriptorPoolSize, 2> poolSizes = {
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size())),
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size()))
+	};
+	//poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	//poolSizes[0].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
+	//poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	//poolSizes[1].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
 
-	VkDescriptorPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-	poolInfo.pPoolSizes = poolSizes.data();
-	poolInfo.maxSets = static_cast<uint32_t>(swapChainData.swapChainImages.size());
+	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
+		static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size()));
+	//poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	//poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	//poolInfo.pPoolSizes = poolSizes.data();
+	//poolInfo.maxSets = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
 
-	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &cmdAndDescData.descriptorPool) != VK_SUCCESS) {
+	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor pool!");
 	}
 }
 
 void CTPApp::createFramebuffers() {
-	swapChainData.swapChainFramebuffers.resize(swapChainData.swapChainImageViews.size());
+	graphics.GetSwapChain().swapChainFramebuffers.resize(graphics.GetSwapChain().swapChainImageViews.size());
 
-	for (size_t i = 0; i < swapChainData.swapChainImageViews.size(); i++) {
+	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImageViews.size(); i++) {
 
 		std::array<VkImageView, 2> attachments = {
-			swapChainData.swapChainImageViews[i],
+			graphics.GetSwapChain().swapChainImageViews[i],
 			depthImageView
 		};
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = graphicsData.renderPass;
+		framebufferInfo.renderPass = graphics.GetRenderPass();
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = swapChainData.swapChainExtent.width;
-		framebufferInfo.height = swapChainData.swapChainExtent.height;
+		framebufferInfo.width = graphics.GetSwapChain().swapChainExtent.width;
+		framebufferInfo.height = graphics.GetSwapChain().swapChainExtent.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainData.swapChainFramebuffers[i]) != VK_SUCCESS) {
+		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &graphics.GetSwapChain().swapChainFramebuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create framebuffer!");
 		}
 	}
@@ -406,7 +585,7 @@ void CTPApp::createDepthResources() {
 
 	VkFormat depthFormat = VkSetupHelper::findDepthFormat(physicalDevice);
 
-	createImageLewis(swapChainData.swapChainExtent.width, swapChainData.swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
+	createImageLewis(graphics.GetSwapChain().swapChainExtent.width, graphics.GetSwapChain().swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
 	AllocateLewisImageMemory(physicalDevice, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
 	depthImageView = VkSetupHelper::createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
@@ -458,36 +637,6 @@ void CTPApp::createImageLewis(uint32_t width, uint32_t height, VkFormat format, 
 	if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create image!");
 	}
-}
-
-void CTPApp::createTextureImage()
-{
-	//int texWidth, texHeight, texChannels;
-	//stbi_uc* pixels = stbi_load(TEXTURE_PATH.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-	//VkDeviceSize imageSize = texWidth * texHeight * 4;
-
-	//if (!pixels) {
-	//	throw std::runtime_error("failed to load texture image!");
-	//}
-
-	//createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-	//void* data;
-	//vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-	//memcpy(data, pixels, static_cast<size_t>(imageSize));
-	//vkUnmapMemory(device, stagingBufferMemory);
-
-	//stbi_image_free(pixels);
-
-	//createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureData.textureImage, textureData.textureImageMemory);
-
-	//transitionImageLayout(textureData.textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	//copyBufferToImage(stagingBuffer, textureData.textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-
-	//transitionImageLayout(textureData.textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	//vkDestroyBuffer(device, stagingBuffer, nullptr);
-	//vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
 void CTPApp::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
@@ -658,10 +807,10 @@ void CTPApp::createTextureSampler() {
 void CTPApp::createUniformBuffers() {
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-	uniformBuffers.resize(swapChainData.swapChainImages.size());
-	uniformBuffersMemory.resize(swapChainData.swapChainImages.size());
+	uniformBuffers.resize(graphics.GetSwapChain().swapChainImages.size());
+	uniformBuffersMemory.resize(graphics.GetSwapChain().swapChainImages.size());
 
-	for (size_t i = 0; i < swapChainData.swapChainImages.size(); i++) {
+	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
 		VkHelper::createBufferWithoutStaging(physicalDevice, device, 
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSize,
 			uniformBuffers[i], uniformBuffersMemory[i]);
@@ -692,10 +841,10 @@ void CTPApp::createBuffers()
 
 	//bufferSize = sizeof(UniformBufferObject);
 
-	//uniformBuffers.resize(swapChainData.swapChainImages.size());
-	//uniformBuffersMemory.resize(swapChainData.swapChainImages.size());
+	//uniformBuffers.resize(graphics.GetSwapChain().swapChainImages.size());
+	//uniformBuffersMemory.resize(graphics.GetSwapChain().swapChainImages.size());
 
-	//for (size_t i = 0; i < swapChainData.swapChainImages.size(); i++) {
+	//for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
 	//	VkHelper::createBufferWithoutStaging(physicalDevice, device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	//		bufferSize, uniformBuffers[i], uniformBuffersMemory[i]);
 	//}
@@ -723,7 +872,7 @@ void CTPApp::createSyncObjects() {
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-	imagesInFlight.resize(swapChainData.swapChainImages.size(), VK_NULL_HANDLE);
+	imagesInFlight.resize(graphics.GetSwapChain().swapChainImages.size(), VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -750,7 +899,7 @@ void CTPApp::updateUniformBuffer(uint32_t currentImage) {
 	UniformBufferObject ubo = {};
 	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(time * glm::radians(90.0f), 1.0f, time * glm::radians(90.0f)));
 	ubo.view = glm::lookAt(glm::vec3(0.0f, 3.0f, -30.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), swapChainData.swapChainExtent.width / (float)swapChainData.swapChainExtent.height, 0.1f, 1000.0f);
+	ubo.proj = glm::perspective(glm::radians(45.0f), graphics.GetSwapChain().swapChainExtent.width / (float)graphics.GetSwapChain().swapChainExtent.height, 0.1f, 1000.0f);
 	ubo.proj[1][1] *= -1;
 
 	VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
@@ -765,7 +914,7 @@ void CTPApp::drawFrame() {
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
-	VkResult result = vkAcquireNextImageKHR(device, swapChainData.swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(device, graphics.GetSwapChain().swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreateSwapChain();
@@ -810,7 +959,7 @@ void CTPApp::drawFrame() {
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
 
-	VkSwapchainKHR swapChains[] = { swapChainData.swapChain };
+	VkSwapchainKHR swapChains[] = { graphics.GetSwapChain().swapChain };
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
 

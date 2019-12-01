@@ -3,6 +3,7 @@
 #include "VkSetup.h"
 #include "Mesh.h"
 #include "Image.h"
+#include "Graphics.h"
 
 //#define GLM_FORCE_RADIANS
 //#define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -91,7 +92,17 @@ private:
 	GraphicsData graphicsData;
 	CmdAndDescData cmdAndDescData;
 
-	//VkCommandPool commandPool;
+	VkDescriptorPool descriptorPool;
+
+	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorSet particleSysDesc;
+
+	VkPipelineLayout pipelineLayout;
+	std::vector<VkPipeline> particleSysPipe;
+
+	VkCommandPool commandPool;
+	std::vector<VkCommandBuffer> commandBuffers;
+
 
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
@@ -118,6 +129,11 @@ private:
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
+
+	std::vector<VkViewport> m_Viewports;
+	std::vector<VkRect2D> m_ScissorRects;
+
+	Graphics graphics;
 
 	TextureData textureData;
 	Mesh mesh;
@@ -153,6 +169,14 @@ private:
 
 	void cleanupSwapChain();
 
+	void createDescriptorSetLayout();
+
+	void createDescriptorSets();
+
+	void createCommandPool();
+
+	void createGraphicsPipeline();
+
 	void createInstances();
 
 	void updateInstanceBuffer();
@@ -170,8 +194,6 @@ private:
 	void createTextureImageLewis();
 
 	void createImageLewis(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage& image);
-
-	void createTextureImage();
 
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 

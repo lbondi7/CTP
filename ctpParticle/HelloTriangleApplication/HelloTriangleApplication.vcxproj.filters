@@ -60,6 +60,12 @@
     <ClCompile Include="Locator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
@@ -98,12 +104,18 @@
     <ClInclude Include="Locator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleSystem.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\basic.frag">
+    <None Include="shaders\basic\basic.frag">
       <Filter>shaders</Filter>
     </None>
-    <None Include="shaders\basic.vert">
+    <None Include="shaders\basic\basic.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

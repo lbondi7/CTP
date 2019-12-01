@@ -161,10 +161,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
+    <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="Locator.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="ParticleSystem.cpp" />
     <ClCompile Include="Timer.cpp" />
     <ClCompile Include="VkCmdAndDesc.cpp" />
     <ClCompile Include="VkGraphicsSetup.cpp" />
@@ -174,9 +176,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
+    <ClInclude Include="Graphics.h" />
     <ClInclude Include="Image.h" />
     <ClInclude Include="Locator.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="VkCmdAndDesc.h" />
@@ -187,8 +191,8 @@
     <ClInclude Include="VkSetupHelper.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\basic.frag" />
-    <None Include="shaders\basic.vert" />
+    <None Include="shaders\basic\basic.frag" />
+    <None Include="shaders\basic\basic.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

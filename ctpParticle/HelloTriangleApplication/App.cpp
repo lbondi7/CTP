@@ -7,6 +7,7 @@
 #include "VkHelper.h"
 #include "Locator.h"
 #include "Timer.h"
+#include "Devices.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -73,6 +74,7 @@ struct InstanceBuffer {
 
 void CTPApp::run() {
 	initWindow();
+	//Locator::InitDevices(new Devices());
 	initVulkan();
 	Locator::InitTimer(new Timer());
 	mainLoop();
@@ -101,24 +103,26 @@ void CTPApp::initVulkan() {
 	graphics.createImageViews(device);
 	graphics.createRenderPass(device, physicalDevice);
 	createDescriptorSetLayout();
-	//createGraphicsPipeline();
 	createCommandPool();
 	createGraphicsPipeline();
 	createDepthResources();
 	createFramebuffers();
 
 	image.loadImage(TEXTURE_PATH.c_str());
-	createTextureImageLewis();
+	createTextureImage();
 	createTextureImageView();
 	createTextureSampler();
 	mesh.loadModel(MODEL_PATH.c_str());
 	createInstances();
 
+	scene.Init(&physicalDevice, &device, &graphicsQueue, &presentQueue, &graphics);
+	scene.CreateUniformBuffers();
 	createBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
 	createCommandBuffers();
 	createSyncObjects();
+	//scene.CreateUniformBuffers();
 }
 
 void CTPApp::mainLoop() {
@@ -187,7 +191,8 @@ void CTPApp::recreateSwapChain() {
 	createGraphicsPipeline();
 	createDepthResources();
 	createFramebuffers();
-	createUniformBuffers();
+	//createUniformBuffers();
+	scene.CreateUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
 	createCommandBuffers();
@@ -216,10 +221,10 @@ void CTPApp::cleanupSwapChain() {
 
 	vkDestroySwapchainKHR(device, graphics.GetSwapChain().swapChain, nullptr);
 
-	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
-		vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-		vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-	}
+	//for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
+	//	vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+	//	vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+	//}
 
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 }
@@ -255,7 +260,7 @@ void CTPApp::createDescriptorSets() {
 	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
 
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = uniformBuffers[i];
+		bufferInfo.buffer = scene.uniformBuffers[i];
 		bufferInfo.offset = 0;
 		bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -264,23 +269,26 @@ void CTPApp::createDescriptorSets() {
 		imageInfo.imageView = textureData.textureImageView;
 		imageInfo.sampler = textureData.textureSampler;
 
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {
+		descriptorWrites[0] = VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
+				descriptorWrites[1] = VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo)
+		};
 
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = particleSysDesc;
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &bufferInfo;
+		//descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		//descriptorWrites[0].dstSet = particleSysDesc;
+		//descriptorWrites[0].dstBinding = 0;
+		//descriptorWrites[0].dstArrayElement = 0;
+		//descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		//descriptorWrites[0].descriptorCount = 1;
+		//descriptorWrites[0].pBufferInfo = &bufferInfo;
 
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = particleSysDesc;
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pImageInfo = &imageInfo;
+		//descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		//descriptorWrites[1].dstSet = particleSysDesc;
+		//descriptorWrites[1].dstBinding = 1;
+		//descriptorWrites[1].dstArrayElement = 0;
+		//descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		//descriptorWrites[1].descriptorCount = 1;
+		//descriptorWrites[1].pImageInfo = &imageInfo;
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
@@ -489,28 +497,29 @@ void CTPApp::createCommandBuffers() {
 		throw std::runtime_error("failed to allocate command buffers!");
 	}
 
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = graphics.GetRenderPass();
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = graphics.GetSwapChain().swapChainExtent;
+
+	std::array<VkClearValue, 2> clearValues = {};
+	clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
+
 	for (size_t i = 0; i < cmdAndDescData.commandBuffers.size(); i++) {
-		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+		renderPassInfo.framebuffer = graphics.GetSwapChain().swapChainFramebuffers[i];
 
 		if (vkBeginCommandBuffer(cmdAndDescData.commandBuffers[i], &beginInfo) != VK_SUCCESS) {
 			throw std::runtime_error("failed to begin recording command buffer!");
 		}
-
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = graphics.GetRenderPass();
-		renderPassInfo.framebuffer = graphics.GetSwapChain().swapChainFramebuffers[i];
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = graphics.GetSwapChain().swapChainExtent;
-
-		std::array<VkClearValue, 2> clearValues = {};
-		clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
-		clearValues[1].depthStencil = { 1.0f, 0 };
-
-		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassInfo.pClearValues = clearValues.data();
-
 
 		vkCmdBeginRenderPass(cmdAndDescData.commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -585,8 +594,8 @@ void CTPApp::createDepthResources() {
 
 	VkFormat depthFormat = VkSetupHelper::findDepthFormat(physicalDevice);
 
-	createImageLewis(graphics.GetSwapChain().swapChainExtent.width, graphics.GetSwapChain().swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
-	AllocateLewisImageMemory(physicalDevice, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+	createImage(graphics.GetSwapChain().swapChainExtent.width, graphics.GetSwapChain().swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
+	AllocateImageMemory(physicalDevice, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
 	depthImageView = VkSetupHelper::createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 	transitionImageLayout(depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -597,17 +606,18 @@ bool CTPApp::hasStencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-void CTPApp::createTextureImageLewis()
+void CTPApp::createTextureImage()
 {
-
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
 	VkHelper::createBuffer(device, image.imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer);
 	VkHelper::AllocateBufferMemory(physicalDevice, device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 	VkHelper::copyMemory(device, image.imageSize, stagingBufferMemory, image.pixels);
 
 	image.freeImage();
 
-	createImageLewis(image.texWidth, image.texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, textureData.textureImage);
-	AllocateLewisImageMemory(physicalDevice, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureData.textureImage, textureData.textureImageMemory);
+	createImage(image.texWidth, image.texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, textureData.textureImage);
+	AllocateImageMemory(physicalDevice, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureData.textureImage, textureData.textureImageMemory);
 
 	transitionImageLayout(textureData.textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	copyBufferToImage(stagingBuffer, textureData.textureImage, static_cast<uint32_t>(image.texWidth), static_cast<uint32_t>(image.texHeight));
@@ -618,7 +628,7 @@ void CTPApp::createTextureImageLewis()
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void CTPApp::createImageLewis(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage& image) {
+void CTPApp::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage& image) {
 	VkImageCreateInfo imageInfo = {};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -637,41 +647,6 @@ void CTPApp::createImageLewis(uint32_t width, uint32_t height, VkFormat format, 
 	if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create image!");
 	}
-}
-
-void CTPApp::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) {
-	VkImageCreateInfo imageInfo = {};
-	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageInfo.extent.width = width;
-	imageInfo.extent.height = height;
-	imageInfo.extent.depth = 1;
-	imageInfo.mipLevels = 1;
-	imageInfo.arrayLayers = 1;
-	imageInfo.format = format;
-	imageInfo.tiling = tiling;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.usage = usage;
-	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	if (vkCreateImage(device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create image!");
-	}
-
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(device, image, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = VkHelper::findMemoryType(physicalDevice, memRequirements.memoryTypeBits, properties);
-
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate image memory!");
-	}
-
-	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
 void CTPApp::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
@@ -837,7 +812,7 @@ void CTPApp::createBuffers()
 		graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		bufferSize, indexBuffer, indexBufferMemory, mesh.indices.data());
 
-	createUniformBuffers();
+	//createUniformBuffers();
 
 	//bufferSize = sizeof(UniformBufferObject);
 
@@ -850,7 +825,7 @@ void CTPApp::createBuffers()
 	//}
 }
 
-void CTPApp::AllocateLewisImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
+void CTPApp::AllocateImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
 {
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(device, image, &memRequirements);
@@ -899,7 +874,7 @@ void CTPApp::updateUniformBuffer(uint32_t currentImage) {
 	UniformBufferObject ubo = {};
 	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(time * glm::radians(90.0f), 1.0f, time * glm::radians(90.0f)));
 	ubo.view = glm::lookAt(glm::vec3(0.0f, 3.0f, -30.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), graphics.GetSwapChain().swapChainExtent.width / (float)graphics.GetSwapChain().swapChainExtent.height, 0.1f, 1000.0f);
+	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	ubo.proj[1][1] *= -1;
 
 	VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
@@ -924,8 +899,16 @@ void CTPApp::drawFrame() {
 		throw std::runtime_error("failed to acquire swap chain image!");
 	}
 
+
+	/* Updating obejcts*/
+	/////////////////////
+
 	updateInstanceBuffer();
-	updateUniformBuffer(imageIndex);
+	scene.Update(imageIndex);
+	//updateUniformBuffer(imageIndex);
+	//VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
+
+	/////////////////////
 
 	if (imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
 		vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);

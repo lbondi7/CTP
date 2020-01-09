@@ -4,70 +4,7 @@
 #include "Mesh.h"
 #include "Image.h"
 #include "Graphics.h"
-
-//#define GLM_FORCE_RADIANS
-//#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-//#include <glm/glm.hpp>
-//#include <glm/gtc/matrix_transform.hpp>
-//
-//#define GLM_ENABLE_EXPERIMENTAL
-//#include <glm/gtx/hash.hpp>
-//
-//#include <iostream>
-//#include <fstream>
-//#include <stdexcept>
-//#include <algorithm>
-//#include <chrono>
-//#include <vector>
-//#include <cstring>
-//#include <cstdlib>
-//#include <cstdint>
-//#include <array>
-//#include <optional>
-//#include <set>
-//#include <unordered_map>
-//#include <random>
-//
-//const int WIDTH = 800;
-//const int HEIGHT = 600;
-//
-//const int INSTANCE_COUNT = 100;
-//
-//const std::string MODEL_PATH = "models/cube.obj";
-//const std::string TEXTURE_PATH = "textures/chalet.jpg";
-//
-//const int MAX_FRAMES_IN_FLIGHT = 2;
-
-//const std::vector<const char*> validationLayers = {
-//	"VK_LAYER_KHRONOS_validation"
-//};
-//
-//const std::vector<const char*> deviceExtensions = {
-//	VK_KHR_SWAPCHAIN_EXTENSION_NAME
-//};
-//
-//#ifdef NDEBUG
-//const bool enableValidationLayers = false;
-//#else
-//const bool enableValidationLayers = true;
-//#endif
-
-//void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator) {
-//	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-//	if (func != nullptr) {
-//		func(instance, debugMessenger, pAllocator);
-//	}
-//}
-
-struct Particle
-{
-	float maxLife;
-	float currentLife;
-	glm::vec3 velocity;
-	bool active;
-};
-
-
+#include "Scene.h"
 
 class CTPApp {
 public:
@@ -104,8 +41,8 @@ private:
 	std::vector<VkCommandBuffer> commandBuffers;
 
 
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
+	//std::vector<Vertex> vertices;
+	//std::vector<uint32_t> indices;
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vertexBufferMemory;
 	VkBuffer indexBuffer;
@@ -127,8 +64,8 @@ private:
 
 	bool framebufferResized = false;
 
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
+	//VkBuffer stagingBuffer;
+	//VkDeviceMemory stagingBufferMemory;
 
 	std::vector<VkViewport> m_Viewports;
 	std::vector<VkRect2D> m_ScissorRects;
@@ -148,6 +85,8 @@ private:
 	std::vector<float> currentLife;
 
 	std::vector<Particle> particles;
+
+	Scene scene;
 
 	float ok = 0.0f;
 	int activeNum = 0;
@@ -191,11 +130,9 @@ private:
 
 	bool hasStencilComponent(VkFormat format);
 
-	void createTextureImageLewis();
+	void createTextureImage();
 
-	void createImageLewis(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage& image);
-
-	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage& image);
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
@@ -209,7 +146,7 @@ private:
 
 	void createBuffers();
 
-	void AllocateLewisImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+	void AllocateImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
 	void createSyncObjects();
 

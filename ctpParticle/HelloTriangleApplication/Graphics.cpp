@@ -1,6 +1,7 @@
 #include "Graphics.h"
 
 #include "VkSetupHelper.h"
+#include "Devices.h"
 
 
 void Graphics::createSwapChain(VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const VkDevice& device, GLFWwindow* window) {

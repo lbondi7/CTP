@@ -53,5 +53,13 @@ namespace VkHelper
 	const VkDescriptorPoolSize& createDescriptorPoolSize(VkDescriptorType type, uint32_t descriptorCount);
 
 	const VkDescriptorPoolCreateInfo& createDescriptorPoolInfo(uint32_t poolSizeCount, const VkDescriptorPoolSize* poolSizeData, uint32_t maxDescriptorSets);
+	
+	bool hasStencilComponent(VkFormat format);
+
+	VkWriteDescriptorSet writeDescSet(VkDescriptorSet dstSet, VkDescriptorType type, uint32_t binding, VkDescriptorBufferInfo* bufferInfo, uint32_t descriptorCount = 1);
+
+	VkWriteDescriptorSet writeDescSet(VkDescriptorSet dstSet, VkDescriptorType type, uint32_t binding, VkDescriptorImageInfo* imageInfo, uint32_t descriptorCount = 1);
+
+
 };
 

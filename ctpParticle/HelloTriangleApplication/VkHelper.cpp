@@ -290,4 +290,36 @@ namespace VkHelper
 		poolInfo.maxSets = maxDescriptorSets;
 		return poolInfo;
 	}
+
+	bool hasStencilComponent(VkFormat format) {
+		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+	}
+
+	VkWriteDescriptorSet writeDescSet(VkDescriptorSet dstSet, VkDescriptorType type, uint32_t binding, VkDescriptorBufferInfo* bufferInfo, uint32_t descriptorCount)
+	{
+		VkWriteDescriptorSet descriptorWrite = {};
+
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = dstSet;
+		descriptorWrite.dstBinding = binding;
+		descriptorWrite.descriptorType = type;
+		descriptorWrite.descriptorCount = descriptorCount;
+		descriptorWrite.pBufferInfo = bufferInfo;
+
+		return descriptorWrite;
+	}
+
+	VkWriteDescriptorSet writeDescSet(VkDescriptorSet dstSet, VkDescriptorType type, uint32_t binding, VkDescriptorImageInfo* imageInfo, uint32_t descriptorCount)
+	{
+		VkWriteDescriptorSet descriptorWrite = {};
+
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = dstSet;
+		descriptorWrite.dstBinding = binding;
+		descriptorWrite.descriptorType = type;
+		descriptorWrite.descriptorCount = descriptorCount;
+		descriptorWrite.pImageInfo = imageInfo;
+
+		return descriptorWrite;
+	}
 };

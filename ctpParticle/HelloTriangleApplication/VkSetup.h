@@ -14,6 +14,5 @@ namespace VkSetup
 	void createSurface(const VkInstance& instance, GLFWwindow* window, VkSurfaceKHR& surface);
 	void pickPhysicalDevice(VkInstance& instance, VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface);
 	void createLogicalDevice(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, VkDevice& device, VkQueue& graphicsQueue, VkQueue& presentQueue);
-	void createSwapChain(VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface, const VkDevice& device, SwapChainData& swapChainInfo, GLFWwindow* window);
 };
 

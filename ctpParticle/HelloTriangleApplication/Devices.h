@@ -6,11 +6,13 @@ class Devices
 {
 public:
 
-	Devices() = default;
+	Devices(VkPhysicalDevice _physicalDevice, VkDevice _device);
 	~Devices() = default;
 
 	VkDevice& GetDevice();
 	VkPhysicalDevice& GetPhysicalDevice();
+
+
 
 private:
 

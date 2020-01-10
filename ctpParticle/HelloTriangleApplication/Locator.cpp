@@ -2,3 +2,4 @@
 
 Timer* Locator::timer = nullptr;
 Devices* Locator::devices = nullptr;
+Keyboard* Locator::keyboard = nullptr;

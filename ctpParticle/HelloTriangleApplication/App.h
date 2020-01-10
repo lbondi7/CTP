@@ -118,6 +118,8 @@ private:
 
 	void createInstances();
 
+	glm::vec3 getFlowField(glm::vec3 pos);
+
 	void updateInstanceBuffer();
 
 	void createCommandBuffers();
@@ -153,5 +155,4 @@ private:
 	void updateUniformBuffer(uint32_t currentImage);
 
 	void drawFrame();
-
 };

@@ -164,6 +164,7 @@
     <ClCompile Include="Devices.cpp" />
     <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Image.cpp" />
+    <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Locator.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mesh.cpp" />
@@ -183,6 +184,7 @@
     <ClInclude Include="Devices.h" />
     <ClInclude Include="Graphics.h" />
     <ClInclude Include="Image.h" />
+    <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Locator.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="ParticleSystem.h" />

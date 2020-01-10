@@ -39,7 +39,7 @@ public:
 	Scene() = default;
 	~Scene();
 
-	void Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, VkQueue* gQueue, VkQueue* pQueue, Graphics* _graphics);
+	void Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, GLFWwindow* _window, VkQueue* gQueue, VkQueue* pQueue, Graphics* _graphics);
 	void Update(uint32_t currentImage);
 	void Render();
 
@@ -58,6 +58,8 @@ private:
 
 	VkQueue* graphicsQueue = nullptr;
 	VkQueue* presentQueue = nullptr;
+
+	GLFWwindow* window = nullptr;
 
 	Graphics* graphics;
 
@@ -86,5 +88,12 @@ private:
 	std::vector<float> lifetimes;
 	std::vector<float> currentLife;
 	std::vector<Particle> particles;
+
+	float camSpeed = 20.0f;
+	float distFromOrigin = 30.0f;
+	glm::vec3 camPos = glm::vec3(0, 3.0f, -30.0f);
+	float angleX = 0.0f;
+	float angleY = 0.0f;
+	float angleSpeed = 2.5f;
 };
 

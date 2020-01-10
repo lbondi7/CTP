@@ -8,6 +8,7 @@
 #include "Locator.h"
 #include "Timer.h"
 #include "Devices.h"
+#include "Keyboard.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -37,7 +38,7 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-const int INSTANCE_COUNT = 100;
+const int INSTANCE_COUNT = 1000;
 
 const std::string MODEL_PATH = "../../../../Models/cube.obj";
 const std::string TEXTURE_PATH = "textures/chalet.jpg";
@@ -77,6 +78,7 @@ void CTPApp::run() {
 	//Locator::InitDevices(new Devices());
 	initVulkan();
 	Locator::InitTimer(new Timer());
+	Locator::InitKeyboard(new Keyboard(window));
 	mainLoop();
 	cleanup();
 }
@@ -115,7 +117,7 @@ void CTPApp::initVulkan() {
 	mesh.loadModel(MODEL_PATH.c_str());
 	createInstances();
 
-	scene.Init(&physicalDevice, &device, &graphicsQueue, &presentQueue, &graphics);
+	scene.Init(&physicalDevice, &device, window, &graphicsQueue, &presentQueue, &graphics);
 	scene.CreateUniformBuffers();
 	createBuffers();
 	createDescriptorPool();
@@ -427,21 +429,33 @@ void CTPApp::createInstances()
 	std::random_device rd;
 	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
 	std::uniform_real_distribution<float> uniformDist2(0.0f, 3.0f);
+	std::uniform_real_distribution<float> randStartPos(-30.0f, 30.0f);
 
 	for (auto i = 0; i < INSTANCE_COUNT; i++) {
 
-		instanceData[i].pos = glm::vec3(0, 0, 0);
+		instanceData[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), randStartPos(rd));
 		instanceData[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), uniformDist(rd));
 		instanceData[i].scale = 1.0f;
 		instanceData[i].texIndex = 0;
 		particles[i].maxLife = 1.0f;
 		particles[i].currentLife = 0.0f;
-		particles[i].velocity = glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd));
+		particles[i].velocity = glm::vec3(0, 0, 0);
+		particles[i].active = true;
 	}
 
 	//instanceBuffer.size = instanceData.size() * sizeof(InstanceData);
 
 	//createInstanceBuffer();
+}
+
+glm::vec3 CTPApp::getFlowField(glm::vec3 pos)
+{
+	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x / pos.z) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
+	//vel.y = 0;
+	//vel.z = 0;
+
+	return vel;
 }
 
 void CTPApp::updateInstanceBuffer() {
@@ -451,30 +465,35 @@ void CTPApp::updateInstanceBuffer() {
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 	auto delTime = Locator::GetTimer()->DeltaTime();
-	std::cout << delTime << std::endl;
-	ok += delTime;
-	if (ok > 0.1f && activeNum < INSTANCE_COUNT)
-	{
-		particles[activeNum].active = true;
-		activeNum++;
-		ok = 0.0f;
-	}
+	//std::cout << delTime << std::endl;
+	//ok += delTime;
+	//if (ok > 0.1f && activeNum < INSTANCE_COUNT)
+	//{
+	//	particles[activeNum].active = true;
+	//	activeNum++;
+	//	ok = 0.0f;
+	//}
 
 	for (auto i = 0; i < INSTANCE_COUNT; i++) {
 
 		if (particles[i].active)
 		{
 			particles[i].currentLife += delTime;
-			if (particles[i].currentLife >= particles[i].maxLife)
-			{
-				particles[i].currentLife = 0.0f;
-				std::random_device rd;
-				std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
-				std::uniform_real_distribution<float> uniformDist2(0.0f, 1.0f);
-				instanceData[i].pos = glm::vec3(0, 0, 0);
-				particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
-			}
-			instanceData[i].pos += (particles[i].velocity * (10.0f * delTime));
+			//if (particles[i].currentLife >= particles[i].maxLife)
+			//{
+			//	particles[i].currentLife = 0.0f;
+			//	std::random_device rd;
+			//	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
+			//	std::uniform_real_distribution<float> uniformDist2(0.0f, 1.0f);
+			//	instanceData[i].pos = glm::vec3(0, 0, 0);
+			//	//particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
+			//}
+			auto vel = getFlowField(instanceData[i].pos);
+			//if (i == 0)
+			//{
+			//	std::cout << vel.x << "," << vel.y << "," << vel.z << std::endl;
+			//}
+			instanceData[i].pos += (vel * (20 * delTime));
 		}
 	}
 

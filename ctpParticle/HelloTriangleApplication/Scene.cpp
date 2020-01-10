@@ -1,14 +1,20 @@
 #include "Scene.h"
+#include "Locator.h"
+#include "Keyboard.h"
+#include "Timer.h"
+
 #include <chrono>
+#include <iostream>
 
 Scene::~Scene()
 {
 }
 
-void Scene::Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, VkQueue* gQueue, VkQueue* pQueue, Graphics* _graphics)
+void Scene::Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, GLFWwindow* _window, VkQueue* gQueue, VkQueue* pQueue, Graphics* _graphics)
 {
 	physicalDevice = _phyDevice;
 	device = _device;
+	window = _window;
 	graphicsQueue = gQueue;
 	presentQueue = pQueue;
 	graphics = _graphics;
@@ -16,6 +22,46 @@ void Scene::Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, VkQueue* gQueu
 
 void Scene::Update(uint32_t currentImage)
 {
+
+	camPos = glm::vec3(sin(angleX) * distFromOrigin, sin(angleY) * distFromOrigin, cos(angleX) * distFromOrigin);
+
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_4))
+	{
+		angleX -= angleSpeed * Locator::GetTimer()->DeltaTime();
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_6))
+	{
+		angleX += angleSpeed * Locator::GetTimer()->DeltaTime();
+	}
+
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_8) && angleY < 1.5f)
+	{
+		angleY += angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_5) && angleY > -1.5f)
+	{
+		angleY -= angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
+	}
+
+	//camPos *= distFromOrigin;
+
+
+	auto diff = camPos - glm::vec3(0, 0, 0);
+
+	diff = glm::normalize(diff);
+
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_7))
+	{
+		distFromOrigin += camSpeed * Locator::GetTimer()->DeltaTime();
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_9))
+	{
+		distFromOrigin -= camSpeed * Locator::GetTimer()->DeltaTime();
+	}
+
+	camPos = diff * distFromOrigin;
+
+
 	UpdateUniformBuffers(currentImage);
 }
 
@@ -44,7 +90,7 @@ void Scene::UpdateUniformBuffers(uint32_t currentImage) {
 
 	UniformBufferObject ubo = {};
 	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(time * glm::radians(90.0f), 1.0f, time * glm::radians(90.0f)));
-	ubo.view = glm::lookAt(glm::vec3(0.0f, 3.0f, -30.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
 	ubo.proj[1][1] *= -1;
 

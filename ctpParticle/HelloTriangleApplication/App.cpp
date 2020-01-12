@@ -40,7 +40,7 @@ const int HEIGHT = 600;
 
 const int INSTANCE_COUNT = 1000;
 
-const std::string MODEL_PATH = "../../../../Models/cube.obj";
+const std::string MODEL_PATH = "../../../../Models/sphere.obj";
 const std::string TEXTURE_PATH = "textures/chalet.jpg";
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
@@ -450,7 +450,7 @@ void CTPApp::createInstances()
 
 glm::vec3 CTPApp::getFlowField(glm::vec3 pos)
 {
-	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x / pos.z) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
 	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
 	//vel.y = 0;
 	//vel.z = 0;

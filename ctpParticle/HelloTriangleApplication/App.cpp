@@ -40,8 +40,8 @@ const int HEIGHT = 600;
 
 const int INSTANCE_COUNT = 1000;
 
-const std::string MODEL_PATH = "../../../../Models/sphere.obj";
-const std::string TEXTURE_PATH = "textures/chalet.jpg";
+const std::string MODEL_PATH = "../../../Models/sphere.obj";
+const std::string TEXTURE_PATH = "textures/texture.jpg";
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 

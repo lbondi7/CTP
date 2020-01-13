@@ -31,6 +31,7 @@ struct Particle
 	float currentLife;
 	glm::vec3 velocity;
 	bool active;
+	float speed;
 };
 
 class Scene
@@ -89,7 +90,7 @@ private:
 	std::vector<float> currentLife;
 	std::vector<Particle> particles;
 
-	float camSpeed = 20.0f;
+	float camSpeed = 50.0f;
 	float distFromOrigin = 30.0f;
 	glm::vec3 camPos = glm::vec3(0, 3.0f, -30.0f);
 	float angleX = 0.0f;

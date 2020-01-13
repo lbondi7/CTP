@@ -236,6 +236,12 @@ namespace VkHelper
 		VkPipelineColorBlendAttachmentState colourBlendAttachment = {};
 		colourBlendAttachment.colorWriteMask = colourWriteMask;
 		colourBlendAttachment.blendEnable = blendEnabled;
+		//colourBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+		//colourBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+		//colourBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
+		//colourBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
+		//colourBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+		//colourBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
 
 		return colourBlendAttachment;
 	}

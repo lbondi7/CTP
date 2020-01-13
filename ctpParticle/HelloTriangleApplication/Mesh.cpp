@@ -5,6 +5,7 @@
 
 #include <stdexcept>
 #include <unordered_map>
+#include <random>
 
 void Mesh::loadModel(const char* modelPath)
 {
@@ -34,7 +35,10 @@ void Mesh::loadModel(const char* modelPath)
 				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
 			};
 
-			vertex.color = { 1.0f, 1.0f, 1.0f };
+			//std::random_device rd;
+			//std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
+			//vertex.color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f };
+			vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
 			if (uniqueVertices.count(vertex) == 0) {
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
@@ -44,5 +48,20 @@ void Mesh::loadModel(const char* modelPath)
 			indices.push_back(uniqueVertices[vertex]);
 		}
 	}
+	int x = 0;
+}
 
+void Mesh::changeVertices()
+{
+	std::random_device rd;
+	std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
+
+	for (size_t i = 0; i < vertices.size(); i++)
+	{
+		vertices[i].color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f};
+	}
+}
+
+void Mesh::SetupBuffers()
+{
 }

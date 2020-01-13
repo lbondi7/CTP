@@ -6,6 +6,44 @@
 #include "Graphics.h"
 #include "Scene.h"
 
+struct Light
+{
+	glm::vec3 pos;
+	float radius;
+};
+
+struct Model
+{
+	Mesh mesh;
+	glm::vec3 pos;
+	glm::vec3 rot;
+	float scale;
+	glm::vec4 color;
+
+	static VkVertexInputBindingDescription getBindingDescription() {
+		return VkHelper::createVertexBindingDescription(1, sizeof(Model), VK_VERTEX_INPUT_RATE_INSTANCE);
+	}
+
+	static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
+		std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
+
+		attributeDescriptions[0] = VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Model, pos));
+		attributeDescriptions[1] = VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Model, rot));
+		attributeDescriptions[2] = VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32_SFLOAT, offsetof(Model, scale));
+		attributeDescriptions[3] = VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Model, color));
+
+		return attributeDescriptions;
+	}
+
+};
+
+struct ModelBuffer {
+	VkBuffer buffer = VK_NULL_HANDLE;
+	VkDeviceMemory memory = VK_NULL_HANDLE;
+	size_t size = 0;
+	VkDescriptorBufferInfo descriptor;
+};
+
 class CTPApp {
 public:
 
@@ -33,9 +71,15 @@ private:
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorSet particleSysDesc;
+	VkDescriptorSet tempDesc;
 
 	VkPipelineLayout pipelineLayout;
-	std::vector<VkPipeline> particleSysPipe;
+	std::vector<VkPipeline> particleSysPipes;
+	VkPipeline particleSysPipe;
+
+	std::vector<VkPipeline> objectPipelines;
+	//std::vector<VkDescriptorSet> objectDesc;
+	std::vector<std::vector<VkDescriptorSet>> objectDesc;
 
 	VkCommandPool commandPool;
 	std::vector<VkCommandBuffer> commandBuffers;
@@ -81,12 +125,19 @@ private:
 	VkImageView depthImageView;
 
 	std::vector<InstanceData> instanceData;
-	std::vector<float> lifetimes;
-	std::vector<float> currentLife;
 
 	std::vector<Particle> particles;
 
 	Scene scene;
+
+	Light light;
+	std::vector<Model> model;
+	std::vector<ModelBuffer> modelBuffers;
+	ModelBuffer modelBuffer;
+
+	float minDist = 0.0f;
+
+	std::vector<float> minDists;
 
 	float ok = 0.0f;
 	int activeNum = 0;
@@ -155,4 +206,8 @@ private:
 	void updateUniformBuffer(uint32_t currentImage);
 
 	void drawFrame();
+	void createLight();
+	bool checkDistanceFromLight(glm::vec3 pos);
+	void remapInstanceData();
+	void remapVertexData();
 };

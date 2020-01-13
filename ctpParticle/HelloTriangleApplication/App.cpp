@@ -38,10 +38,11 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-const int INSTANCE_COUNT = 1000;
+const int INSTANCE_COUNT = 1;
+const int OBJECT_COUNT = 3;
 
-const std::string MODEL_PATH = "../../../../Models/sphere.obj";
-const std::string TEXTURE_PATH = "textures/chalet.jpg";
+const std::string MODEL_PATH = "../../../Models/sphere.obj";
+const std::string TEXTURE_PATH = "textures/orange.jpg";
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -109,12 +110,20 @@ void CTPApp::initVulkan() {
 	createGraphicsPipeline();
 	createDepthResources();
 	createFramebuffers();
-
 	image.loadImage(TEXTURE_PATH.c_str());
 	createTextureImage();
 	createTextureImageView();
 	createTextureSampler();
-	mesh.loadModel(MODEL_PATH.c_str());
+	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	{
+		Model tempModel;
+		model.push_back(tempModel);
+	}
+	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	{
+		model[i].mesh.loadModel(MODEL_PATH.c_str());
+	}
+	//mesh.loadModel(MODEL_PATH.c_str());
 	createInstances();
 
 	scene.Init(&physicalDevice, &device, window, &graphicsQueue, &presentQueue, &graphics);
@@ -124,6 +133,7 @@ void CTPApp::initVulkan() {
 	createDescriptorSets();
 	createCommandBuffers();
 	createSyncObjects();
+	createLight();
 	//scene.CreateUniformBuffers();
 }
 
@@ -213,7 +223,7 @@ void CTPApp::cleanupSwapChain() {
 
 	vkFreeCommandBuffers(device, cmdAndDescData.commandPool, static_cast<uint32_t>(cmdAndDescData.commandBuffers.size()), cmdAndDescData.commandBuffers.data());
 
-	vkDestroyPipeline(device, graphicsData.graphicsPipeline, nullptr);
+	vkDestroyPipeline(device, particleSysPipe, nullptr);
 	vkDestroyPipelineLayout(device, graphicsData.pipelineLayout, nullptr);
 	vkDestroyRenderPass(device, graphics.GetRenderPass(), nullptr);
 
@@ -254,46 +264,58 @@ void CTPApp::createDescriptorSets() {
 	allocInfo.descriptorSetCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
 	allocInfo.pSetLayouts = layouts.data();
 
-	//particleSysDescs.resize(graphics.GetSwapChain().swapChainImages.size());
-	if (vkAllocateDescriptorSets(device, &allocInfo, &particleSysDesc) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate descriptor sets!");
+	//if (vkAllocateDescriptorSets(device, &allocInfo, &particleSysDesc) != VK_SUCCESS) {
+	//	throw std::runtime_error("failed to allocate descriptor sets!");
+	//}
+
+	//for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
+
+	//	VkDescriptorBufferInfo bufferInfo = {};
+	//	bufferInfo.buffer = scene.uniformBuffers[i];
+	//	bufferInfo.offset = 0;
+	//	bufferInfo.range = sizeof(UniformBufferObject);
+
+	//	VkDescriptorImageInfo imageInfo = {};
+	//	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	//	imageInfo.imageView = textureData.textureImageView;
+	//	imageInfo.sampler = textureData.textureSampler;
+
+	//	std::vector<VkWriteDescriptorSet> descriptorWrites = {
+	//	VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
+	//	VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo)
+	//	};
+
+	//	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+	//}
+
+	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	{
+		std::vector<VkDescriptorSet> objectDescs;
+		//particleSysDescs.resize(graphics.GetSwapChain().swapChainImages.size());
+		if (vkAllocateDescriptorSets(device, &allocInfo, &tempDesc) != VK_SUCCESS) {
+			throw std::runtime_error("failed to allocate descriptor sets!");
+		}
+	
+		for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
+			VkDescriptorBufferInfo bufferInfo = {};
+			bufferInfo.buffer = scene.uniformBuffers[i];
+			bufferInfo.offset = 0;
+			bufferInfo.range = sizeof(UniformBufferObject);
+			VkDescriptorImageInfo imageInfo = {};
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.imageView = textureData.textureImageView;
+			imageInfo.sampler = textureData.textureSampler;
+			std::vector<VkWriteDescriptorSet> descriptorWrites = {
+			VkHelper::writeDescSet(tempDesc, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
+			VkHelper::writeDescSet(tempDesc, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo)
+			};
+			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+			objectDescs.push_back(tempDesc);
+		}
+		objectDesc.push_back(objectDescs);
+		objectDescs.clear();
 	}
 
-	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
-
-		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = scene.uniformBuffers[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(UniformBufferObject);
-
-		VkDescriptorImageInfo imageInfo = {};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = textureData.textureImageView;
-		imageInfo.sampler = textureData.textureSampler;
-
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {
-		descriptorWrites[0] = VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
-				descriptorWrites[1] = VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo)
-		};
-
-		//descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		//descriptorWrites[0].dstSet = particleSysDesc;
-		//descriptorWrites[0].dstBinding = 0;
-		//descriptorWrites[0].dstArrayElement = 0;
-		//descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		//descriptorWrites[0].descriptorCount = 1;
-		//descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-		//descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		//descriptorWrites[1].dstSet = particleSysDesc;
-		//descriptorWrites[1].dstBinding = 1;
-		//descriptorWrites[1].dstArrayElement = 0;
-		//descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		//descriptorWrites[1].descriptorCount = 1;
-		//descriptorWrites[1].pImageInfo = &imageInfo;
-
-		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-	}
 }
 
 void CTPApp::createCommandPool() {
@@ -309,8 +331,12 @@ void CTPApp::createCommandPool() {
 }
 
 void CTPApp::createGraphicsPipeline() {
-	auto vertShaderCode = VkSetupHelper::readFile("shaders/basic/basicVert.spv");
-	auto fragShaderCode = VkSetupHelper::readFile("shaders/basic/basicFrag.spv");
+
+	auto vertShaderCode = VkSetupHelper::readFile("shaders/basic1/basic1Vert.spv");
+	auto fragShaderCode = VkSetupHelper::readFile("shaders/basic1/basic1Frag.spv");
+
+	//auto vertShaderCode = VkSetupHelper::readFile("shaders/basic/basicVert.spv");
+	//auto fragShaderCode = VkSetupHelper::readFile("shaders/basic/basicFrag.spv");
 
 	VkShaderModule vertShaderModule = VkSetupHelper::createShaderModule(vertShaderCode, device);
 	VkShaderModule fragShaderModule = VkSetupHelper::createShaderModule(fragShaderCode, device);
@@ -337,7 +363,8 @@ void CTPApp::createGraphicsPipeline() {
 
 	bindingDescriptions = {
 		Vertex::getBindingDescription(),
-		InstanceData::getBindingDescription()
+		Model::getBindingDescription()
+		//InstanceData::getBindingDescription()
 	};
 
 	attributeDescriptions = {
@@ -345,10 +372,16 @@ void CTPApp::createGraphicsPipeline() {
 		Vertex::getAttributeDescriptions()[1],
 		Vertex::getAttributeDescriptions()[2],
 
-		InstanceData::getAttributeDescriptions()[0],
-		InstanceData::getAttributeDescriptions()[1],
-		InstanceData::getAttributeDescriptions()[2],
-		InstanceData::getAttributeDescriptions()[3] };
+		Model::getAttributeDescriptions()[0],
+		Model::getAttributeDescriptions()[1],
+		Model::getAttributeDescriptions()[2],
+		Model::getAttributeDescriptions()[3] };
+
+	//InstanceData::getAttributeDescriptions()[0],
+	//InstanceData::getAttributeDescriptions()[1],
+	//InstanceData::getAttributeDescriptions()[2],
+	//InstanceData::getAttributeDescriptions()[3],
+	//InstanceData::getAttributeDescriptions()[4] };
 
 	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -374,10 +407,10 @@ void CTPApp::createGraphicsPipeline() {
 		VK_FRONT_FACE_COUNTER_CLOCKWISE,
 		VK_FALSE);
 
-	VkPipelineMultisampleStateCreateInfo multisampling = 
+	VkPipelineMultisampleStateCreateInfo multisampling =
 		VkHelper::createMultiSampling(VK_FALSE, VK_SAMPLE_COUNT_1_BIT);
 
-	VkPipelineColorBlendAttachmentState colorBlendAttachment = 
+	VkPipelineColorBlendAttachmentState colorBlendAttachment =
 		VkHelper::createColourBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
 
 	VkPipelineColorBlendStateCreateInfo colorBlending = VkHelper::createColourBlendStateInfo(
@@ -413,9 +446,18 @@ void CTPApp::createGraphicsPipeline() {
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.pDepthStencilState = &depthStencil;
 
-	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsData.graphicsPipeline) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create graphics pipeline!");
+	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	{
+		VkPipeline tempPipeline;
+		if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &tempPipeline) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create graphics pipeline!");
+		}
+		objectPipelines.push_back(tempPipeline);
 	}
+
+	//if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleSysPipe) != VK_SUCCESS) {
+	//	throw std::runtime_error("failed to create graphics pipeline!");
+	//}
 
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
@@ -423,34 +465,82 @@ void CTPApp::createGraphicsPipeline() {
 
 void CTPApp::createInstances()
 {
-	instanceData.resize(INSTANCE_COUNT);
-	particles.resize(INSTANCE_COUNT);
+	//instanceData.resize(INSTANCE_COUNT);
+	//particles.resize(INSTANCE_COUNT);
+
+	//std::random_device rd;
+	//std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
+	//std::uniform_real_distribution<float> uniformDist2(1.0f, 1.0f);
+	//std::uniform_real_distribution<float> randStartPos(-10.0f, 10.0f);
+
+	//for (auto i = 0; i < INSTANCE_COUNT; i++) {
+	//	instanceData[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), 0);
+	//	//instanceData[i].pos = {0, 1, 0};
+	//	instanceData[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
+	//	instanceData[i].color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	//	instanceData[i].scale = 1.0f;
+	//	instanceData[i].texIndex = 0;
+	//	particles[i].maxLife = 1.0f;
+	//	particles[i].currentLife = 0.0f;
+	//	particles[i].velocity = glm::vec3(0, 0, 0);
+	//	particles[i].active = true;
+	//	particles[i].speed = uniformDist2(rd);
+	//	for (auto j = 0; j < mesh.vertices.size(); j++) {
+	//		if (j == 0)
+	//		{
+	//			minDist = glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos);
+	//		}
+	//		else
+	//		{
+	//			auto newDist = glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos);
+	//			if (newDist < minDist)
+	//			{
+	//				minDist = newDist;
+	//			}
+	//		}
+	//	}
+	//}
 
 	std::random_device rd;
 	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
-	std::uniform_real_distribution<float> uniformDist2(0.0f, 3.0f);
-	std::uniform_real_distribution<float> randStartPos(-30.0f, 30.0f);
-
-	for (auto i = 0; i < INSTANCE_COUNT; i++) {
-
-		instanceData[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), randStartPos(rd));
-		instanceData[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), uniformDist(rd));
-		instanceData[i].scale = 1.0f;
-		instanceData[i].texIndex = 0;
+	std::uniform_real_distribution<float> uniformDist2(1.0f, 3.0f);
+	std::uniform_real_distribution<float> randStartPos(-10.0f, 10.0f);
+	particles.resize(OBJECT_COUNT);
+	for (auto i = 0; i < OBJECT_COUNT; i++) {
+		model[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), 0);
+		model[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
+		model[i].color = { 1.0f, 1.0f, 1.0f, 1.0f };
+		model[i].scale = 1.0f;
 		particles[i].maxLife = 1.0f;
 		particles[i].currentLife = 0.0f;
 		particles[i].velocity = glm::vec3(0, 0, 0);
 		particles[i].active = true;
+		particles[i].speed = uniformDist2(rd);
+
+		minDists.push_back(0.0f);
+
+		for (auto j = 0; j < model[i].mesh.vertices.size(); j++) {
+			if (j == 0)
+			{
+				minDists[i] = glm::distance(model[i].pos + model[i].mesh.vertices[j].pos, light.pos);
+			}
+			else
+			{
+				auto newDist = glm::distance(model[i].pos + model[i].mesh.vertices[j].pos, light.pos);
+				if (newDist < minDists[i])
+				{
+					minDists[i] = newDist;
+				}
+			}
+		}
 	}
 
-	//instanceBuffer.size = instanceData.size() * sizeof(InstanceData);
-
-	//createInstanceBuffer();
 }
 
 glm::vec3 CTPApp::getFlowField(glm::vec3 pos)
 {
-	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
 	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
 	//vel.y = 0;
 	//vel.z = 0;
@@ -465,41 +555,82 @@ void CTPApp::updateInstanceBuffer() {
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 	auto delTime = Locator::GetTimer()->DeltaTime();
-	//std::cout << delTime << std::endl;
-	//ok += delTime;
-	//if (ok > 0.1f && activeNum < INSTANCE_COUNT)
-	//{
-	//	particles[activeNum].active = true;
-	//	activeNum++;
-	//	ok = 0.0f;
-	//}
 
-	for (auto i = 0; i < INSTANCE_COUNT; i++) {
+//	//ok += delTime;
+//	//if (ok > 0.1f && activeNum < INSTANCE_COUNT)
+//	//if (ok > 1.0f)
+//	//{
+//	//	//particles[activeNum].active = true;
+//	//	//activeNum++;
+//	//	std::random_device rd;
+//	//	std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
+//	//	for (auto i = 0; i < INSTANCE_COUNT; i++) {
+//	//		instanceData[i].color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f };
+//	//	//	instanceData[i].color = { 0.0f, 0.0f, 0.0f , 1.0f };
+//	//	}
+//	//	ok = 0.0f;
+//	//}
+//
+//	for (auto i = 0; i < INSTANCE_COUNT; i++) {
+//		//if (checkDistanceFromLight(instanceData[i].pos))
+//		//{
+//			for (auto j = 0; j < mesh.vertices.size(); j++) {
+//
+//				float dist[2] = { glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos), glm::distance(instanceData[i].pos, light.pos) };
+//				if (dist[0] < dist[1])
+//				{
+//					float curDist = dist[0] - minDist;
+//					float maxDist = dist[1] - minDist;
+//					auto amount = curDist / maxDist;
+//					mesh.vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
+//				}
+//				else
+//					mesh.vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+//			}
+//		//}
+//		//else
+//		//	instanceData[i].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+//
+//		particles[i].currentLife += delTime;
+//		auto vel = getFlowField(instanceData[i].pos);
+//	
+//		instanceData[i].pos += (vel * (1 * delTime) * particles[i].speed);
+//
+//		//if (particles[i].currentLife >= particles[i].maxLife)
+//		//{
+//		//	particles[i].currentLife = 0.0f;
+//		//	std::random_device rd;
+//		//	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
+//		//	std::uniform_real_distribution<float> uniformDist2(0.0f, 1.0f);
+//		//	instanceData[i].pos = glm::vec3(0, 0, 0);
+//		//	//particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
+//		//}
+//	}
+//
+//	remapInstanceData();
 
-		if (particles[i].active)
-		{
-			particles[i].currentLife += delTime;
-			//if (particles[i].currentLife >= particles[i].maxLife)
-			//{
-			//	particles[i].currentLife = 0.0f;
-			//	std::random_device rd;
-			//	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
-			//	std::uniform_real_distribution<float> uniformDist2(0.0f, 1.0f);
-			//	instanceData[i].pos = glm::vec3(0, 0, 0);
-			//	//particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
-			//}
-			auto vel = getFlowField(instanceData[i].pos);
-			//if (i == 0)
-			//{
-			//	std::cout << vel.x << "," << vel.y << "," << vel.z << std::endl;
-			//}
-			instanceData[i].pos += (vel * (20 * delTime));
+	for (auto i = 0; i < OBJECT_COUNT; i++) {
+		for (auto j = 0; j < model[i].mesh.vertices.size(); j++) {
+
+			float dist[2] = { glm::distance(model[i].pos + model[i].mesh.vertices[j].pos, light.pos), glm::distance(model[i].pos, light.pos) };
+
+			if (dist[0] < dist[1])
+			{
+				float curDist = dist[0] - minDists[i];
+				float maxDist = dist[1] - minDists[i];
+				auto amount = curDist / maxDist;
+
+				model[i].mesh.vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
+			}
+			else
+				model[i].mesh.vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 		}
+
+		auto vel = getFlowField(model[i].pos);
+
+		model[i].pos += (vel * (1 * delTime) * particles[i].speed);
 	}
-
-	VkDeviceSize bufferSize = sizeof(InstanceData) * instanceData.size();
-
-	VkHelper::copyMemory(device, bufferSize, instanceBuffer.memory, instanceData.data());
+	remapVertexData();
 }
 
 void CTPApp::createCommandBuffers() {
@@ -526,7 +657,8 @@ void CTPApp::createCommandBuffers() {
 	renderPassInfo.renderArea.extent = graphics.GetSwapChain().swapChainExtent;
 
 	std::array<VkClearValue, 2> clearValues = {};
-	clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
+	//	clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -542,17 +674,27 @@ void CTPApp::createCommandBuffers() {
 
 		vkCmdBeginRenderPass(cmdAndDescData.commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		//vkCmdSetViewport(cmdAndDescData.commandBuffers[i], 0, 1, &m_Viewports[0]);
+		//vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &particleSysDesc, 0, nullptr);
+		//vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, particleSysPipe);
 
-		vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &particleSysDesc, 0, nullptr);
-		vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.graphicsPipeline);
-		VkDeviceSize offsets[] = { 0 };
+		//VkDeviceSize offsets[] = { 0 };
+		//vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &vertexBuffer, offsets);
+		//vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 1, 1, &instanceBuffer.buffer, offsets);
+		//vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		//vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(mesh.indices.size()), INSTANCE_COUNT, 0, 0, 0);
 
-		vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &vertexBuffer, offsets);
-		vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 1, 1, &instanceBuffer.buffer, offsets);
-		vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(mesh.indices.size()), INSTANCE_COUNT, 0, 0, 0);
+		for (size_t j = 0; j < OBJECT_COUNT; j++)
+		{
 
+			vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &objectDesc[i][j], 0, nullptr);
+			vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipelines[j]);
+
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &model[j].mesh.vertexBuffer, offsets);
+			vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 1, 1, &modelBuffer.buffer, offsets);
+			vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], model[j].mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(model[j].mesh.indices.size()), 1, 0, 0, 0);
+		}
 		vkCmdEndRenderPass(cmdAndDescData.commandBuffers[i]);
 
 		if (vkEndCommandBuffer(cmdAndDescData.commandBuffers[i]) != VK_SUCCESS) {
@@ -564,8 +706,8 @@ void CTPApp::createCommandBuffers() {
 void CTPApp::createDescriptorPool() {
 
 	std::array<VkDescriptorPoolSize, 2> poolSizes = {
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size())),
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size()))
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size()) * OBJECT_COUNT),
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size())* OBJECT_COUNT)
 	};
 	//poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	//poolSizes[0].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
@@ -573,7 +715,7 @@ void CTPApp::createDescriptorPool() {
 	//poolSizes[1].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
 
 	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
-		static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size()));
+		static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size())* OBJECT_COUNT);
 	//poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	//poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
 	//poolInfo.pPoolSizes = poolSizes.data();
@@ -813,23 +955,46 @@ void CTPApp::createUniformBuffers() {
 
 void CTPApp::createBuffers()
 {
-	VkDeviceSize bufferSize = sizeof(InstanceData) * instanceData.size();
+
+	VkDeviceSize bufferSize = sizeof(Model) * OBJECT_COUNT;
 
 	VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
 		graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		bufferSize, instanceBuffer.buffer, instanceBuffer.memory, instanceData.data());
+		bufferSize, modelBuffer.buffer, modelBuffer.memory, model.data());
 
-	bufferSize = sizeof(mesh.vertices[0]) * mesh.vertices.size();
+	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	{
+		bufferSize = sizeof(model[i].mesh.vertices[0]) * model[i].mesh.vertices.size();
 
-	VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-		graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		bufferSize, vertexBuffer, vertexBufferMemory, mesh.vertices.data());
+		VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+			graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			bufferSize, model[i].mesh.vertexBuffer, model[i].mesh.vertexBufferMemory, model[i].mesh.vertices.data());
 
-	bufferSize = sizeof(mesh.indices[0]) * mesh.indices.size();
+		bufferSize = sizeof(model[i].mesh.indices[0]) * model[i].mesh.indices.size();
 
-	VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-		graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-		bufferSize, indexBuffer, indexBufferMemory, mesh.indices.data());
+		VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+			graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+			bufferSize, model[i].mesh.indexBuffer, model[i].mesh.indexBufferMemory, model[i].mesh.indices.data());
+
+	}
+
+	//VkDeviceSize bufferSize = sizeof(InstanceData) * instanceData.size();
+
+	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	//	bufferSize, instanceBuffer.buffer, instanceBuffer.memory, instanceData.data());
+
+	//bufferSize = sizeof(mesh.vertices[0]) * mesh.vertices.size();
+
+	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	//	bufferSize, vertexBuffer, vertexBufferMemory, mesh.vertices.data());
+
+	//bufferSize = sizeof(mesh.indices[0]) * mesh.indices.size();
+
+	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+	//	bufferSize, indexBuffer, indexBufferMemory, mesh.indices.data());
 
 	//createUniformBuffers();
 
@@ -978,4 +1143,45 @@ void CTPApp::drawFrame() {
 	}
 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void CTPApp::createLight()
+{
+	light.pos = { 0, 0, 0 };
+	light.radius = 20;
+}
+
+bool CTPApp::checkDistanceFromLight(glm::vec3 pos)
+{
+	return glm::distance(pos, light.pos) < light.radius;
+}
+
+void CTPApp::remapInstanceData()
+{
+	VkDeviceSize bufferSize = sizeof(InstanceData) * instanceData.size();
+
+	VkHelper::copyMemory(device, bufferSize, instanceBuffer.memory, instanceData.data());
+	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	//	bufferSize, instanceBuffer.buffer, instanceBuffer.memory, instanceData.data());
+}
+
+void CTPApp::remapVertexData()
+{
+
+	//VkDeviceSize bufferSize = sizeof(mesh.vertices[0]) * mesh.vertices.size();
+
+	//VkHelper::copyMemory(device, bufferSize, vertexBufferMemory, mesh.vertices.data());
+
+	VkDeviceSize bufferSize = sizeof(Model) * OBJECT_COUNT;
+
+	VkHelper::copyMemory(device, bufferSize, modelBuffer.memory, model.data());
+
+	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	{
+		bufferSize = sizeof(model[i].mesh.vertices[0]) * model[i].mesh.vertices.size();
+
+		VkHelper::copyMemory(device, bufferSize, model[i].mesh.vertexBufferMemory, model[i].mesh.vertices.data());
+
+	}
 }

@@ -13,5 +13,10 @@ struct Mesh
 	VkDeviceMemory indexBufferMemory;
 
 	void loadModel(const char* modelPath);
+
+	void changeVertices();
+
+	void SetupBuffers();
+
 };
 

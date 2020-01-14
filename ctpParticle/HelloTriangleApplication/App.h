@@ -14,7 +14,6 @@ struct Light
 
 struct Model
 {
-	Mesh mesh;
 	glm::vec3 pos;
 	glm::vec3 rot;
 	float scale;
@@ -71,14 +70,14 @@ private:
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorSet particleSysDesc;
-	VkDescriptorSet tempDesc;
+	VkDescriptorSet singleDescriptor;
 
 	VkPipelineLayout pipelineLayout;
 	std::vector<VkPipeline> particleSysPipes;
 	VkPipeline particleSysPipe;
 
 	std::vector<VkPipeline> objectPipelines;
-	//std::vector<VkDescriptorSet> objectDesc;
+	std::vector<VkDescriptorSet> objectDescs;
 	std::vector<std::vector<VkDescriptorSet>> objectDesc;
 
 	VkCommandPool commandPool;
@@ -132,12 +131,20 @@ private:
 
 	Light light;
 	std::vector<Model> model;
+	std::vector<Mesh> meshes;
 	std::vector<ModelBuffer> modelBuffers;
 	ModelBuffer modelBuffer;
 
 	float minDist = 0.0f;
 
 	std::vector<float> minDists;
+
+	float camSpeed = 50.0f;
+	float distFromOrigin = 30.0f;
+	glm::vec3 camPos = glm::vec3(0, 3.0f, -30.0f);
+	float angleX = 0.0f;
+	float angleY = 0.0f;
+	float angleSpeed = 2.5f;
 
 	float ok = 0.0f;
 	int activeNum = 0;
@@ -206,6 +213,7 @@ private:
 	void updateUniformBuffer(uint32_t currentImage);
 
 	void drawFrame();
+	void Update();
 	void createLight();
 	bool checkDistanceFromLight(glm::vec3 pos);
 	void remapInstanceData();

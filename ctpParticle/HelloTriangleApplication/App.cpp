@@ -39,7 +39,7 @@ const int WIDTH = 800;
 const int HEIGHT = 600;
 
 const int INSTANCE_COUNT = 1;
-const int OBJECT_COUNT = 3;
+const int OBJECT_COUNT = 2;
 
 const std::string MODEL_PATH = "../../../Models/sphere.obj";
 const std::string TEXTURE_PATH = "textures/orange.jpg";
@@ -118,16 +118,20 @@ void CTPApp::initVulkan() {
 	{
 		Model tempModel;
 		model.push_back(tempModel);
+		ModelBuffer modBuf;
+		modelBuffers.push_back(modBuf);
+		Mesh tempMesh;
+		meshes.push_back(tempMesh);
 	}
 	for (size_t i = 0; i < OBJECT_COUNT; i++)
 	{
-		model[i].mesh.loadModel(MODEL_PATH.c_str());
+		meshes[i].loadModel(MODEL_PATH.c_str());
 	}
 	//mesh.loadModel(MODEL_PATH.c_str());
 	createInstances();
 
 	scene.Init(&physicalDevice, &device, window, &graphicsQueue, &presentQueue, &graphics);
-	scene.CreateUniformBuffers();
+	createUniformBuffers();
 	createBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
@@ -241,6 +245,29 @@ void CTPApp::cleanupSwapChain() {
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 }
 
+void CTPApp::createDescriptorPool() {
+
+	std::array<VkDescriptorPoolSize, 2> poolSizes = {
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size() * OBJECT_COUNT)),
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size() * OBJECT_COUNT))
+	};
+	//poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	//poolSizes[0].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
+	//poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	//poolSizes[1].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
+
+	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
+		static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size() * OBJECT_COUNT));
+	//poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	//poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	//poolInfo.pPoolSizes = poolSizes.data();
+	//poolInfo.maxSets = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
+
+	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor pool!");
+	}
+}
+
 void CTPApp::createDescriptorSetLayout() {
 
 	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoputBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, VK_SHADER_STAGE_VERTEX_BIT);
@@ -288,17 +315,24 @@ void CTPApp::createDescriptorSets() {
 	//	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	//}
 
-	for (size_t i = 0; i < OBJECT_COUNT; i++)
+
+	//for (size_t j = 0; j < OBJECT_COUNT; j++)
+	//{
+	//	VkDescriptorSet tempDesc;
+	//	objectDescs.push_back(tempDesc);
+	//}
+
+
+	for (size_t j = 0; j < OBJECT_COUNT; j++)
 	{
-		std::vector<VkDescriptorSet> objectDescs;
 		//particleSysDescs.resize(graphics.GetSwapChain().swapChainImages.size());
-		if (vkAllocateDescriptorSets(device, &allocInfo, &tempDesc) != VK_SUCCESS) {
+		if (vkAllocateDescriptorSets(device, &allocInfo, &singleDescriptor) != VK_SUCCESS) {
 			throw std::runtime_error("failed to allocate descriptor sets!");
 		}
 	
 		for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
 			VkDescriptorBufferInfo bufferInfo = {};
-			bufferInfo.buffer = scene.uniformBuffers[i];
+			bufferInfo.buffer = meshes[j].uniformBuffers[i];
 			bufferInfo.offset = 0;
 			bufferInfo.range = sizeof(UniformBufferObject);
 			VkDescriptorImageInfo imageInfo = {};
@@ -306,16 +340,17 @@ void CTPApp::createDescriptorSets() {
 			imageInfo.imageView = textureData.textureImageView;
 			imageInfo.sampler = textureData.textureSampler;
 			std::vector<VkWriteDescriptorSet> descriptorWrites = {
-			VkHelper::writeDescSet(tempDesc, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
-			VkHelper::writeDescSet(tempDesc, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo)
+			//VkHelper::writeDescSet(objectDescs[j], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo, 1),
+			//VkHelper::writeDescSet(objectDescs[j], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo, 1)
+			VkHelper::writeDescSet(singleDescriptor, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo, 1),
+			VkHelper::writeDescSet(singleDescriptor, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo, 1)
 			};
 			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-			objectDescs.push_back(tempDesc);
+			objectDescs.push_back(singleDescriptor);
 		}
 		objectDesc.push_back(objectDescs);
 		objectDescs.clear();
 	}
-
 }
 
 void CTPApp::createCommandPool() {
@@ -463,176 +498,6 @@ void CTPApp::createGraphicsPipeline() {
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
 
-void CTPApp::createInstances()
-{
-	//instanceData.resize(INSTANCE_COUNT);
-	//particles.resize(INSTANCE_COUNT);
-
-	//std::random_device rd;
-	//std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
-	//std::uniform_real_distribution<float> uniformDist2(1.0f, 1.0f);
-	//std::uniform_real_distribution<float> randStartPos(-10.0f, 10.0f);
-
-	//for (auto i = 0; i < INSTANCE_COUNT; i++) {
-	//	instanceData[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), 0);
-	//	//instanceData[i].pos = {0, 1, 0};
-	//	instanceData[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
-	//	instanceData[i].color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	//	instanceData[i].scale = 1.0f;
-	//	instanceData[i].texIndex = 0;
-	//	particles[i].maxLife = 1.0f;
-	//	particles[i].currentLife = 0.0f;
-	//	particles[i].velocity = glm::vec3(0, 0, 0);
-	//	particles[i].active = true;
-	//	particles[i].speed = uniformDist2(rd);
-	//	for (auto j = 0; j < mesh.vertices.size(); j++) {
-	//		if (j == 0)
-	//		{
-	//			minDist = glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos);
-	//		}
-	//		else
-	//		{
-	//			auto newDist = glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos);
-	//			if (newDist < minDist)
-	//			{
-	//				minDist = newDist;
-	//			}
-	//		}
-	//	}
-	//}
-
-	std::random_device rd;
-	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
-	std::uniform_real_distribution<float> uniformDist2(1.0f, 3.0f);
-	std::uniform_real_distribution<float> randStartPos(-10.0f, 10.0f);
-	particles.resize(OBJECT_COUNT);
-	for (auto i = 0; i < OBJECT_COUNT; i++) {
-		model[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), 0);
-		model[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
-		model[i].color = { 1.0f, 1.0f, 1.0f, 1.0f };
-		model[i].scale = 1.0f;
-		particles[i].maxLife = 1.0f;
-		particles[i].currentLife = 0.0f;
-		particles[i].velocity = glm::vec3(0, 0, 0);
-		particles[i].active = true;
-		particles[i].speed = uniformDist2(rd);
-
-		minDists.push_back(0.0f);
-
-		for (auto j = 0; j < model[i].mesh.vertices.size(); j++) {
-			if (j == 0)
-			{
-				minDists[i] = glm::distance(model[i].pos + model[i].mesh.vertices[j].pos, light.pos);
-			}
-			else
-			{
-				auto newDist = glm::distance(model[i].pos + model[i].mesh.vertices[j].pos, light.pos);
-				if (newDist < minDists[i])
-				{
-					minDists[i] = newDist;
-				}
-			}
-		}
-	}
-
-}
-
-glm::vec3 CTPApp::getFlowField(glm::vec3 pos)
-{
-	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
-	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
-	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
-	//vel.y = 0;
-	//vel.z = 0;
-
-	return vel;
-}
-
-void CTPApp::updateInstanceBuffer() {
-
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	auto delTime = Locator::GetTimer()->DeltaTime();
-
-//	//ok += delTime;
-//	//if (ok > 0.1f && activeNum < INSTANCE_COUNT)
-//	//if (ok > 1.0f)
-//	//{
-//	//	//particles[activeNum].active = true;
-//	//	//activeNum++;
-//	//	std::random_device rd;
-//	//	std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
-//	//	for (auto i = 0; i < INSTANCE_COUNT; i++) {
-//	//		instanceData[i].color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f };
-//	//	//	instanceData[i].color = { 0.0f, 0.0f, 0.0f , 1.0f };
-//	//	}
-//	//	ok = 0.0f;
-//	//}
-//
-//	for (auto i = 0; i < INSTANCE_COUNT; i++) {
-//		//if (checkDistanceFromLight(instanceData[i].pos))
-//		//{
-//			for (auto j = 0; j < mesh.vertices.size(); j++) {
-//
-//				float dist[2] = { glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos), glm::distance(instanceData[i].pos, light.pos) };
-//				if (dist[0] < dist[1])
-//				{
-//					float curDist = dist[0] - minDist;
-//					float maxDist = dist[1] - minDist;
-//					auto amount = curDist / maxDist;
-//					mesh.vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
-//				}
-//				else
-//					mesh.vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-//			}
-//		//}
-//		//else
-//		//	instanceData[i].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-//
-//		particles[i].currentLife += delTime;
-//		auto vel = getFlowField(instanceData[i].pos);
-//	
-//		instanceData[i].pos += (vel * (1 * delTime) * particles[i].speed);
-//
-//		//if (particles[i].currentLife >= particles[i].maxLife)
-//		//{
-//		//	particles[i].currentLife = 0.0f;
-//		//	std::random_device rd;
-//		//	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
-//		//	std::uniform_real_distribution<float> uniformDist2(0.0f, 1.0f);
-//		//	instanceData[i].pos = glm::vec3(0, 0, 0);
-//		//	//particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
-//		//}
-//	}
-//
-//	remapInstanceData();
-
-	for (auto i = 0; i < OBJECT_COUNT; i++) {
-		for (auto j = 0; j < model[i].mesh.vertices.size(); j++) {
-
-			float dist[2] = { glm::distance(model[i].pos + model[i].mesh.vertices[j].pos, light.pos), glm::distance(model[i].pos, light.pos) };
-
-			if (dist[0] < dist[1])
-			{
-				float curDist = dist[0] - minDists[i];
-				float maxDist = dist[1] - minDists[i];
-				auto amount = curDist / maxDist;
-
-				model[i].mesh.vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
-			}
-			else
-				model[i].mesh.vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-		}
-
-		auto vel = getFlowField(model[i].pos);
-
-		model[i].pos += (vel * (1 * delTime) * particles[i].speed);
-	}
-	remapVertexData();
-}
-
 void CTPApp::createCommandBuffers() {
 
 	cmdAndDescData.commandBuffers.resize(graphics.GetSwapChain().swapChainFramebuffers.size());
@@ -686,43 +551,20 @@ void CTPApp::createCommandBuffers() {
 		for (size_t j = 0; j < OBJECT_COUNT; j++)
 		{
 
-			vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &objectDesc[i][j], 0, nullptr);
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &objectDesc[j][i], 0, nullptr);
 			vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipelines[j]);
 
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &model[j].mesh.vertexBuffer, offsets);
-			vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 1, 1, &modelBuffer.buffer, offsets);
-			vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], model[j].mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(model[j].mesh.indices.size()), 1, 0, 0, 0);
+			vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &meshes[j].vertexBuffer, offsets);
+			vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 1, 1, &modelBuffers[j].buffer, offsets);
+			vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], meshes[j].indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(meshes[j].indices.size()), 1, 0, 0, 0);
 		}
 		vkCmdEndRenderPass(cmdAndDescData.commandBuffers[i]);
 
 		if (vkEndCommandBuffer(cmdAndDescData.commandBuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to record command buffer!");
 		}
-	}
-}
-
-void CTPApp::createDescriptorPool() {
-
-	std::array<VkDescriptorPoolSize, 2> poolSizes = {
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size()) * OBJECT_COUNT),
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size())* OBJECT_COUNT)
-	};
-	//poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	//poolSizes[0].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
-	//poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	//poolSizes[1].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
-
-	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
-		static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size())* OBJECT_COUNT);
-	//poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	//poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-	//poolInfo.pPoolSizes = poolSizes.data();
-	//poolInfo.maxSets = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
-
-	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create descriptor pool!");
 	}
 }
 
@@ -940,41 +782,234 @@ void CTPApp::createTextureSampler() {
 	}
 }
 
-void CTPApp::createUniformBuffers() {
-	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+void CTPApp::createInstances()
+{
+	//instanceData.resize(INSTANCE_COUNT);
+	//particles.resize(INSTANCE_COUNT);
 
-	uniformBuffers.resize(graphics.GetSwapChain().swapChainImages.size());
-	uniformBuffersMemory.resize(graphics.GetSwapChain().swapChainImages.size());
+	//std::random_device rd;
+	//std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
+	//std::uniform_real_distribution<float> uniformDist2(1.0f, 1.0f);
+	//std::uniform_real_distribution<float> randStartPos(-10.0f, 10.0f);
 
-	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
-		VkHelper::createBufferWithoutStaging(physicalDevice, device, 
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSize,
-			uniformBuffers[i], uniformBuffersMemory[i]);
+	//for (auto i = 0; i < INSTANCE_COUNT; i++) {
+	//	instanceData[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), 0);
+	//	//instanceData[i].pos = {0, 1, 0};
+	//	instanceData[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
+	//	instanceData[i].color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	//	instanceData[i].scale = 1.0f;
+	//	instanceData[i].texIndex = 0;
+	//	particles[i].maxLife = 1.0f;
+	//	particles[i].currentLife = 0.0f;
+	//	particles[i].velocity = glm::vec3(0, 0, 0);
+	//	particles[i].active = true;
+	//	particles[i].speed = uniformDist2(rd);
+	//	for (auto j = 0; j < mesh.vertices.size(); j++) {
+	//		if (j == 0)
+	//		{
+	//			minDist = glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos);
+	//		}
+	//		else
+	//		{
+	//			auto newDist = glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos);
+	//			if (newDist < minDist)
+	//			{
+	//				minDist = newDist;
+	//			}
+	//		}
+	//	}
+	//}
+
+	std::random_device rd;
+	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
+	std::uniform_real_distribution<float> uniformDist2(1.0f, 3.0f);
+	std::uniform_real_distribution<float> randStartPos(-10.0f, 10.0f);
+	particles.resize(OBJECT_COUNT);
+	for (auto i = 0; i < OBJECT_COUNT; i++) {
+		model[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), 0);
+		model[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
+		model[i].color = { 1.0f, 1.0f, 1.0f, 1.0f };
+		model[i].scale = 1.0f;
+		particles[i].maxLife = 1.0f;
+		particles[i].currentLife = 0.0f;
+		particles[i].velocity = glm::vec3(0, 0, 0);
+		particles[i].active = true;
+		particles[i].speed = uniformDist2(rd);
+
+		minDists.push_back(0.0f);
+
+		for (auto j = 0; j < meshes[i].vertices.size(); j++) {
+			if (j == 0)
+			{
+				minDists[i] = glm::distance(model[i].pos + meshes[i].vertices[j].pos, light.pos);
+			}
+			else
+			{
+				auto newDist = glm::distance(model[i].pos + meshes[i].vertices[j].pos, light.pos);
+				if (newDist < minDists[i])
+				{
+					minDists[i] = newDist;
+				}
+			}
+		}
 	}
+
+}
+
+glm::vec3 CTPApp::getFlowField(glm::vec3 pos)
+{
+	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
+	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
+	//vel.y = 0;
+	//vel.z = 0;
+
+	return vel;
+}
+
+void CTPApp::updateInstanceBuffer() {
+
+	static auto startTime = std::chrono::high_resolution_clock::now();
+
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+	auto delTime = Locator::GetTimer()->DeltaTime();
+
+	//	//ok += delTime;
+	//	//if (ok > 0.1f && activeNum < INSTANCE_COUNT)
+	//	//if (ok > 1.0f)
+	//	//{
+	//	//	//particles[activeNum].active = true;
+	//	//	//activeNum++;
+	//	//	std::random_device rd;
+	//	//	std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
+	//	//	for (auto i = 0; i < INSTANCE_COUNT; i++) {
+	//	//		instanceData[i].color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f };
+	//	//	//	instanceData[i].color = { 0.0f, 0.0f, 0.0f , 1.0f };
+	//	//	}
+	//	//	ok = 0.0f;
+	//	//}
+	//
+	//	for (auto i = 0; i < INSTANCE_COUNT; i++) {
+	//		//if (checkDistanceFromLight(instanceData[i].pos))
+	//		//{
+	//			for (auto j = 0; j < mesh.vertices.size(); j++) {
+	//
+	//				float dist[2] = { glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos), glm::distance(instanceData[i].pos, light.pos) };
+	//				if (dist[0] < dist[1])
+	//				{
+	//					float curDist = dist[0] - minDist;
+	//					float maxDist = dist[1] - minDist;
+	//					auto amount = curDist / maxDist;
+	//					mesh.vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
+	//				}
+	//				else
+	//					mesh.vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	//			}
+	//		//}
+	//		//else
+	//		//	instanceData[i].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	//
+	//		particles[i].currentLife += delTime;
+	//		auto vel = getFlowField(instanceData[i].pos);
+	//	
+	//		instanceData[i].pos += (vel * (1 * delTime) * particles[i].speed);
+	//
+	//		//if (particles[i].currentLife >= particles[i].maxLife)
+	//		//{
+	//		//	particles[i].currentLife = 0.0f;
+	//		//	std::random_device rd;
+	//		//	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
+	//		//	std::uniform_real_distribution<float> uniformDist2(0.0f, 1.0f);
+	//		//	instanceData[i].pos = glm::vec3(0, 0, 0);
+	//		//	//particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
+	//		//}
+	//	}
+	//
+	//	remapInstanceData();
+
+	for (auto i = 0; i < OBJECT_COUNT; i++) {
+		for (auto j = 0; j < meshes[i].vertices.size(); j++) {
+
+			float dist[2] = { glm::distance(model[i].pos + meshes[i].vertices[j].pos, light.pos), glm::distance(model[i].pos, light.pos) };
+
+			if (dist[0] < dist[1])
+			{
+				float curDist = dist[0] - minDists[i];
+				float maxDist = dist[1] - minDists[i];
+				auto amount = curDist / maxDist;
+
+				meshes[i].vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
+			}
+			else
+				meshes[i].vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		}
+
+		auto vel = getFlowField(model[i].pos);
+
+		model[i].pos += (vel * (1 * delTime) * particles[i].speed);
+	}
+	remapVertexData();
+}
+
+void CTPApp::createUniformBuffers() {
+
+	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	{
+
+		VkDeviceSize bufferSize = sizeof(UniformBufferObject) * OBJECT_COUNT;
+
+		meshes[i].uniformBuffers.resize(graphics.GetSwapChain().swapChainImages.size());
+		meshes[i].uniformBuffersMemory.resize(graphics.GetSwapChain().swapChainImages.size());
+
+		for (size_t j = 0; j < graphics.GetSwapChain().swapChainImages.size(); j++) {
+			VkHelper::createBufferWithoutStaging(physicalDevice, device,
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSize,
+				meshes[i].uniformBuffers[j], meshes[i].uniformBuffersMemory[j]);
+		}
+	}
+
+	//VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+	//uniformBuffers.resize(graphics.GetSwapChain().swapChainImages.size());
+	//uniformBuffersMemory.resize(graphics.GetSwapChain().swapChainImages.size());
+
+	//for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
+	//	VkHelper::createBufferWithoutStaging(physicalDevice, device, 
+	//		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSize,
+	//		uniformBuffers[i], uniformBuffersMemory[i]);
+	//}
 }
 
 void CTPApp::createBuffers()
 {
 
-	VkDeviceSize bufferSize = sizeof(Model) * OBJECT_COUNT;
+	//VkDeviceSize bufferSize = sizeof(Model) * OBJECT_COUNT;
 
-	VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-		graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		bufferSize, modelBuffer.buffer, modelBuffer.memory, model.data());
+	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	//	bufferSize, modelBuffer.buffer, modelBuffer.memory, model.data());
 
 	for (size_t i = 0; i < OBJECT_COUNT; i++)
 	{
-		bufferSize = sizeof(model[i].mesh.vertices[0]) * model[i].mesh.vertices.size();
+		VkDeviceSize bufferSize = sizeof(Model);
 
 		VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
 			graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-			bufferSize, model[i].mesh.vertexBuffer, model[i].mesh.vertexBufferMemory, model[i].mesh.vertices.data());
+			bufferSize, modelBuffers[i].buffer, modelBuffers[i].memory, model.data());
 
-		bufferSize = sizeof(model[i].mesh.indices[0]) * model[i].mesh.indices.size();
+
+		bufferSize = sizeof(meshes[i].vertices[0]) * meshes[i].vertices.size();
+
+		VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+			graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			bufferSize, meshes[i].vertexBuffer, meshes[i].vertexBufferMemory, meshes[i].vertices.data());
+
+		bufferSize = sizeof(meshes[i].indices[0]) * meshes[i].indices.size();
 
 		VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
 			graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-			bufferSize, model[i].mesh.indexBuffer, model[i].mesh.indexBufferMemory, model[i].mesh.indices.data());
+			bufferSize, meshes[i].indexBuffer, meshes[i].indexBufferMemory, meshes[i].indices.data());
 
 	}
 
@@ -1007,6 +1042,51 @@ void CTPApp::createBuffers()
 	//	VkHelper::createBufferWithoutStaging(physicalDevice, device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 	//		bufferSize, uniformBuffers[i], uniformBuffersMemory[i]);
 	//}
+}
+
+void CTPApp::createLight()
+{
+	light.pos = { 0, 0, 0 };
+	light.radius = 20;
+}
+
+bool CTPApp::checkDistanceFromLight(glm::vec3 pos)
+{
+	return glm::distance(pos, light.pos) < light.radius;
+}
+
+void CTPApp::remapInstanceData()
+{
+	VkDeviceSize bufferSize = sizeof(InstanceData) * instanceData.size();
+
+	VkHelper::copyMemory(device, bufferSize, instanceBuffer.memory, instanceData.data());
+	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	//	bufferSize, instanceBuffer.buffer, instanceBuffer.memory, instanceData.data());
+}
+
+void CTPApp::remapVertexData()
+{
+
+	//VkDeviceSize bufferSize = sizeof(mesh.vertices[0]) * mesh.vertices.size();
+
+	//VkHelper::copyMemory(device, bufferSize, vertexBufferMemory, mesh.vertices.data());
+
+	//VkDeviceSize bufferSize = sizeof(Model) * OBJECT_COUNT;
+
+	//VkHelper::copyMemory(device, bufferSize, modelBuffer.memory, model.data());
+
+	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	{
+		VkDeviceSize bufferSize = sizeof(Model);
+
+		VkHelper::copyMemory(device, bufferSize, modelBuffers[i].memory, model.data());
+
+		bufferSize = sizeof(meshes[i].vertices[0]) * meshes[i].vertices.size();
+
+		VkHelper::copyMemory(device, bufferSize, meshes[i].vertexBufferMemory, meshes[i].vertices.data());
+
+	}
 }
 
 void CTPApp::AllocateImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
@@ -1050,6 +1130,7 @@ void CTPApp::createSyncObjects() {
 }
 
 void CTPApp::updateUniformBuffer(uint32_t currentImage) {
+
 	static auto startTime = std::chrono::high_resolution_clock::now();
 
 	auto currentTime = std::chrono::high_resolution_clock::now();
@@ -1057,11 +1138,27 @@ void CTPApp::updateUniformBuffer(uint32_t currentImage) {
 
 	UniformBufferObject ubo = {};
 	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(time * glm::radians(90.0f), 1.0f, time * glm::radians(90.0f)));
-	ubo.view = glm::lookAt(glm::vec3(0.0f, 3.0f, -30.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	ubo.proj[1][1] *= -1;
 
-	VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
+	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	{
+		VkHelper::copyMemory(device, sizeof(ubo) * OBJECT_COUNT, meshes[i].uniformBuffersMemory[currentImage], &ubo);
+	}
+
+	//static auto startTime = std::chrono::high_resolution_clock::now();
+
+	//auto currentTime = std::chrono::high_resolution_clock::now();
+	//float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+	//UniformBufferObject ubo = {};
+	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(time * glm::radians(90.0f), 1.0f, time * glm::radians(90.0f)));
+	//ubo.view = glm::lookAt(glm::vec3(0.0f, 3.0f, -30.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	//ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
+	//ubo.proj[1][1] *= -1;
+
+	//VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
 
 	//void* data;
 	//vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
@@ -1087,9 +1184,10 @@ void CTPApp::drawFrame() {
 	/* Updating obejcts*/
 	/////////////////////
 
+	Update();
 	updateInstanceBuffer();
-	scene.Update(imageIndex);
-	//updateUniformBuffer(imageIndex);
+	//scene.Update(imageIndex);
+	updateUniformBuffer(imageIndex);
 	//VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
 
 	/////////////////////
@@ -1145,43 +1243,45 @@ void CTPApp::drawFrame() {
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void CTPApp::createLight()
-{
-	light.pos = { 0, 0, 0 };
-	light.radius = 20;
-}
 
-bool CTPApp::checkDistanceFromLight(glm::vec3 pos)
-{
-	return glm::distance(pos, light.pos) < light.radius;
-}
-
-void CTPApp::remapInstanceData()
-{
-	VkDeviceSize bufferSize = sizeof(InstanceData) * instanceData.size();
-
-	VkHelper::copyMemory(device, bufferSize, instanceBuffer.memory, instanceData.data());
-	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-	//	bufferSize, instanceBuffer.buffer, instanceBuffer.memory, instanceData.data());
-}
-
-void CTPApp::remapVertexData()
+void CTPApp::Update()
 {
 
-	//VkDeviceSize bufferSize = sizeof(mesh.vertices[0]) * mesh.vertices.size();
+	camPos = glm::vec3(sin(angleX) * distFromOrigin, sin(angleY) * distFromOrigin, cos(angleX) * distFromOrigin);
 
-	//VkHelper::copyMemory(device, bufferSize, vertexBufferMemory, mesh.vertices.data());
-
-	VkDeviceSize bufferSize = sizeof(Model) * OBJECT_COUNT;
-
-	VkHelper::copyMemory(device, bufferSize, modelBuffer.memory, model.data());
-
-	for (size_t i = 0; i < OBJECT_COUNT; i++)
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_4))
 	{
-		bufferSize = sizeof(model[i].mesh.vertices[0]) * model[i].mesh.vertices.size();
-
-		VkHelper::copyMemory(device, bufferSize, model[i].mesh.vertexBufferMemory, model[i].mesh.vertices.data());
-
+		angleX -= angleSpeed * Locator::GetTimer()->DeltaTime();
 	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_6))
+	{
+		angleX += angleSpeed * Locator::GetTimer()->DeltaTime();
+	}
+
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_8) && angleY < 1.5f)
+	{
+		angleY += angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_5) && angleY > -1.5f)
+	{
+		angleY -= angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
+	}
+
+	//camPos *= distFromOrigin;
+
+
+	auto diff = camPos - glm::vec3(0, 0, 0);
+
+	diff = glm::normalize(diff);
+
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_7))
+	{
+		distFromOrigin += camSpeed * Locator::GetTimer()->DeltaTime();
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_9))
+	{
+		distFromOrigin -= camSpeed * Locator::GetTimer()->DeltaTime();
+	}
+
+	camPos = diff * distFromOrigin;
 }

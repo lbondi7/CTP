@@ -62,7 +62,7 @@ void Scene::Update(uint32_t currentImage)
 	camPos = diff * distFromOrigin;
 
 
-	UpdateUniformBuffers(currentImage);
+	//UpdateUniformBuffers(currentImage);
 }
 
 void Scene::Render()

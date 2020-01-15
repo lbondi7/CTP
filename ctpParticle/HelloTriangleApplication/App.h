@@ -88,6 +88,7 @@ private:
 
 	Scene scene;
 
+	std::vector<glm::vec3> randVels;
 	float ok = 0.0f;
 	int activeNum = 0;
 

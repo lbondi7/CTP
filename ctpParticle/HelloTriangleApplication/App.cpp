@@ -41,7 +41,7 @@ const int HEIGHT = 600;
 const int INSTANCE_COUNT = 1000;
 
 const std::string MODEL_PATH = "../../../Models/sphere.obj";
-const std::string TEXTURE_PATH = "textures/texture.jpg";
+const std::string TEXTURE_PATH = "textures/orangeSkin.jpg";
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -441,6 +441,7 @@ void CTPApp::createInstances()
 		particles[i].currentLife = 0.0f;
 		particles[i].velocity = glm::vec3(0, 0, 0);
 		particles[i].active = true;
+		randVels.push_back(glm::vec3(0, 0, 0));
 	}
 
 	//instanceBuffer.size = instanceData.size() * sizeof(InstanceData);
@@ -450,7 +451,8 @@ void CTPApp::createInstances()
 
 glm::vec3 CTPApp::getFlowField(glm::vec3 pos)
 {
-	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, pos.x) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
 	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
 	//vel.y = 0;
 	//vel.z = 0;
@@ -474,6 +476,20 @@ void CTPApp::updateInstanceBuffer() {
 	//	ok = 0.0f;
 	//}
 
+	ok += delTime;
+	if (ok > 5.0f)
+	{
+		std::random_device rd;
+		std::uniform_real_distribution<float> rand(-10.0f, 10.0f);
+
+		for (auto i = 0; i < INSTANCE_COUNT; i++) {
+
+			randVels[i] = { rand(rd), rand(rd), rand(rd) };
+		}
+
+		ok = 0.0f;
+	}
+
 	for (auto i = 0; i < INSTANCE_COUNT; i++) {
 
 		if (particles[i].active)
@@ -489,11 +505,8 @@ void CTPApp::updateInstanceBuffer() {
 			//	//particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
 			//}
 			auto vel = getFlowField(instanceData[i].pos);
-			//if (i == 0)
-			//{
-			//	std::cout << vel.x << "," << vel.y << "," << vel.z << std::endl;
-			//}
-			instanceData[i].pos += (vel * (20 * delTime));
+			instanceData[i].pos += (vel * (29 * delTime));
+			instanceData[i].pos += (randVels[i] * (0.5f* delTime));
 		}
 	}
 

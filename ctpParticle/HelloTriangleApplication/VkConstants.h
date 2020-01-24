@@ -4,7 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <vector>
-
+#include <optional>
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -12,12 +12,22 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-//
-//struct Devices
-//{
-//	VkDevice device;
-//	VkPhysicalDevice physcialDevice;
-//};
+const std::vector<const char*> validationLayers = {
+	"VK_LAYER_KHRONOS_validation"
+};
+
+const std::vector<const char*> deviceExtensions = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
+struct QueueFamilyIndices {
+	std::optional<uint32_t> graphicsFamily;
+	std::optional<uint32_t> presentFamily;
+
+	bool isComplete() {
+		return graphicsFamily.has_value() && presentFamily.has_value();
+	}
+};
 
 struct SwapChainData
 {
@@ -64,4 +74,11 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 model;
 	alignas(16) glm::mat4 view;
 	alignas(16) glm::mat4 proj;
+};
+
+enum class Queues : int
+{
+	GRAPHICS = 0,
+	COMPUTE = 1,
+	PRESENT = 2
 };

@@ -6,14 +6,6 @@
 #include <algorithm>
 #include <iostream>
 
-const std::vector<const char*> validationLayers = {
-	"VK_LAYER_KHRONOS_validation"
-};
-
-const std::vector<const char*> deviceExtensions = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
-
 namespace VkSetupHelper
 {
 	QueueFamilyIndices findQueueFamilies(const VkPhysicalDevice& device, const VkSurfaceKHR& surface) {
@@ -233,10 +225,30 @@ namespace VkSetupHelper
 	}
 
 	VkShaderModule createShaderModule(const std::vector<char>& code, const VkDevice& device) {
+
+		auto shaderCode = VkSetupHelper::readFile("shaders/basicA/basicAFrag.spv");
+
 		VkShaderModuleCreateInfo createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 		createInfo.codeSize = code.size();
 		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+		VkShaderModule shaderModule;
+		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create shader module!");
+		}
+
+		return shaderModule;
+	}
+
+	VkShaderModule createShaderModule(std::string filePath, const VkDevice& device) {
+
+		auto shaderCode = VkSetupHelper::readFile(filePath);
+
+		VkShaderModuleCreateInfo createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = shaderCode.size();
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(shaderCode.data());
 
 		VkShaderModule shaderModule;
 		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {

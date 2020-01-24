@@ -4,7 +4,6 @@
 
 struct Image
 {
-	//stbi_uc* pixels;
 	void* pixels;
 	VkDeviceSize imageSize;
 	int texWidth, texHeight, texChannels;

@@ -5,6 +5,9 @@
 #include "Image.h"
 #include "Graphics.h"
 #include "Scene.h"
+#include "Buffer.h"
+#include "Texture.h"
+#include "Model.h"
 
 struct Light
 {
@@ -12,36 +15,29 @@ struct Light
 	float radius;
 };
 
-struct Model
-{
-	glm::vec3 pos;
-	glm::vec3 rot;
-	float scale;
-	glm::vec4 color;
-
-	static VkVertexInputBindingDescription getBindingDescription() {
-		return VkHelper::createVertexBindingDescription(1, sizeof(Model), VK_VERTEX_INPUT_RATE_INSTANCE);
-	}
-
-	static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
-		std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
-
-		attributeDescriptions[0] = VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Model, pos));
-		attributeDescriptions[1] = VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Model, rot));
-		attributeDescriptions[2] = VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32_SFLOAT, offsetof(Model, scale));
-		attributeDescriptions[3] = VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Model, color));
-
-		return attributeDescriptions;
-	}
-
-};
-
-struct ModelBuffer {
-	VkBuffer buffer = VK_NULL_HANDLE;
-	VkDeviceMemory memory = VK_NULL_HANDLE;
-	size_t size = 0;
-	VkDescriptorBufferInfo descriptor;
-};
+//struct Model
+//{
+//	glm::vec3 pos;
+//	glm::vec3 rot;
+//	float scale;
+//	glm::vec4 color;
+//
+//	static VkVertexInputBindingDescription getBindingDescription() {
+//		return VkHelper::createVertexBindingDescription(1, sizeof(Model), VK_VERTEX_INPUT_RATE_INSTANCE);
+//	}
+//
+//	static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
+//		std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
+//
+//		attributeDescriptions[0] = VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Model, pos));
+//		attributeDescriptions[1] = VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Model, rot));
+//		attributeDescriptions[2] = VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32_SFLOAT, offsetof(Model, scale));
+//		attributeDescriptions[3] = VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Model, color));
+//
+//		return attributeDescriptions;
+//	}
+//
+//};
 
 class CTPApp {
 public:
@@ -73,31 +69,10 @@ private:
 	VkDescriptorSet singleDescriptor;
 
 	VkPipelineLayout pipelineLayout;
-	std::vector<VkPipeline> particleSysPipes;
 	VkPipeline particleSysPipe;
-
-	std::vector<VkPipeline> objectPipelines;
-	std::vector<VkDescriptorSet> objectDescs;
-	std::vector<std::vector<VkDescriptorSet>> objectDesc;
 
 	VkCommandPool commandPool;
 	std::vector<VkCommandBuffer> commandBuffers;
-
-
-	//std::vector<Vertex> vertices;
-	//std::vector<uint32_t> indices;
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory;
-	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
-
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
-
-	//VkDescriptorPool descriptorPool;
-	//std::vector<VkDescriptorSet> descriptorSets;
-
-	//std::vector<VkCommandBuffer> commandBuffers;
 
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -107,16 +82,12 @@ private:
 
 	bool framebufferResized = false;
 
-	//VkBuffer stagingBuffer;
-	//VkDeviceMemory stagingBufferMemory;
-
 	std::vector<VkViewport> m_Viewports;
 	std::vector<VkRect2D> m_ScissorRects;
 
 	Graphics graphics;
 
 	TextureData textureData;
-	Mesh mesh;
 	Image image;
 
 	VkImage depthImage;
@@ -130,10 +101,13 @@ private:
 	Scene scene;
 
 	Light light;
-	std::vector<Model> model;
-	std::vector<Mesh> meshes;
-	std::vector<ModelBuffer> modelBuffers;
-	ModelBuffer modelBuffer;
+
+	Texture texture1;
+	Texture texture2;
+	Model model;
+	Model model2;
+	VkDescriptorSet particleSysDesc2;
+	VkPipeline particleSysPipe2;
 
 	float minDist = 0.0f;
 
@@ -170,8 +144,6 @@ private:
 
 	void createDescriptorSets();
 
-	void createCommandPool();
-
 	void createGraphicsPipeline();
 
 	void createInstances();
@@ -190,17 +162,9 @@ private:
 
 	bool hasStencilComponent(VkFormat format);
 
-	void createTextureImage();
-
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage& image);
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
-
-	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-
-	void createTextureImageView();
-
-	void createTextureSampler();
 
 	void createUniformBuffers();
 

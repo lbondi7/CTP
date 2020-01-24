@@ -72,14 +72,14 @@ void Scene::Render()
 void Scene::CreateUniformBuffers() {
 	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-	uniformBuffers.resize(graphics->GetSwapChain().swapChainImages.size());
-	uniformBuffersMemory.resize(graphics->GetSwapChain().swapChainImages.size());
+	//uniformBuffers.resize(graphics->GetSwapChain().swapChainImages.size());
+	//uniformBuffersMemory.resize(graphics->GetSwapChain().swapChainImages.size());
 
-	for (size_t i = 0; i < graphics->GetSwapChain().swapChainImages.size(); i++) {
-		VkHelper::createBufferWithoutStaging(*physicalDevice, *device,
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSize,
-			uniformBuffers[i], uniformBuffersMemory[i]);
-	}
+	//for (size_t i = 0; i < graphics->GetSwapChain().swapChainImages.size(); i++) {
+	//	VkHelper::createBufferWithoutStaging(*physicalDevice, *device,
+	//		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSize,
+	//		uniformBuffers[i], uniformBuffersMemory[i]);
+	//}
 }
 
 void Scene::UpdateUniformBuffers(uint32_t currentImage) {
@@ -94,7 +94,7 @@ void Scene::UpdateUniformBuffers(uint32_t currentImage) {
 	ubo.proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
 	ubo.proj[1][1] *= -1;
 
-	VkHelper::copyMemory(*device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
+	//VkHelper::copyMemory(*device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
 }
 
 void Scene::createDescriptorSets() {

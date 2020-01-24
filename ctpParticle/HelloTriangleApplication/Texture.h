@@ -3,36 +3,39 @@
 #include "VkConstants.h"
 #include "Image.h"
 
-class Texture
+struct Texture
 {
-public:
-	Texture() = default;
+
+	VkDevice device;
+
+	VkImage image;
+	VkDeviceMemory memory;
+	VkImageView imageView;
+	VkSampler sampler;
+
+	void* pixels;
+	VkDeviceSize size;
+	int texWidth, texHeight, texChannels;
+
 	~Texture();
 
-	void createTexture(const VkDevice& device, const VkPhysicalDevice& physicalDevice);
+	void Load(const char* imagePath, VkQueue queue, VkFormat format, VkMemoryPropertyFlags _memProperties, VkImageUsageFlags usage);
 
-	void DestroyTexture(VkDevice device);
+	void createImage(VkFormat format, VkImageUsageFlags usage);
 
-	void createTextureImage(const VkDevice& device, const VkPhysicalDevice& physicalDevice);
+	void AllocateImageMemory(VkMemoryPropertyFlags properties);
 
-	void createImage(const VkDevice& device, uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage& image);
+	void transitionImageLayout(VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkQueue queue);
 
-	void transitionImageLayout(const VkDevice& device, const VkPhysicalDevice& physicalDevic, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+	bool hasStencilComponent(VkFormat format);
 
-	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	void CopyBufferToImage(VkBuffer buffer, VkQueue queue);
 
-	void createTextureImageView();
+	void CreateImageView(VkFormat format, VkImageAspectFlags aspectFlags);
 
-	void createTextureSampler(const VkDevice& device);
+	void CreateTextureSampler();
 
-	void AllocateImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
-private:
 
-	Image image;
-	VkImage textureImage;
-	VkDeviceMemory textureImageMemory;
-	VkImageView textureImageView;
-	VkSampler textureSampler;
 };
 

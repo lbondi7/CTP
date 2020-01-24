@@ -5,6 +5,7 @@
 #include "VkCmdAndDesc.h"
 #include "VkSetupHelper.h"
 #include "VkHelper.h"
+#include "VkInitializer.h"
 #include "Locator.h"
 #include "Timer.h"
 #include "Devices.h"
@@ -14,8 +15,6 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 
-//#define STB_IMAGE_IMPLEMENTATION
-//#include <stb_image.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
@@ -42,7 +41,7 @@ const int INSTANCE_COUNT = 1;
 const int OBJECT_COUNT = 2;
 
 const std::string MODEL_PATH = "../../../Models/sphere.obj";
-const std::string TEXTURE_PATH = "textures/orange.jpg";
+const std::string TEXTURE_PATH = "textures/texture.jpg";
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -101,38 +100,29 @@ void CTPApp::initVulkan() {
 	VkSetup::setupDebugMessenger(instance, debugMessenger);
 	VkSetup::createSurface(instance, window, surface);
 	VkSetup::pickPhysicalDevice(instance, physicalDevice, surface);
-	VkSetup::createLogicalDevice(physicalDevice, surface, device, graphicsQueue, presentQueue);
+	//VkSetup::createLogicalDevice(physicalDevice, surface, device, graphicsQueue, presentQueue);
+	Locator::InitDevices(new Devices(physicalDevice, device));
+	Locator::GetDevices()->CreateLogicalDevice(surface);
+	Locator::GetDevices()->CreateQueue(graphicsQueue, Queues::GRAPHICS);
+	Locator::GetDevices()->CreateQueue(presentQueue, Queues::PRESENT);
+	device = Locator::GetDevices()->GetDevice();
 	graphics.createSwapChain(physicalDevice, surface, device, window);
 	graphics.createImageViews(device);
 	graphics.createRenderPass(device, physicalDevice);
 	createDescriptorSetLayout();
-	createCommandPool();
+	Locator::GetDevices()->CreateCommandPool(cmdAndDescData.commandPool);
 	createGraphicsPipeline();
 	createDepthResources();
 	createFramebuffers();
-	image.loadImage(TEXTURE_PATH.c_str());
-	createTextureImage();
-	createTextureImageView();
-	createTextureSampler();
-	for (size_t i = 0; i < OBJECT_COUNT; i++)
-	{
-		Model tempModel;
-		model.push_back(tempModel);
-		ModelBuffer modBuf;
-		modelBuffers.push_back(modBuf);
-		Mesh tempMesh;
-		meshes.push_back(tempMesh);
-	}
-	for (size_t i = 0; i < OBJECT_COUNT; i++)
-	{
-		meshes[i].loadModel(MODEL_PATH.c_str());
-	}
-	//mesh.loadModel(MODEL_PATH.c_str());
-	createInstances();
+	texture1.Load(TEXTURE_PATH.c_str(), graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+	texture2.Load("textures/orange.jpg", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+	model.Load(MODEL_PATH.c_str(), graphicsQueue);
+	model2.Load(MODEL_PATH.c_str(), graphicsQueue);
 
 	scene.Init(&physicalDevice, &device, window, &graphicsQueue, &presentQueue, &graphics);
 	createUniformBuffers();
-	createBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
 	createCommandBuffers();
@@ -154,19 +144,7 @@ void CTPApp::mainLoop() {
 void CTPApp::cleanup() {
 	cleanupSwapChain();
 
-	vkDestroySampler(device, textureData.textureSampler, nullptr);
-	vkDestroyImageView(device, textureData.textureImageView, nullptr);
-
-	vkDestroyImage(device, textureData.textureImage, nullptr);
-	vkFreeMemory(device, textureData.textureImageMemory, nullptr);
-
 	vkDestroyDescriptorSetLayout(device, graphicsData.descriptorSetLayout, nullptr);
-
-	vkDestroyBuffer(device, indexBuffer, nullptr);
-	vkFreeMemory(device, indexBufferMemory, nullptr);
-
-	vkDestroyBuffer(device, vertexBuffer, nullptr);
-	vkFreeMemory(device, vertexBufferMemory, nullptr);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -237,11 +215,6 @@ void CTPApp::cleanupSwapChain() {
 
 	vkDestroySwapchainKHR(device, graphics.GetSwapChain().swapChain, nullptr);
 
-	//for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
-	//	vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-	//	vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
-	//}
-
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 }
 
@@ -251,17 +224,9 @@ void CTPApp::createDescriptorPool() {
 	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size() * OBJECT_COUNT)),
 	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size() * OBJECT_COUNT))
 	};
-	//poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	//poolSizes[0].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
-	//poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	//poolSizes[1].descriptorCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
 
 	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
 		static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size() * OBJECT_COUNT));
-	//poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	//poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-	//poolInfo.pPoolSizes = poolSizes.data();
-	//poolInfo.maxSets = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
 
 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor pool!");
@@ -280,6 +245,16 @@ void CTPApp::createDescriptorSetLayout() {
 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &graphicsData.descriptorSetLayout) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor set layout!");
 	}
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &graphicsData.descriptorSetLayout;
+
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &graphicsData.pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create pipeline layout!");
+	}
+
 }
 
 void CTPApp::createDescriptorSets() {
@@ -291,104 +266,49 @@ void CTPApp::createDescriptorSets() {
 	allocInfo.descriptorSetCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
 	allocInfo.pSetLayouts = layouts.data();
 
-	//if (vkAllocateDescriptorSets(device, &allocInfo, &particleSysDesc) != VK_SUCCESS) {
-	//	throw std::runtime_error("failed to allocate descriptor sets!");
-	//}
-
-	//for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
-
-	//	VkDescriptorBufferInfo bufferInfo = {};
-	//	bufferInfo.buffer = scene.uniformBuffers[i];
-	//	bufferInfo.offset = 0;
-	//	bufferInfo.range = sizeof(UniformBufferObject);
-
-	//	VkDescriptorImageInfo imageInfo = {};
-	//	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	//	imageInfo.imageView = textureData.textureImageView;
-	//	imageInfo.sampler = textureData.textureSampler;
-
-	//	std::vector<VkWriteDescriptorSet> descriptorWrites = {
-	//	VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
-	//	VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo)
-	//	};
-
-	//	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-	//}
-
-
-	//for (size_t j = 0; j < OBJECT_COUNT; j++)
-	//{
-	//	VkDescriptorSet tempDesc;
-	//	objectDescs.push_back(tempDesc);
-	//}
-
-
-	for (size_t j = 0; j < OBJECT_COUNT; j++)
-	{
-		//particleSysDescs.resize(graphics.GetSwapChain().swapChainImages.size());
-		if (vkAllocateDescriptorSets(device, &allocInfo, &singleDescriptor) != VK_SUCCESS) {
-			throw std::runtime_error("failed to allocate descriptor sets!");
-		}
-	
-		for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
-			VkDescriptorBufferInfo bufferInfo = {};
-			bufferInfo.buffer = meshes[j].uniformBuffers[i];
-			bufferInfo.offset = 0;
-			bufferInfo.range = sizeof(UniformBufferObject);
-			VkDescriptorImageInfo imageInfo = {};
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.imageView = textureData.textureImageView;
-			imageInfo.sampler = textureData.textureSampler;
-			std::vector<VkWriteDescriptorSet> descriptorWrites = {
-			//VkHelper::writeDescSet(objectDescs[j], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo, 1),
-			//VkHelper::writeDescSet(objectDescs[j], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo, 1)
-			VkHelper::writeDescSet(singleDescriptor, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo, 1),
-			VkHelper::writeDescSet(singleDescriptor, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo, 1)
-			};
-			vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-			objectDescs.push_back(singleDescriptor);
-		}
-		objectDesc.push_back(objectDescs);
-		objectDescs.clear();
+	if (vkAllocateDescriptorSets(device, &allocInfo, &particleSysDesc) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate descriptor sets!");
 	}
-}
 
-void CTPApp::createCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = VkSetupHelper::findQueueFamilies(physicalDevice, surface);
+	if (vkAllocateDescriptorSets(device, &allocInfo, &particleSysDesc2) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate descriptor sets2!");
+	}
 
-	VkCommandPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
 
-	if (vkCreateCommandPool(device, &poolInfo, nullptr, &cmdAndDescData.commandPool) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create graphics command pool!");
+		VkDescriptorBufferInfo bufferInfo = VkInitializers::DescBufferInfo(model.uniform[i].buffer, sizeof(UniformBufferObject));
+
+		VkDescriptorImageInfo imageInfo = VkInitializers::DescImageInfo(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, texture1.imageView, texture1.sampler);
+
+		std::vector<VkWriteDescriptorSet> descriptorWrites = {
+		VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
+		VkHelper::writeDescSet(particleSysDesc, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo)
+		};
+
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+
+		bufferInfo = VkInitializers::DescBufferInfo(model2.uniform[i].buffer, sizeof(UniformBufferObject));
+
+		imageInfo = VkInitializers::DescImageInfo(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, texture2.imageView, texture2.sampler);
+
+		descriptorWrites = {
+		VkHelper::writeDescSet(particleSysDesc2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &bufferInfo),
+		VkHelper::writeDescSet(particleSysDesc2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &imageInfo)
+		};
+
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
 }
 
 void CTPApp::createGraphicsPipeline() {
 
-	auto vertShaderCode = VkSetupHelper::readFile("shaders/basic1/basic1Vert.spv");
-	auto fragShaderCode = VkSetupHelper::readFile("shaders/basic1/basic1Frag.spv");
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo = 
+		VkHelper::createShaderStageInfo("shaders/basicA/basicAVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
 
-	//auto vertShaderCode = VkSetupHelper::readFile("shaders/basic/basicVert.spv");
-	//auto fragShaderCode = VkSetupHelper::readFile("shaders/basic/basicFrag.spv");
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo = 
+		VkHelper::createShaderStageInfo("shaders/basicA/basicAFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device);
 
-	VkShaderModule vertShaderModule = VkSetupHelper::createShaderModule(vertShaderCode, device);
-	VkShaderModule fragShaderModule = VkSetupHelper::createShaderModule(fragShaderCode, device);
-
-	VkPipelineShaderStageCreateInfo vertShaderStageInfo = VkHelper::createShaderStageInfo(
-		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-		VK_SHADER_STAGE_VERTEX_BIT,
-		vertShaderModule,
-		"main");
-
-	VkPipelineShaderStageCreateInfo fragShaderStageInfo = VkHelper::createShaderStageInfo(
-		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-		VK_SHADER_STAGE_FRAGMENT_BIT,
-		fragShaderModule,
-		"main");
-
-	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -397,26 +317,14 @@ void CTPApp::createGraphicsPipeline() {
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
 
 	bindingDescriptions = {
-		Vertex::getBindingDescription(),
-		Model::getBindingDescription()
-		//InstanceData::getBindingDescription()
+		Vertex::getBindingDescription()
 	};
 
 	attributeDescriptions = {
 		Vertex::getAttributeDescriptions()[0],
 		Vertex::getAttributeDescriptions()[1],
-		Vertex::getAttributeDescriptions()[2],
-
-		Model::getAttributeDescriptions()[0],
-		Model::getAttributeDescriptions()[1],
-		Model::getAttributeDescriptions()[2],
-		Model::getAttributeDescriptions()[3] };
-
-	//InstanceData::getAttributeDescriptions()[0],
-	//InstanceData::getAttributeDescriptions()[1],
-	//InstanceData::getAttributeDescriptions()[2],
-	//InstanceData::getAttributeDescriptions()[3],
-	//InstanceData::getAttributeDescriptions()[4] };
+		Vertex::getAttributeDescriptions()[2]
+	};
 
 	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -456,19 +364,10 @@ void CTPApp::createGraphicsPipeline() {
 		VK_COMPARE_OP_LESS,
 		VK_FALSE, VK_FALSE);
 
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &graphicsData.descriptorSetLayout;
-
-	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &graphicsData.pipelineLayout) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create pipeline layout!");
-	}
-
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineInfo.stageCount = 2;
-	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.stageCount = shaderStages.size();
+	pipelineInfo.pStages = shaderStages.data();
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
 	pipelineInfo.pInputAssemblyState = &inputAssembly;
 	pipelineInfo.pViewportState = &viewportState;
@@ -481,21 +380,9 @@ void CTPApp::createGraphicsPipeline() {
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.pDepthStencilState = &depthStencil;
 
-	for (size_t i = 0; i < OBJECT_COUNT; i++)
-	{
-		VkPipeline tempPipeline;
-		if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &tempPipeline) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create graphics pipeline!");
-		}
-		objectPipelines.push_back(tempPipeline);
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleSysPipe) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create graphics pipeline!");
 	}
-
-	//if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleSysPipe) != VK_SUCCESS) {
-	//	throw std::runtime_error("failed to create graphics pipeline!");
-	//}
-
-	vkDestroyShaderModule(device, fragShaderModule, nullptr);
-	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
 
 void CTPApp::createCommandBuffers() {
@@ -539,27 +426,23 @@ void CTPApp::createCommandBuffers() {
 
 		vkCmdBeginRenderPass(cmdAndDescData.commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		//vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &particleSysDesc, 0, nullptr);
-		//vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, particleSysPipe);
+		VkDeviceSize offsets[] = { 0 };
 
-		//VkDeviceSize offsets[] = { 0 };
-		//vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &vertexBuffer, offsets);
-		//vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 1, 1, &instanceBuffer.buffer, offsets);
-		//vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		//vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(mesh.indices.size()), INSTANCE_COUNT, 0, 0, 0);
+		vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &particleSysDesc, 0, nullptr);
+		vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, particleSysPipe);
 
-		for (size_t j = 0; j < OBJECT_COUNT; j++)
-		{
+		vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &model.vertex.buffer, offsets);
+		vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], model.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 
-			VkDeviceSize offsets[] = { 0 };
-			vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &objectDesc[j][i], 0, nullptr);
-			vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipelines[j]);
 
-			vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &meshes[j].vertexBuffer, offsets);
-			vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 1, 1, &modelBuffers[j].buffer, offsets);
-			vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], meshes[j].indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(meshes[j].indices.size()), 1, 0, 0, 0);
-		}
+		vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &particleSysDesc2, 0, nullptr);
+		vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, particleSysPipe);
+
+		vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &model2.vertex.buffer, offsets);
+		vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], model2.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(model2.indices.size()), 1, 0, 0, 0);
+
 		vkCmdEndRenderPass(cmdAndDescData.commandBuffers[i]);
 
 		if (vkEndCommandBuffer(cmdAndDescData.commandBuffers[i]) != VK_SUCCESS) {
@@ -609,28 +492,6 @@ bool CTPApp::hasStencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-void CTPApp::createTextureImage()
-{
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stagingBufferMemory;
-	VkHelper::createBuffer(device, image.imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, stagingBuffer);
-	VkHelper::AllocateBufferMemory(physicalDevice, device, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-	VkHelper::copyMemory(device, image.imageSize, stagingBufferMemory, image.pixels);
-
-	image.freeImage();
-
-	createImage(image.texWidth, image.texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, textureData.textureImage);
-	AllocateImageMemory(physicalDevice, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureData.textureImage, textureData.textureImageMemory);
-
-	transitionImageLayout(textureData.textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, textureData.textureImage, static_cast<uint32_t>(image.texWidth), static_cast<uint32_t>(image.texHeight));
-
-	transitionImageLayout(textureData.textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	vkFreeMemory(device, stagingBufferMemory, nullptr);
-}
-
 void CTPApp::createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage& image) {
 	VkImageCreateInfo imageInfo = {};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -652,8 +513,25 @@ void CTPApp::createImage(uint32_t width, uint32_t height, VkFormat format, VkIma
 	}
 }
 
+void CTPApp::AllocateImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
+{
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(device, image, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = Locator::GetDevices()->findMemoryType(memRequirements.memoryTypeBits, properties);
+
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate buffer memory!");
+	}
+
+	vkBindImageMemory(device, image, imageMemory, 0);
+}
+
 void CTPApp::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-	VkCommandBuffer commandBuffer = VkHelper::beginSingleTimeCommands(device, VK_COMMAND_BUFFER_LEVEL_PRIMARY, cmdAndDescData.commandPool, 1);
+	VkCommandBuffer commandBuffer = Locator::GetDevices()->BeginSingleTimeCommands(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -715,71 +593,7 @@ void CTPApp::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout
 		1, &barrier
 	);
 
-	VkHelper::endSingleTimeCommands(commandBuffer, device, cmdAndDescData.commandPool, 1, graphicsQueue);
-}
-
-void CTPApp::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
-	VkCommandBuffer commandBuffer = VkHelper::beginSingleTimeCommands(device, VK_COMMAND_BUFFER_LEVEL_PRIMARY, cmdAndDescData.commandPool, 1);
-
-
-	VkBufferImageCopy region = {};
-	region.bufferOffset = 0;
-	region.bufferRowLength = 0;
-	region.bufferImageHeight = 0;
-
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.layerCount = 1;
-
-	region.imageOffset = { 0, 0, 0 };
-	region.imageExtent = {
-		width,
-		height,
-		1
-	};
-
-	vkCmdCopyBufferToImage(
-		commandBuffer,
-		buffer,
-		image,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		1,
-		&region
-	);
-
-	VkHelper::endSingleTimeCommands(commandBuffer, device, cmdAndDescData.commandPool, 1, graphicsQueue);
-
-}
-
-void CTPApp::createTextureImageView() {
-
-	textureData.textureImageView = VkSetupHelper::createImageView(device, textureData.textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-}
-
-void CTPApp::createTextureSampler() {
-
-	VkSamplerCreateInfo samplerInfo = {};
-	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.anisotropyEnable = VK_FALSE;
-	samplerInfo.maxAnisotropy = 1;
-	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	samplerInfo.unnormalizedCoordinates = VK_FALSE;
-	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	samplerInfo.mipLodBias = 0.0f;
-	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
-
-	if (vkCreateSampler(device, &samplerInfo, nullptr, &textureData.textureSampler) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create texture sampler!");
-	}
+	Locator::GetDevices()->EndSingleTimeCommands(commandBuffer, 1, graphicsQueue);
 }
 
 void CTPApp::createInstances()
@@ -820,39 +634,39 @@ void CTPApp::createInstances()
 	//	}
 	//}
 
-	std::random_device rd;
-	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
-	std::uniform_real_distribution<float> uniformDist2(1.0f, 3.0f);
-	std::uniform_real_distribution<float> randStartPos(-10.0f, 10.0f);
-	particles.resize(OBJECT_COUNT);
-	for (auto i = 0; i < OBJECT_COUNT; i++) {
-		model[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), 0);
-		model[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
-		model[i].color = { 1.0f, 1.0f, 1.0f, 1.0f };
-		model[i].scale = 1.0f;
-		particles[i].maxLife = 1.0f;
-		particles[i].currentLife = 0.0f;
-		particles[i].velocity = glm::vec3(0, 0, 0);
-		particles[i].active = true;
-		particles[i].speed = uniformDist2(rd);
+	//std::random_device rd;
+	//std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
+	//std::uniform_real_distribution<float> uniformDist2(1.0f, 3.0f);
+	//std::uniform_real_distribution<float> randStartPos(-10.0f, 10.0f);
+	//particles.resize(OBJECT_COUNT);
+	//for (auto i = 0; i < OBJECT_COUNT; i++) {
+	//	model[i].pos = glm::vec3(randStartPos(rd), randStartPos(rd), 0);
+	//	model[i].rot = glm::vec3(uniformDist(rd), uniformDist(rd), 0);
+	//	model[i].color = { 1.0f, 1.0f, 1.0f, 1.0f };
+	//	model[i].scale = 1.0f;
+	//	particles[i].maxLife = 1.0f;
+	//	particles[i].currentLife = 0.0f;
+	//	particles[i].velocity = glm::vec3(0, 0, 0);
+	//	particles[i].active = true;
+	//	particles[i].speed = uniformDist2(rd);
 
-		minDists.push_back(0.0f);
+	//	minDists.push_back(0.0f);
 
-		for (auto j = 0; j < meshes[i].vertices.size(); j++) {
-			if (j == 0)
-			{
-				minDists[i] = glm::distance(model[i].pos + meshes[i].vertices[j].pos, light.pos);
-			}
-			else
-			{
-				auto newDist = glm::distance(model[i].pos + meshes[i].vertices[j].pos, light.pos);
-				if (newDist < minDists[i])
-				{
-					minDists[i] = newDist;
-				}
-			}
-		}
-	}
+	//	for (auto j = 0; j < meshes[i].vertices.size(); j++) {
+	//		if (j == 0)
+	//		{
+	//			minDists[i] = glm::distance(model[i].pos + meshes[i].vertices[j].pos, light.pos);
+	//		}
+	//		else
+	//		{
+	//			auto newDist = glm::distance(model[i].pos + meshes[i].vertices[j].pos, light.pos);
+	//			if (newDist < minDists[i])
+	//			{
+	//				minDists[i] = newDist;
+	//			}
+	//		}
+	//	}
+	//}
 
 }
 
@@ -869,179 +683,132 @@ glm::vec3 CTPApp::getFlowField(glm::vec3 pos)
 
 void CTPApp::updateInstanceBuffer() {
 
-	static auto startTime = std::chrono::high_resolution_clock::now();
+	//static auto startTime = std::chrono::high_resolution_clock::now();
 
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	auto delTime = Locator::GetTimer()->DeltaTime();
+	//auto currentTime = std::chrono::high_resolution_clock::now();
+	//float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+	//auto delTime = Locator::GetTimer()->DeltaTime();
 
-	//	//ok += delTime;
-	//	//if (ok > 0.1f && activeNum < INSTANCE_COUNT)
-	//	//if (ok > 1.0f)
-	//	//{
-	//	//	//particles[activeNum].active = true;
-	//	//	//activeNum++;
-	//	//	std::random_device rd;
-	//	//	std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
-	//	//	for (auto i = 0; i < INSTANCE_COUNT; i++) {
-	//	//		instanceData[i].color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f };
-	//	//	//	instanceData[i].color = { 0.0f, 0.0f, 0.0f , 1.0f };
-	//	//	}
-	//	//	ok = 0.0f;
-	//	//}
-	//
-	//	for (auto i = 0; i < INSTANCE_COUNT; i++) {
-	//		//if (checkDistanceFromLight(instanceData[i].pos))
-	//		//{
-	//			for (auto j = 0; j < mesh.vertices.size(); j++) {
-	//
-	//				float dist[2] = { glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos), glm::distance(instanceData[i].pos, light.pos) };
-	//				if (dist[0] < dist[1])
-	//				{
-	//					float curDist = dist[0] - minDist;
-	//					float maxDist = dist[1] - minDist;
-	//					auto amount = curDist / maxDist;
-	//					mesh.vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
-	//				}
-	//				else
-	//					mesh.vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	//			}
-	//		//}
-	//		//else
-	//		//	instanceData[i].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	//
-	//		particles[i].currentLife += delTime;
-	//		auto vel = getFlowField(instanceData[i].pos);
-	//	
-	//		instanceData[i].pos += (vel * (1 * delTime) * particles[i].speed);
-	//
-	//		//if (particles[i].currentLife >= particles[i].maxLife)
-	//		//{
-	//		//	particles[i].currentLife = 0.0f;
-	//		//	std::random_device rd;
-	//		//	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
-	//		//	std::uniform_real_distribution<float> uniformDist2(0.0f, 1.0f);
-	//		//	instanceData[i].pos = glm::vec3(0, 0, 0);
-	//		//	//particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
-	//		//}
+	////	//ok += delTime;
+	////	//if (ok > 0.1f && activeNum < INSTANCE_COUNT)
+	////	//if (ok > 1.0f)
+	////	//{
+	////	//	//particles[activeNum].active = true;
+	////	//	//activeNum++;
+	////	//	std::random_device rd;
+	////	//	std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
+	////	//	for (auto i = 0; i < INSTANCE_COUNT; i++) {
+	////	//		instanceData[i].color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f };
+	////	//	//	instanceData[i].color = { 0.0f, 0.0f, 0.0f , 1.0f };
+	////	//	}
+	////	//	ok = 0.0f;
+	////	//}
+	////
+	////	for (auto i = 0; i < INSTANCE_COUNT; i++) {
+	////		//if (checkDistanceFromLight(instanceData[i].pos))
+	////		//{
+	////			for (auto j = 0; j < mesh.vertices.size(); j++) {
+	////
+	////				float dist[2] = { glm::distance(instanceData[i].pos + mesh.vertices[j].pos, light.pos), glm::distance(instanceData[i].pos, light.pos) };
+	////				if (dist[0] < dist[1])
+	////				{
+	////					float curDist = dist[0] - minDist;
+	////					float maxDist = dist[1] - minDist;
+	////					auto amount = curDist / maxDist;
+	////					mesh.vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
+	////				}
+	////				else
+	////					mesh.vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	////			}
+	////		//}
+	////		//else
+	////		//	instanceData[i].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	////
+	////		particles[i].currentLife += delTime;
+	////		auto vel = getFlowField(instanceData[i].pos);
+	////	
+	////		instanceData[i].pos += (vel * (1 * delTime) * particles[i].speed);
+	////
+	////		//if (particles[i].currentLife >= particles[i].maxLife)
+	////		//{
+	////		//	particles[i].currentLife = 0.0f;
+	////		//	std::random_device rd;
+	////		//	std::uniform_real_distribution<float> uniformDist(-1.0, 1.0f);
+	////		//	std::uniform_real_distribution<float> uniformDist2(0.0f, 1.0f);
+	////		//	instanceData[i].pos = glm::vec3(0, 0, 0);
+	////		//	//particles[i].velocity = glm::normalize(glm::vec3(uniformDist(rd), uniformDist2(rd), uniformDist(rd)));
+	////		//}
+	////	}
+	////
+	////	remapInstanceData();
+
+	//for (auto i = 0; i < OBJECT_COUNT; i++) {
+	//	for (auto j = 0; j < meshes[i].vertices.size(); j++) {
+
+	//		float dist[2] = { glm::distance(model[i].pos + meshes[i].vertices[j].pos, light.pos), glm::distance(model[i].pos, light.pos) };
+
+	//		if (dist[0] < dist[1])
+	//		{
+	//			float curDist = dist[0] - minDists[i];
+	//			float maxDist = dist[1] - minDists[i];
+	//			auto amount = curDist / maxDist;
+
+	//			meshes[i].vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
+	//		}
+	//		else
+	//			meshes[i].vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	//	}
-	//
-	//	remapInstanceData();
 
-	for (auto i = 0; i < OBJECT_COUNT; i++) {
-		for (auto j = 0; j < meshes[i].vertices.size(); j++) {
+	//	auto vel = getFlowField(model[i].pos);
 
-			float dist[2] = { glm::distance(model[i].pos + meshes[i].vertices[j].pos, light.pos), glm::distance(model[i].pos, light.pos) };
-
-			if (dist[0] < dist[1])
-			{
-				float curDist = dist[0] - minDists[i];
-				float maxDist = dist[1] - minDists[i];
-				auto amount = curDist / maxDist;
-
-				meshes[i].vertices[j].color = { 1.0f - amount, 1.0f - amount, 0.0f, 1.0f };
-			}
-			else
-				meshes[i].vertices[j].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-		}
-
-		auto vel = getFlowField(model[i].pos);
-
-		model[i].pos += (vel * (1 * delTime) * particles[i].speed);
-	}
-	remapVertexData();
+	//	model[i].pos += (vel * (1 * delTime) * particles[i].speed);
+	//}
+	//remapVertexData();
 }
 
 void CTPApp::createUniformBuffers() {
 
-	for (size_t i = 0; i < OBJECT_COUNT; i++)
-	{
+	model.uniform.resize(graphics.GetSwapChain().swapChainImages.size());
+	model2.uniform.resize(graphics.GetSwapChain().swapChainImages.size());
 
-		VkDeviceSize bufferSize = sizeof(UniformBufferObject) * OBJECT_COUNT;
+	for (size_t j = 0; j < graphics.GetSwapChain().swapChainImages.size(); j++) {
 
-		meshes[i].uniformBuffers.resize(graphics.GetSwapChain().swapChainImages.size());
-		meshes[i].uniformBuffersMemory.resize(graphics.GetSwapChain().swapChainImages.size());
+		model.uniform[j].CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
 
-		for (size_t j = 0; j < graphics.GetSwapChain().swapChainImages.size(); j++) {
-			VkHelper::createBufferWithoutStaging(physicalDevice, device,
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSize,
-				meshes[i].uniformBuffers[j], meshes[i].uniformBuffersMemory[j]);
-		}
+		model2.uniform[j].CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
 	}
 
-	//VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-	//uniformBuffers.resize(graphics.GetSwapChain().swapChainImages.size());
-	//uniformBuffersMemory.resize(graphics.GetSwapChain().swapChainImages.size());
-
-	//for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
-	//	VkHelper::createBufferWithoutStaging(physicalDevice, device, 
-	//		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSize,
-	//		uniformBuffers[i], uniformBuffersMemory[i]);
-	//}
+	model.transform.pos = { 0, 12, 0 };
+	model2.transform.pos = { 0, 3, 0 };
 }
 
-void CTPApp::createBuffers()
-{
-
-	//VkDeviceSize bufferSize = sizeof(Model) * OBJECT_COUNT;
-
-	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-	//	bufferSize, modelBuffer.buffer, modelBuffer.memory, model.data());
-
-	for (size_t i = 0; i < OBJECT_COUNT; i++)
-	{
-		VkDeviceSize bufferSize = sizeof(Model);
-
-		VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-			graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-			bufferSize, modelBuffers[i].buffer, modelBuffers[i].memory, model.data());
+void CTPApp::updateUniformBuffer(uint32_t currentImage) {
 
 
-		bufferSize = sizeof(meshes[i].vertices[0]) * meshes[i].vertices.size();
+	model.transform.pos += getFlowField(model.transform.pos) * Locator::GetTimer()->DeltaTime() * 5.f;
+	model2.transform.pos += getFlowField(model2.transform.pos) * Locator::GetTimer()->DeltaTime() * 3.f;
 
-		VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-			graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-			bufferSize, meshes[i].vertexBuffer, meshes[i].vertexBufferMemory, meshes[i].vertices.data());
+	static auto startTime = std::chrono::high_resolution_clock::now();
 
-		bufferSize = sizeof(meshes[i].indices[0]) * meshes[i].indices.size();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-		VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-			graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-			bufferSize, meshes[i].indexBuffer, meshes[i].indexBufferMemory, meshes[i].indices.data());
+	UniformBufferObject ubo = {};
+	//	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(5, 5, 5));
+	ubo.model = glm::translate(glm::mat4(1.0f), model.transform.pos);
+	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
+	ubo.proj[1][1] *= -1;
 
-	}
+	model.uniform[currentImage].CopyMem(&ubo, sizeof(ubo));
 
-	//VkDeviceSize bufferSize = sizeof(InstanceData) * instanceData.size();
-
-	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-	//	bufferSize, instanceBuffer.buffer, instanceBuffer.memory, instanceData.data());
-
-	//bufferSize = sizeof(mesh.vertices[0]) * mesh.vertices.size();
-
-	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-	//	bufferSize, vertexBuffer, vertexBufferMemory, mesh.vertices.data());
-
-	//bufferSize = sizeof(mesh.indices[0]) * mesh.indices.size();
-
-	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
-	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-	//	bufferSize, indexBuffer, indexBufferMemory, mesh.indices.data());
-
-	//createUniformBuffers();
-
-	//bufferSize = sizeof(UniformBufferObject);
-
-	//uniformBuffers.resize(graphics.GetSwapChain().swapChainImages.size());
-	//uniformBuffersMemory.resize(graphics.GetSwapChain().swapChainImages.size());
-
-	//for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
-	//	VkHelper::createBufferWithoutStaging(physicalDevice, device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-	//		bufferSize, uniformBuffers[i], uniformBuffersMemory[i]);
-	//}
+	ubo.model = glm::translate(glm::mat4(1.0f), model2.transform.pos);
+	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
+	ubo.proj[1][1] *= -1;
+	model2.uniform[currentImage].CopyMem(&ubo, sizeof(ubo));
 }
 
 void CTPApp::createLight()
@@ -1059,7 +826,7 @@ void CTPApp::remapInstanceData()
 {
 	VkDeviceSize bufferSize = sizeof(InstanceData) * instanceData.size();
 
-	VkHelper::copyMemory(device, bufferSize, instanceBuffer.memory, instanceData.data());
+	//VkHelper::copyMemory(device, bufferSize, instanceBuffer.memory, instanceData.data());
 	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
 	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 	//	bufferSize, instanceBuffer.buffer, instanceBuffer.memory, instanceData.data());
@@ -1076,34 +843,17 @@ void CTPApp::remapVertexData()
 
 	//VkHelper::copyMemory(device, bufferSize, modelBuffer.memory, model.data());
 
-	for (size_t i = 0; i < OBJECT_COUNT; i++)
-	{
-		VkDeviceSize bufferSize = sizeof(Model);
+	//for (size_t i = 0; i < OBJECT_COUNT; i++)
+	//{
+	//	VkDeviceSize bufferSize = sizeof(Model);
 
-		VkHelper::copyMemory(device, bufferSize, modelBuffers[i].memory, model.data());
+	//	VkHelper::copyMemory(device, bufferSize, modelBuffers[i].memory, model.data());
 
-		bufferSize = sizeof(meshes[i].vertices[0]) * meshes[i].vertices.size();
+	//	bufferSize = sizeof(meshes[i].vertices[0]) * meshes[i].vertices.size();
 
-		VkHelper::copyMemory(device, bufferSize, meshes[i].vertexBufferMemory, meshes[i].vertices.data());
+	//	VkHelper::copyMemory(device, bufferSize, meshes[i].vertexBufferMemory, meshes[i].vertices.data());
 
-	}
-}
-
-void CTPApp::AllocateImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
-{
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(device, image, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = VkHelper::findMemoryType(physicalDevice, memRequirements.memoryTypeBits, properties);
-
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate buffer memory!");
-	}
-
-	vkBindImageMemory(device, image, imageMemory, 0);
+	//}
 }
 
 void CTPApp::createSyncObjects() {
@@ -1129,43 +879,6 @@ void CTPApp::createSyncObjects() {
 	}
 }
 
-void CTPApp::updateUniformBuffer(uint32_t currentImage) {
-
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-	UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(time * glm::radians(90.0f), 1.0f, time * glm::radians(90.0f)));
-	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
-	ubo.proj[1][1] *= -1;
-
-	for (size_t i = 0; i < OBJECT_COUNT; i++)
-	{
-		VkHelper::copyMemory(device, sizeof(ubo) * OBJECT_COUNT, meshes[i].uniformBuffersMemory[currentImage], &ubo);
-	}
-
-	//static auto startTime = std::chrono::high_resolution_clock::now();
-
-	//auto currentTime = std::chrono::high_resolution_clock::now();
-	//float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-	//UniformBufferObject ubo = {};
-	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(time * glm::radians(90.0f), 1.0f, time * glm::radians(90.0f)));
-	//ubo.view = glm::lookAt(glm::vec3(0.0f, 3.0f, -30.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	//ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
-	//ubo.proj[1][1] *= -1;
-
-	//VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
-
-	//void* data;
-	//vkMapMemory(device, uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-	//memcpy(data, &ubo, sizeof(ubo));
-	//vkUnmapMemory(device, uniformBuffersMemory[currentImage]);
-}
-
 void CTPApp::drawFrame() {
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
@@ -1185,7 +898,7 @@ void CTPApp::drawFrame() {
 	/////////////////////
 
 	Update();
-	updateInstanceBuffer();
+	//updateInstanceBuffer();
 	//scene.Update(imageIndex);
 	updateUniformBuffer(imageIndex);
 	//VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
@@ -1242,7 +955,6 @@ void CTPApp::drawFrame() {
 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
-
 
 void CTPApp::Update()
 {

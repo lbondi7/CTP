@@ -5,7 +5,7 @@
 
 Devices::Devices(VkPhysicalDevice _physicalDevice, VkDevice _device)
 {
-	device = _device;
+//	device = _device;
 	physicalDevice = _physicalDevice;
 
 }
@@ -22,7 +22,7 @@ VkPhysicalDevice& Devices::GetPhysicalDevice()
 
 void Devices::CreateLogicalDevice(const VkSurfaceKHR& surface) {
 
-	queueFamilyIndices = findQueueFamilies(surface);
+	queueFamilyIndices = FindQueueFamilies(surface);
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<uint32_t> uniqueQueueFamilies = { queueFamilyIndices.graphicsFamily.value(), queueFamilyIndices.presentFamily.value() };
@@ -89,18 +89,6 @@ void Devices::CreateCommandPool(VkCommandPool& commandPool)
 	}
 }
 
-
-//void Devices::CreateCommandPool() {
-//
-//	VkCommandPoolCreateInfo poolInfo = {};
-//	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-//	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-//
-//	if (vkCreateCommandPool(device, &poolInfo, nullptr, &cmdPool) != VK_SUCCESS) {
-//		throw std::runtime_error("failed to create graphics command pool!");
-//	}
-//}
-
 uint32_t Devices::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
@@ -114,7 +102,7 @@ uint32_t Devices::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags prop
 	throw std::runtime_error("failed to find suitable memory type!");
 }
 
-QueueFamilyIndices Devices::findQueueFamilies(const VkSurfaceKHR& surface) {
+QueueFamilyIndices Devices::FindQueueFamilies(VkSurfaceKHR surface) {
 
 	QueueFamilyIndices indices;
 

@@ -10,14 +10,13 @@ Scene::~Scene()
 {
 }
 
-void Scene::Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, GLFWwindow* _window, VkQueue* gQueue, VkQueue* pQueue, Graphics* _graphics)
+void Scene::Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, GLFWwindow* _window, VkQueue* gQueue, VkQueue* pQueue)
 {
 	physicalDevice = _phyDevice;
 	device = _device;
 	window = _window;
 	graphicsQueue = gQueue;
 	presentQueue = pQueue;
-	graphics = _graphics;
 }
 
 void Scene::Update(uint32_t currentImage)
@@ -95,52 +94,4 @@ void Scene::UpdateUniformBuffers(uint32_t currentImage) {
 	ubo.proj[1][1] *= -1;
 
 	//VkHelper::copyMemory(*device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
-}
-
-void Scene::createDescriptorSets() {
-
-	//std::vector<VkDescriptorSetLayout> layouts(graphics->GetSwapChain().swapChainImages.size(), graphicsData.descriptorSetLayout);
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = descriptorPool;
-	allocInfo.descriptorSetCount = static_cast<uint32_t>(graphics->GetSwapChain().swapChainImages.size());
-	//allocInfo.pSetLayouts = layouts.data();
-
-	//particleSysDescs.resize(graphics.GetSwapChain().swapChainImages.size());
-	if (vkAllocateDescriptorSets(*device, &allocInfo, &particleSysDesc) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate descriptor sets!");
-	}
-
-	for (size_t i = 0; i < graphics->GetSwapChain().swapChainImages.size(); i++) {
-
-		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = uniformBuffers[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(UniformBufferObject);
-
-		VkDescriptorImageInfo imageInfo = {};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		//imageInfo.imageView = textureData.textureImageView;
-		//imageInfo.sampler = textureData.textureSampler;
-
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
-
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = particleSysDesc;
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = particleSysDesc;
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pImageInfo = &imageInfo;
-
-		vkUpdateDescriptorSets(*device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-	}
 }

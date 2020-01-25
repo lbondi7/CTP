@@ -29,45 +29,10 @@ struct QueueFamilyIndices {
 	}
 };
 
-struct SwapChainData
-{
-	VkSwapchainKHR swapChain;
-	std::vector<VkImage> swapChainImages;
-	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
-	std::vector<VkImageView> swapChainImageViews;
-	std::vector<VkFramebuffer> swapChainFramebuffers;
-};
-
 struct SwapChainSupportDetails {
 	VkSurfaceCapabilitiesKHR capabilities;
 	std::vector<VkSurfaceFormatKHR> formats;
 	std::vector<VkPresentModeKHR> presentModes;
-};
-
-struct GraphicsData
-{
-	VkRenderPass renderPass;
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkPipelineLayout pipelineLayout;
-	VkPipeline graphicsPipeline;
-};
-
-struct CmdAndDescData
-{
-	VkCommandPool commandPool;
-	std::vector<VkCommandBuffer> commandBuffers;
-	VkDescriptorPool descriptorPool;
-	VkDescriptorSet descriptorSet;
-};
-
-struct TextureData
-{
-	VkImage textureImage;
-	VkDeviceMemory textureImageMemory;
-
-	VkImageView textureImageView;
-	VkSampler textureSampler;
 };
 
 struct UniformBufferObject {

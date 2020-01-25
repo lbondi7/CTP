@@ -2,7 +2,6 @@
 #include "Locator.h"
 #include "Devices.h"
 #include "Buffer.h"
-#include "VkSetupHelper.h"
 #include "VkHelper.h"
 
 //#define STB_IMAGE_IMPLEMENTATION
@@ -35,7 +34,7 @@ void Texture::Load(const char* imagePath, VkQueue queue, VkFormat format, VkMemo
 
 	transitionImageLayout(format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, queue);
 
-	CreateImageView(format, VK_IMAGE_ASPECT_COLOR_BIT);
+	VkHelper::CreateImageView(device, image, imageView, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	CreateTextureSampler();
 }
@@ -98,7 +97,7 @@ void Texture::transitionImageLayout(VkFormat format, VkImageLayout oldLayout, Vk
 	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-		if (hasStencilComponent(format)) {
+		if (VkHelper::HasStencilComponent(format)) {
 			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 		}
 	}
@@ -146,10 +145,6 @@ void Texture::transitionImageLayout(VkFormat format, VkImageLayout oldLayout, Vk
 	Locator::GetDevices()->EndSingleTimeCommands(commandBuffer, 1, queue);
 }
 
-bool Texture::hasStencilComponent(VkFormat format) {
-	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-}
-
 void Texture::CopyBufferToImage(VkBuffer buffer, VkQueue queue) {
 	VkCommandBuffer commandBuffer = Locator::GetDevices()->BeginSingleTimeCommands(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 
@@ -182,24 +177,6 @@ void Texture::CopyBufferToImage(VkBuffer buffer, VkQueue queue) {
 
 	Locator::GetDevices()->EndSingleTimeCommands(commandBuffer, 1, queue);
 
-}
-
-void Texture::CreateImageView(VkFormat format, VkImageAspectFlags aspectFlags) {
-
-	VkImageViewCreateInfo viewInfo = {};
-	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewInfo.image = image;
-	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewInfo.format = format;
-	viewInfo.subresourceRange.aspectMask = aspectFlags;
-	viewInfo.subresourceRange.baseMipLevel = 0;
-	viewInfo.subresourceRange.levelCount = 1;
-	viewInfo.subresourceRange.baseArrayLayer = 0;
-	viewInfo.subresourceRange.layerCount = 1;
-
-	if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create texture image view!");
-	}
 }
 
 void Texture::CreateTextureSampler() {

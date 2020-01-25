@@ -25,7 +25,7 @@ public:
 
 	//Buffer StageBuffer(Buffer& buffer);
 
-	QueueFamilyIndices findQueueFamilies(const VkSurfaceKHR& surface);
+	QueueFamilyIndices FindQueueFamilies(VkSurfaceKHR surface);
 
 	VkCommandBuffer BeginSingleTimeCommands(VkCommandBufferLevel cmdBufferLevel, VkCommandPool cmdPool, int cmdBufferCount);
 

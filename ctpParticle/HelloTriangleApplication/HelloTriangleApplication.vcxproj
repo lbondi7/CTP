@@ -163,7 +163,6 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="Devices.cpp" />
-    <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Locator.cpp" />
@@ -172,10 +171,9 @@
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="ParticleSystem.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Timer.cpp" />
-    <ClCompile Include="VkCmdAndDesc.cpp" />
-    <ClCompile Include="VkGraphicsSetup.cpp" />
     <ClCompile Include="VkHelper.cpp" />
     <ClCompile Include="VkInitializer.cpp" />
     <ClCompile Include="VkSetup.cpp" />
@@ -185,7 +183,6 @@
     <ClInclude Include="App.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="Devices.h" />
-    <ClInclude Include="Graphics.h" />
     <ClInclude Include="Image.h" />
     <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Locator.h" />
@@ -193,13 +190,12 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="SwapChain.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="Vertex.h" />
-    <ClInclude Include="VkCmdAndDesc.h" />
     <ClInclude Include="VkConstants.h" />
-    <ClInclude Include="VkGraphicsSetup.h" />
     <ClInclude Include="VkHelper.h" />
     <ClInclude Include="VkInitializer.h" />
     <ClInclude Include="VkSetup.h" />

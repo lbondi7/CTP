@@ -3,11 +3,11 @@
 #include "VkSetup.h"
 #include "Mesh.h"
 #include "Image.h"
-#include "Graphics.h"
 #include "Scene.h"
 #include "Buffer.h"
 #include "Texture.h"
 #include "Model.h"
+#include "SwapChain.h"
 
 struct Light
 {
@@ -58,21 +58,13 @@ private:
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 
-	SwapChainData swapChainData;
-	GraphicsData graphicsData;
-	CmdAndDescData cmdAndDescData;
-
-	VkDescriptorPool descriptorPool;
+	VkRenderPass renderPass;
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorSet particleSysDesc;
-	VkDescriptorSet singleDescriptor;
 
 	VkPipelineLayout pipelineLayout;
 	VkPipeline particleSysPipe;
-
-	VkCommandPool commandPool;
-	std::vector<VkCommandBuffer> commandBuffers;
 
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -85,9 +77,6 @@ private:
 	std::vector<VkViewport> m_Viewports;
 	std::vector<VkRect2D> m_ScissorRects;
 
-	Graphics graphics;
-
-	TextureData textureData;
 	Image image;
 
 	VkImage depthImage;
@@ -98,7 +87,7 @@ private:
 
 	std::vector<Particle> particles;
 
-	Scene scene;
+	//Scene scene;
 
 	Light light;
 
@@ -108,6 +97,13 @@ private:
 	Model model2;
 	VkDescriptorSet particleSysDesc2;
 	VkPipeline particleSysPipe2;
+
+	SwapChain swapchain;
+
+	VkCommandPool commandPool;
+	std::vector<VkCommandBuffer> commandBuffers;
+	VkDescriptorPool descriptorPool;
+	VkDescriptorSet descriptorSet;
 
 	float minDist = 0.0f;
 
@@ -140,6 +136,8 @@ private:
 
 	void cleanupSwapChain();
 
+	void createRenderPass();
+
 	void createDescriptorSetLayout();
 
 	void createDescriptorSets();
@@ -167,8 +165,6 @@ private:
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
 	void createUniformBuffers();
-
-	void createBuffers();
 
 	void AllocateImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 

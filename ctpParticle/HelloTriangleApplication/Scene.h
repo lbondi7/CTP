@@ -1,7 +1,6 @@
 #pragma once
 #include "VkConstants.h"
 #include "Vertex.h"
-#include "Graphics.h"
 
 //struct InstanceData {
 //	glm::vec3 pos;
@@ -40,15 +39,13 @@ public:
 	Scene() = default;
 	~Scene();
 
-	void Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, GLFWwindow* _window, VkQueue* gQueue, VkQueue* pQueue, Graphics* _graphics);
+	void Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, GLFWwindow* _window, VkQueue* gQueue, VkQueue* pQueue);
 	void Update(uint32_t currentImage);
 	void Render();
 
 	void CreateUniformBuffers();
 
 	void UpdateUniformBuffers(uint32_t currentImage);
-
-	void createDescriptorSets();
 
 	std::vector<VkBuffer> uniformBuffers;
 
@@ -62,14 +59,12 @@ private:
 
 	GLFWwindow* window = nullptr;
 
-	Graphics* graphics;
-
 	VkDescriptorPool descriptorPool;
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorSet particleSysDesc;
 
-	VkPipelineLayout pipelineLayout;
+	//VkPipelineLayout pipelineLayout;
 	std::vector<VkPipeline> particleSysPipe;
 
 	VkCommandPool commandPool;

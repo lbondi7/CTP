@@ -18,7 +18,29 @@ namespace VkHelper
 		throw std::runtime_error("failed to find suitable memory type!");
 	}
 
-	const VkVertexInputAttributeDescription& createVertexAttributeDescription(uint32_t binding, uint32_t location, VkFormat format, uint32_t offset) {
+	void CreateImageView(VkDevice device, VkImage image, VkImageView& imageView, VkFormat format, VkImageAspectFlags aspectFlags) {
+
+		VkImageViewCreateInfo viewInfo = {};
+		viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		viewInfo.image = image;
+		viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		viewInfo.format = format;
+		viewInfo.subresourceRange.aspectMask = aspectFlags;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = 1;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		viewInfo.subresourceRange.layerCount = 1;
+
+		if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create texture image view!");
+		}
+	}
+
+	bool HasStencilComponent(VkFormat format) {
+		return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+	}
+
+	VkVertexInputAttributeDescription createVertexAttributeDescription(uint32_t binding, uint32_t location, VkFormat format, uint32_t offset) {
 		VkVertexInputAttributeDescription vertexAttributeDescription = {};
 		vertexAttributeDescription.binding = binding;
 		vertexAttributeDescription.location = location;
@@ -27,7 +49,7 @@ namespace VkHelper
 		return vertexAttributeDescription;
 	}
 
-	const VkVertexInputBindingDescription& createVertexBindingDescription(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate) {
+	VkVertexInputBindingDescription createVertexBindingDescription(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate) {
 		VkVertexInputBindingDescription vertexAttributeDescription = {};
 		vertexAttributeDescription.binding = binding;
 		vertexAttributeDescription.stride = stride;
@@ -35,7 +57,7 @@ namespace VkHelper
 		return vertexAttributeDescription;
 	}
 
-	const VkDescriptorSetLayoutBinding& createDescriptorLayoputBinding(uint32_t binding, uint32_t descriptorCount, VkDescriptorType descriptorType, VkSampler* immutableSamplers, VkShaderStageFlags stageFlags)
+	VkDescriptorSetLayoutBinding createDescriptorLayoputBinding(uint32_t binding, uint32_t descriptorCount, VkDescriptorType descriptorType, VkSampler* immutableSamplers, VkShaderStageFlags stageFlags)
 	{
 		VkDescriptorSetLayoutBinding layoutBinding = {};
 		layoutBinding.binding = binding;
@@ -47,7 +69,7 @@ namespace VkHelper
 		return layoutBinding;
 	}
 
-	const VkDescriptorSetLayoutCreateInfo& createDescSetLayoutInfo(uint32_t BindingCount, const VkDescriptorSetLayoutBinding* bindings)
+	VkDescriptorSetLayoutCreateInfo createDescSetLayoutInfo(uint32_t BindingCount, const VkDescriptorSetLayoutBinding* bindings)
 	{
 		VkDescriptorSetLayoutCreateInfo layoutInfo = {};
 		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -57,7 +79,7 @@ namespace VkHelper
 		return layoutInfo;
 	}
 
-	const VkPipelineShaderStageCreateInfo& createShaderStageInfo(VkStructureType structureType, VkShaderStageFlagBits stage, const VkShaderModule& shaderModule, const char* name)
+	VkPipelineShaderStageCreateInfo createShaderStageInfo(VkStructureType structureType, VkShaderStageFlagBits stage, const VkShaderModule& shaderModule, const char* name)
 	{
 
 
@@ -71,7 +93,7 @@ namespace VkHelper
 		return shaderStageInfo;
 	}
 
-	const VkPipelineShaderStageCreateInfo& createShaderStageInfo(std::string filepath, VkShaderStageFlagBits stage, VkDevice device)
+	VkPipelineShaderStageCreateInfo createShaderStageInfo(std::string filepath, VkShaderStageFlagBits stage, VkDevice device)
 	{
 		VkPipelineShaderStageCreateInfo shaderStageInfo = {};
 		shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -82,7 +104,7 @@ namespace VkHelper
 		return shaderStageInfo;
 	}
 
-	const VkViewport& createViewport(float xPos, float yPos, float width, float height, float minDepth, float maxDepth)
+	VkViewport createViewport(float xPos, float yPos, float width, float height, float minDepth, float maxDepth)
 	{
 		VkViewport viewport = {};
 		viewport.x = xPos;
@@ -95,7 +117,7 @@ namespace VkHelper
 		return viewport;
 	}
 
-	const VkRect2D& createScissorRect(const VkOffset2D& offset, const VkExtent2D& extent)
+	VkRect2D createScissorRect(const VkOffset2D& offset, const VkExtent2D& extent)
 	{
 		VkRect2D scissorRect = {};
 		scissorRect.offset = offset;
@@ -103,7 +125,7 @@ namespace VkHelper
 		return scissorRect;
 	}
 
-	const VkPipelineViewportStateCreateInfo& createViewPortStateInfo(uint32_t viewportCount, uint32_t scissorCount, const VkViewport* viewports, const VkRect2D* scissors)
+	VkPipelineViewportStateCreateInfo createViewPortStateInfo(uint32_t viewportCount, uint32_t scissorCount, const VkViewport* viewports, const VkRect2D* scissors)
 	{
 		VkPipelineViewportStateCreateInfo viewportState = {};
 		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -115,7 +137,7 @@ namespace VkHelper
 		return viewportState;
 	}
 
-	const VkPipelineRasterizationStateCreateInfo& createRasteriser(VkBool32 depthClampEnabled, VkBool32 rasterizerDiscardEnabled, 
+	VkPipelineRasterizationStateCreateInfo createRasteriser(VkBool32 depthClampEnabled, VkBool32 rasterizerDiscardEnabled, 
 		VkPolygonMode polygonMode, float lineWidth, VkCullModeFlags cullMode, VkFrontFace frontFace, VkBool32 depthBiasEnabled)
 	{
 		VkPipelineRasterizationStateCreateInfo rasterizer = {};
@@ -131,7 +153,7 @@ namespace VkHelper
 		return rasterizer;
 	}
 
-	const VkPipelineMultisampleStateCreateInfo& createMultiSampling(VkBool32 sampleShadingEnabled, VkSampleCountFlagBits rasterisationSamples)
+	VkPipelineMultisampleStateCreateInfo createMultiSampling(VkBool32 sampleShadingEnabled, VkSampleCountFlagBits rasterisationSamples)
 	{
 		VkPipelineMultisampleStateCreateInfo multisampling = {};
 		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
@@ -141,7 +163,7 @@ namespace VkHelper
 		return multisampling;
 	}
 
-	const VkPipelineColorBlendAttachmentState& createColourBlendAttachment(VkColorComponentFlags colourWriteMask, VkBool32 blendEnabled)
+	VkPipelineColorBlendAttachmentState createColourBlendAttachment(VkColorComponentFlags colourWriteMask, VkBool32 blendEnabled)
 	{
 		VkPipelineColorBlendAttachmentState colourBlendAttachment = {};
 		colourBlendAttachment.colorWriteMask = colourWriteMask;
@@ -156,7 +178,7 @@ namespace VkHelper
 		return colourBlendAttachment;
 	}
 
-	const VkPipelineColorBlendStateCreateInfo& createColourBlendStateInfo(VkBool32 logicOpEnabled, VkLogicOp logicOp, 
+	VkPipelineColorBlendStateCreateInfo createColourBlendStateInfo(VkBool32 logicOpEnabled, VkLogicOp logicOp, 
 		uint32_t attachmentCount, const VkPipelineColorBlendAttachmentState* colourBlendAttachment, const std::vector<float>& blendConstants)
 	{
 		VkPipelineColorBlendStateCreateInfo colourBlending = {};
@@ -173,7 +195,7 @@ namespace VkHelper
 		return colourBlending;
 	}
 
-	const VkPipelineDepthStencilStateCreateInfo& createDepthStencilInfo(VkBool32 depthTestEnabled, VkBool32 depthWriteEnabled,
+	 VkPipelineDepthStencilStateCreateInfo createDepthStencilInfo(VkBool32 depthTestEnabled, VkBool32 depthWriteEnabled,
 		VkCompareOp depthCompareOp, VkBool32 depthBoundsTestEnabled, VkBool32 stencilTestEnabled)
 	{
 		VkPipelineDepthStencilStateCreateInfo depthStencil = {};
@@ -188,7 +210,7 @@ namespace VkHelper
 		return depthStencil;
 	}
 
-	const VkDescriptorPoolSize& createDescriptorPoolSize(VkDescriptorType type, uint32_t descriptorCount)
+	VkDescriptorPoolSize createDescriptorPoolSize(VkDescriptorType type, uint32_t descriptorCount)
 	{
 		VkDescriptorPoolSize poolSize = {};
 		poolSize.type = type;
@@ -197,7 +219,7 @@ namespace VkHelper
 		return poolSize;
 	}
 
-	const VkDescriptorPoolCreateInfo& createDescriptorPoolInfo(uint32_t poolSizeCount, const VkDescriptorPoolSize* poolSizeData, uint32_t maxDescriptorSets)
+	VkDescriptorPoolCreateInfo createDescriptorPoolInfo(uint32_t poolSizeCount, const VkDescriptorPoolSize* poolSizeData, uint32_t maxDescriptorSets)
 	{
 		VkDescriptorPoolCreateInfo poolInfo = {};
 		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

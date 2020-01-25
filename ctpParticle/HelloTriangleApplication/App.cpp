@@ -1,8 +1,6 @@
 #pragma once
 #include "App.h"
 
-#include "VkGraphicsSetup.h"
-#include "VkCmdAndDesc.h"
 #include "VkSetupHelper.h"
 #include "VkHelper.h"
 #include "VkInitializer.h"
@@ -106,11 +104,15 @@ void CTPApp::initVulkan() {
 	Locator::GetDevices()->CreateQueue(graphicsQueue, Queues::GRAPHICS);
 	Locator::GetDevices()->CreateQueue(presentQueue, Queues::PRESENT);
 	device = Locator::GetDevices()->GetDevice();
-	graphics.createSwapChain(physicalDevice, surface, device, window);
-	graphics.createImageViews(device);
-	graphics.createRenderPass(device, physicalDevice);
+	swapchain.Init(instance);
+	swapchain.CreateSurface(window);
+	swapchain.Create(window);
+	//graphics.createSwapChain(physicalDevice, surface, device, window);
+	//graphics.createImageViews(device);
+	//graphics.createRenderPass(device, physicalDevice, swapchain.swapChainImageFormat);
+	createRenderPass();
 	createDescriptorSetLayout();
-	Locator::GetDevices()->CreateCommandPool(cmdAndDescData.commandPool);
+	Locator::GetDevices()->CreateCommandPool(commandPool);
 	createGraphicsPipeline();
 	createDepthResources();
 	createFramebuffers();
@@ -121,7 +123,7 @@ void CTPApp::initVulkan() {
 	model.Load(MODEL_PATH.c_str(), graphicsQueue);
 	model2.Load(MODEL_PATH.c_str(), graphicsQueue);
 
-	scene.Init(&physicalDevice, &device, window, &graphicsQueue, &presentQueue, &graphics);
+	//scene.Init(&physicalDevice, &device, window, &graphicsQueue, &presentQueue, &graphics);
 	createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
@@ -144,7 +146,7 @@ void CTPApp::mainLoop() {
 void CTPApp::cleanup() {
 	cleanupSwapChain();
 
-	vkDestroyDescriptorSetLayout(device, graphicsData.descriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
@@ -152,7 +154,7 @@ void CTPApp::cleanup() {
 		vkDestroyFence(device, inFlightFences[i], nullptr);
 	}
 
-	vkDestroyCommandPool(device, cmdAndDescData.commandPool, nullptr);
+	vkDestroyCommandPool(device, commandPool, nullptr);
 
 	vkDestroyDevice(device, nullptr);
 
@@ -179,14 +181,14 @@ void CTPApp::recreateSwapChain() {
 
 	cleanupSwapChain();
 
-	graphics.createSwapChain(physicalDevice, surface, device, window);
-	graphics.createImageViews(device);
-	graphics.createRenderPass(device, physicalDevice);
+	//graphics.createSwapChain(physicalDevice, surface, device, window);
+	//graphics.createImageViews(device);
+	//graphics.createRenderPass(device, physicalDevice);
 	createGraphicsPipeline();
 	createDepthResources();
 	createFramebuffers();
-	//createUniformBuffers();
-	scene.CreateUniformBuffers();
+	createUniformBuffers();
+	//scene.CreateUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSets();
 	createCommandBuffers();
@@ -199,34 +201,95 @@ void CTPApp::cleanupSwapChain() {
 	vkDestroyImage(device, depthImage, nullptr);
 	vkFreeMemory(device, depthImageMemory, nullptr);
 
-	for (auto framebuffer : graphics.GetSwapChain().swapChainFramebuffers) {
+	for (auto framebuffer : swapchain.swapChainFramebuffers) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 	}
 
-	vkFreeCommandBuffers(device, cmdAndDescData.commandPool, static_cast<uint32_t>(cmdAndDescData.commandBuffers.size()), cmdAndDescData.commandBuffers.data());
+	vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
 	vkDestroyPipeline(device, particleSysPipe, nullptr);
-	vkDestroyPipelineLayout(device, graphicsData.pipelineLayout, nullptr);
-	vkDestroyRenderPass(device, graphics.GetRenderPass(), nullptr);
+	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+	vkDestroyRenderPass(device, renderPass, nullptr);
 
-	for (auto imageView : graphics.GetSwapChain().swapChainImageViews) {
+	for (auto imageView : swapchain.swapChainImageViews) {
 		vkDestroyImageView(device, imageView, nullptr);
 	}
 
-	vkDestroySwapchainKHR(device, graphics.GetSwapChain().swapChain, nullptr);
+	vkDestroySwapchainKHR(device, swapchain.swapChain, nullptr);
 
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 }
 
+void CTPApp::createRenderPass() {
+
+	VkAttachmentDescription colorAttachment = {};
+	colorAttachment.format = swapchain.swapChainImageFormat;
+	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentReference colorAttachmentRef = {};
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentDescription depthAttachment = {};
+	depthAttachment.format = VkSetupHelper::findDepthFormat(physicalDevice);
+	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthAttachmentRef = {};
+	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorAttachmentRef;
+	subpass.pDepthStencilAttachment = &depthAttachmentRef;
+
+	VkSubpassDependency dependency = {};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	std::vector<VkAttachmentDescription> attachments = { colorAttachment, depthAttachment };
+
+	VkRenderPassCreateInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPassInfo.pAttachments = attachments.data();
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;
+	renderPassInfo.dependencyCount = 1;
+	renderPassInfo.pDependencies = &dependency;
+
+	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create render pass!");
+	}
+}
+
+
 void CTPApp::createDescriptorPool() {
 
 	std::array<VkDescriptorPoolSize, 2> poolSizes = {
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size() * OBJECT_COUNT)),
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size() * OBJECT_COUNT))
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(swapchain.swapChainImages.size() * OBJECT_COUNT)),
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(swapchain.swapChainImages.size() * OBJECT_COUNT))
 	};
 
 	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
-		static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size() * OBJECT_COUNT));
+		static_cast<uint32_t>(swapchain.swapChainImages.size() * OBJECT_COUNT));
 
 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor pool!");
@@ -242,16 +305,16 @@ void CTPApp::createDescriptorSetLayout() {
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
 
-	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &graphicsData.descriptorSetLayout) != VK_SUCCESS) {
+	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor set layout!");
 	}
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &graphicsData.descriptorSetLayout;
+	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 
-	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &graphicsData.pipelineLayout) != VK_SUCCESS) {
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create pipeline layout!");
 	}
 
@@ -259,11 +322,11 @@ void CTPApp::createDescriptorSetLayout() {
 
 void CTPApp::createDescriptorSets() {
 
-	std::vector<VkDescriptorSetLayout> layouts(graphics.GetSwapChain().swapChainImages.size(), graphicsData.descriptorSetLayout);
+	std::vector<VkDescriptorSetLayout> layouts(1, descriptorSetLayout);
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = descriptorPool;
-	allocInfo.descriptorSetCount = static_cast<uint32_t>(graphics.GetSwapChain().swapChainImages.size());
+	allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
 	allocInfo.pSetLayouts = layouts.data();
 
 	if (vkAllocateDescriptorSets(device, &allocInfo, &particleSysDesc) != VK_SUCCESS) {
@@ -274,7 +337,7 @@ void CTPApp::createDescriptorSets() {
 		throw std::runtime_error("failed to allocate descriptor sets2!");
 	}
 
-	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImages.size(); i++) {
+	for (size_t i = 0; i < swapchain.swapChainImages.size(); i++) {
 
 		VkDescriptorBufferInfo bufferInfo = VkInitializers::DescBufferInfo(model.uniform[i].buffer, sizeof(UniformBufferObject));
 
@@ -336,10 +399,10 @@ void CTPApp::createGraphicsPipeline() {
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-	VkViewport viewport = VkHelper::createViewport(0.0f, 0.0f, (float)graphics.GetSwapChain().swapChainExtent.width, (float)graphics.GetSwapChain().swapChainExtent.height, 0.0f, 1.0f);
+	VkViewport viewport = VkHelper::createViewport(0.0f, 0.0f, (float)swapchain.swapChainExtent.width, (float)swapchain.swapChainExtent.height, 0.0f, 1.0f);
 
-	//VkViewport viewport = VkHelper::createViewport(0, 0, graphics.GetSwapChain().swapChainExtent.width, graphics.GetSwapChain().swapChainExtent.height, 0.0f, 1.0f);
-	VkRect2D scissor = VkHelper::createScissorRect({ 0, 0 }, graphics.GetSwapChain().swapChainExtent);
+	//VkViewport viewport = VkHelper::createViewport(0, 0, swapchain.swapChainExtent.width, swapchain.swapChainExtent.height, 0.0f, 1.0f);
+	VkRect2D scissor = VkHelper::createScissorRect({ 0, 0 }, swapchain.swapChainExtent);
 
 	VkPipelineViewportStateCreateInfo viewportState = VkHelper::createViewPortStateInfo(1, 1, &viewport, &scissor);
 
@@ -374,8 +437,8 @@ void CTPApp::createGraphicsPipeline() {
 	pipelineInfo.pRasterizationState = &rasterizer;
 	pipelineInfo.pMultisampleState = &multisampling;
 	pipelineInfo.pColorBlendState = &colorBlending;
-	pipelineInfo.layout = graphicsData.pipelineLayout;
-	pipelineInfo.renderPass = graphics.GetRenderPass();
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.renderPass = renderPass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.pDepthStencilState = &depthStencil;
@@ -383,19 +446,23 @@ void CTPApp::createGraphicsPipeline() {
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleSysPipe) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create graphics pipeline!");
 	}
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &particleSysPipe2) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create graphics pipeline!");
+	}
 }
 
 void CTPApp::createCommandBuffers() {
 
-	cmdAndDescData.commandBuffers.resize(graphics.GetSwapChain().swapChainFramebuffers.size());
+	commandBuffers.resize(swapchain.swapChainFramebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = cmdAndDescData.commandPool;
+	allocInfo.commandPool = commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount = (uint32_t)cmdAndDescData.commandBuffers.size();
+	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
-	if (vkAllocateCommandBuffers(device, &allocInfo, cmdAndDescData.commandBuffers.data()) != VK_SUCCESS) {
+	if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate command buffers!");
 	}
 
@@ -404,9 +471,9 @@ void CTPApp::createCommandBuffers() {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = graphics.GetRenderPass();
+	renderPassInfo.renderPass = renderPass;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = graphics.GetSwapChain().swapChainExtent;
+	renderPassInfo.renderArea.extent = swapchain.swapChainExtent;
 
 	std::array<VkClearValue, 2> clearValues = {};
 	//	clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
@@ -416,61 +483,61 @@ void CTPApp::createCommandBuffers() {
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
-	for (size_t i = 0; i < cmdAndDescData.commandBuffers.size(); i++) {
+	for (size_t i = 0; i < commandBuffers.size(); i++) {
 
-		renderPassInfo.framebuffer = graphics.GetSwapChain().swapChainFramebuffers[i];
+		renderPassInfo.framebuffer = swapchain.swapChainFramebuffers[i];
 
-		if (vkBeginCommandBuffer(cmdAndDescData.commandBuffers[i], &beginInfo) != VK_SUCCESS) {
+		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
 			throw std::runtime_error("failed to begin recording command buffer!");
 		}
 
-		vkCmdBeginRenderPass(cmdAndDescData.commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		VkDeviceSize offsets[] = { 0 };
 
-		vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &particleSysDesc, 0, nullptr);
-		vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, particleSysPipe);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &particleSysDesc, 0, nullptr);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, particleSysPipe);
 
-		vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &model.vertex.buffer, offsets);
-		vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], model.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &model.vertex.buffer, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], model.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(model.indices.size()), 1, 0, 0, 0);
 
 
-		vkCmdBindDescriptorSets(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsData.pipelineLayout, 0, 1, &particleSysDesc2, 0, nullptr);
-		vkCmdBindPipeline(cmdAndDescData.commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, particleSysPipe);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &particleSysDesc2, 0, nullptr);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, particleSysPipe2);
 
-		vkCmdBindVertexBuffers(cmdAndDescData.commandBuffers[i], 0, 1, &model2.vertex.buffer, offsets);
-		vkCmdBindIndexBuffer(cmdAndDescData.commandBuffers[i], model2.index.buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(cmdAndDescData.commandBuffers[i], static_cast<uint32_t>(model2.indices.size()), 1, 0, 0, 0);
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &model2.vertex.buffer, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], model2.index.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(model2.indices.size()), 1, 0, 0, 0);
 
-		vkCmdEndRenderPass(cmdAndDescData.commandBuffers[i]);
+		vkCmdEndRenderPass(commandBuffers[i]);
 
-		if (vkEndCommandBuffer(cmdAndDescData.commandBuffers[i]) != VK_SUCCESS) {
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to record command buffer!");
 		}
 	}
 }
 
 void CTPApp::createFramebuffers() {
-	graphics.GetSwapChain().swapChainFramebuffers.resize(graphics.GetSwapChain().swapChainImageViews.size());
+	swapchain.swapChainFramebuffers.resize(swapchain.swapChainImageViews.size());
 
-	for (size_t i = 0; i < graphics.GetSwapChain().swapChainImageViews.size(); i++) {
+	for (size_t i = 0; i < swapchain.swapChainImageViews.size(); i++) {
 
 		std::array<VkImageView, 2> attachments = {
-			graphics.GetSwapChain().swapChainImageViews[i],
+			swapchain.swapChainImageViews[i],
 			depthImageView
 		};
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = graphics.GetRenderPass();
+		framebufferInfo.renderPass = renderPass;
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = graphics.GetSwapChain().swapChainExtent.width;
-		framebufferInfo.height = graphics.GetSwapChain().swapChainExtent.height;
+		framebufferInfo.width = swapchain.swapChainExtent.width;
+		framebufferInfo.height = swapchain.swapChainExtent.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &graphics.GetSwapChain().swapChainFramebuffers[i]) != VK_SUCCESS) {
+		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapchain.swapChainFramebuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create framebuffer!");
 		}
 	}
@@ -480,7 +547,7 @@ void CTPApp::createDepthResources() {
 
 	VkFormat depthFormat = VkSetupHelper::findDepthFormat(physicalDevice);
 
-	createImage(graphics.GetSwapChain().swapChainExtent.width, graphics.GetSwapChain().swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
+	createImage(swapchain.swapChainExtent.width, swapchain.swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
 	AllocateImageMemory(physicalDevice, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
 	depthImageView = VkSetupHelper::createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 
@@ -768,10 +835,10 @@ void CTPApp::updateInstanceBuffer() {
 
 void CTPApp::createUniformBuffers() {
 
-	model.uniform.resize(graphics.GetSwapChain().swapChainImages.size());
-	model2.uniform.resize(graphics.GetSwapChain().swapChainImages.size());
+	model.uniform.resize(swapchain.swapChainImages.size());
+	model2.uniform.resize(swapchain.swapChainImages.size());
 
-	for (size_t j = 0; j < graphics.GetSwapChain().swapChainImages.size(); j++) {
+	for (size_t j = 0; j < swapchain.swapChainImages.size(); j++) {
 
 		model.uniform[j].CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
@@ -797,14 +864,14 @@ void CTPApp::updateUniformBuffer(uint32_t currentImage) {
 
 	UniformBufferObject ubo = {};
 	//	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(5, 5, 5));
-	ubo.model = glm::translate(glm::mat4(1.0f), model.transform.pos);
-	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.model = glm::translate(glm::mat4(1.0f), model.transform.pos) * glm::scale(glm::mat4(1.0f), model.transform.scale);
+	ubo.view = glm::lookAt(camPos, glm::vec3(0, 0, 0), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	ubo.proj[1][1] *= -1;
 
 	model.uniform[currentImage].CopyMem(&ubo, sizeof(ubo));
 
-	ubo.model = glm::translate(glm::mat4(1.0f), model2.transform.pos);
+	ubo.model = glm::translate(glm::mat4(1.0f), model2.transform.pos) * glm::scale(glm::mat4(1.0f), model2.transform.scale);
 	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	ubo.proj[1][1] *= -1;
@@ -827,7 +894,7 @@ void CTPApp::remapInstanceData()
 	VkDeviceSize bufferSize = sizeof(InstanceData) * instanceData.size();
 
 	//VkHelper::copyMemory(device, bufferSize, instanceBuffer.memory, instanceData.data());
-	//VkHelper::createBufferWithStaging(physicalDevice, device, cmdAndDescData.commandPool,
+	//VkHelper::createBufferWithStaging(physicalDevice, device, commandPool,
 	//	graphicsQueue, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 	//	bufferSize, instanceBuffer.buffer, instanceBuffer.memory, instanceData.data());
 }
@@ -861,7 +928,7 @@ void CTPApp::createSyncObjects() {
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-	imagesInFlight.resize(graphics.GetSwapChain().swapChainImages.size(), VK_NULL_HANDLE);
+	imagesInFlight.resize(swapchain.swapChainImages.size(), VK_NULL_HANDLE);
 
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -883,7 +950,7 @@ void CTPApp::drawFrame() {
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
-	VkResult result = vkAcquireNextImageKHR(device, graphics.GetSwapChain().swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(device, swapchain.swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreateSwapChain();
@@ -919,7 +986,7 @@ void CTPApp::drawFrame() {
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdAndDescData.commandBuffers[imageIndex];
+	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
 	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
 	submitInfo.signalSemaphoreCount = 1;
@@ -937,7 +1004,7 @@ void CTPApp::drawFrame() {
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
 
-	VkSwapchainKHR swapChains[] = { graphics.GetSwapChain().swapChain };
+	VkSwapchainKHR swapChains[] = { swapchain.swapChain };
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
 

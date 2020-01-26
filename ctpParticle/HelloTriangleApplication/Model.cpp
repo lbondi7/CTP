@@ -1,9 +1,10 @@
 #include "Model.h"
 #include "Devices.h"
+#include "Mesh.h"
 #include "Locator.h"
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
+//#define TINYOBJLOADER_IMPLEMENTATION
+//#include <tiny_obj_loader.h>
 
 #include <stdexcept>
 #include <unordered_map>
@@ -20,48 +21,11 @@ Model::~Model()
 	uniform.clear();
 }
 
-void Model::Load(const char* modelPath, VkQueue queue)
+void Model::Load(const std::string& filepath, VkQueue queue)
 {
 	device = Locator::GetDevices()->GetDevice();
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-	std::string warn, err;
-
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath)) {
-		throw std::runtime_error(warn + err);
-	}
-
-	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
-
-	for (const auto& shape : shapes) {
-		for (const auto& index : shape.mesh.indices) {
-			Vertex vertex = {};
-
-			vertex.pos = {
-				attrib.vertices[3 * index.vertex_index + 0],
-				attrib.vertices[3 * index.vertex_index + 1],
-				attrib.vertices[3 * index.vertex_index + 2]
-			};
-
-			vertex.texCoord = {
-				attrib.texcoords[2 * index.texcoord_index + 0],
-				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-			};
-
-			//std::random_device rd;
-			//std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
-			//vertex.color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f };
-			vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-			if (uniqueVertices.count(vertex) == 0) {
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-				vertices.push_back(vertex);
-			}
-
-			indices.push_back(uniqueVertices[vertex]);
-		}
-	}
+	vertices = Locator::GetMesh()->vertices[Locator::GetMesh()->meshes[filepath]];
+	indices = Locator::GetMesh()->indices[Locator::GetMesh()->meshes[filepath]];
 
 	CreateBuffers(queue);
 }

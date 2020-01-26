@@ -1,25 +1,19 @@
 #pragma once
 
 #include "Vertex.h"
+#include <map>
+#include <string>
 
 struct Mesh
 {
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
+	std::vector<std::vector<Vertex>> vertices;
+	std::vector<std::vector<uint32_t>> indices;
 
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
+	std::map< std::string, int> meshes;
 
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory;
-	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
+	int meshCount = 0;
 
-	void loadModel(const char* modelPath);
 
-	void changeVertices();
-
-	void SetupBuffers();
-
+	void Load(const std::string& mesh);
 };
 

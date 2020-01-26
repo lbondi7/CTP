@@ -1,67 +1,55 @@
 #include "Mesh.h"
 
-//#define TINYOBJLOADER_IMPLEMENTATION
-//#include <tiny_obj_loader.h>
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 
 #include <stdexcept>
 #include <unordered_map>
 #include <random>
 
-void Mesh::loadModel(const char* modelPath)
+void Mesh::Load(const std::string& mesh)
 {
-	//tinyobj::attrib_t attrib;
-	//std::vector<tinyobj::shape_t> shapes;
-	//std::vector<tinyobj::material_t> materials;
-	//std::string warn, err;
+	meshes[mesh] = meshCount;
+	++meshCount;
+	vertices.resize(meshCount);
+	indices.resize(meshCount);
 
-	//if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath)) {
-	//	throw std::runtime_error(warn + err);
-	//}
+	std::string filePath = "../../../Models/" + mesh + ".obj";
 
-	//std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string warn, err;
 
-	//for (const auto& shape : shapes) {
-	//	for (const auto& index : shape.mesh.indices) {
-	//		Vertex vertex = {};
-
-	//		vertex.pos = {
-	//			attrib.vertices[3 * index.vertex_index + 0],
-	//			attrib.vertices[3 * index.vertex_index + 1],
-	//			attrib.vertices[3 * index.vertex_index + 2]
-	//		};
-
-	//		vertex.texCoord = {
-	//			attrib.texcoords[2 * index.texcoord_index + 0],
-	//			1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-	//		};
-
-	//		//std::random_device rd;
-	//		//std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
-	//		//vertex.color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f };
-	//		vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-	//		if (uniqueVertices.count(vertex) == 0) {
-	//			uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-	//			vertices.push_back(vertex);
-	//		}
-
-	//		indices.push_back(uniqueVertices[vertex]);
-	//	}
-	//}
-	//int x = 0;
-}
-
-void Mesh::changeVertices()
-{
-	std::random_device rd;
-	std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
-
-	for (size_t i = 0; i < vertices.size(); i++)
-	{
-		vertices[i].color = { uniformDist(rd) ,uniformDist(rd) , uniformDist(rd) , 1.0f};
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filePath.c_str())) {
+		throw std::runtime_error(warn + err);
 	}
-}
 
-void Mesh::SetupBuffers()
-{
+	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
+
+	for (const auto& shape : shapes) {
+		for (const auto& index : shape.mesh.indices) {
+			Vertex vertex = {};
+
+			vertex.pos = {
+				attrib.vertices[3 * index.vertex_index + 0],
+				attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
+			};
+
+			vertex.texCoord = {
+				attrib.texcoords[2 * index.texcoord_index + 0],
+				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+			};
+
+			vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+			if (uniqueVertices.count(vertex) == 0) {
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices[meshes[mesh]].size());
+				vertices[meshes[mesh]].push_back(vertex);
+			}
+
+			indices[meshes[mesh]].push_back(uniqueVertices[vertex]);
+		}
+	}
 }

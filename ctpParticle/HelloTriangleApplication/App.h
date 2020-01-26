@@ -1,13 +1,13 @@
 #pragma once
 
 #include "VkSetup.h"
-#include "Mesh.h"
 #include "Image.h"
 #include "Scene.h"
 #include "Buffer.h"
-#include "Texture.h"
-#include "Model.h"
+#include "Object.h"
 #include "SwapChain.h"
+
+
 
 struct Light
 {
@@ -104,6 +104,11 @@ private:
 	std::vector<VkCommandBuffer> commandBuffers;
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSet descriptorSet;
+
+	Object obj;
+	VkDescriptorSet objDesc;
+	std::vector<Object> objs;
+	std::vector<VkDescriptorSet> objDescs;
 
 	float minDist = 0.0f;
 

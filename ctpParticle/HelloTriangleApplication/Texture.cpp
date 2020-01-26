@@ -2,10 +2,8 @@
 #include "Locator.h"
 #include "Devices.h"
 #include "Buffer.h"
+#include "Image.h"
 #include "VkHelper.h"
-
-//#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
 
 #include <stdexcept>
 
@@ -13,11 +11,16 @@ Texture::~Texture()
 {
 }
 
-void Texture::Load(const char* imagePath, VkQueue queue, VkFormat format, VkMemoryPropertyFlags _memProperties, VkImageUsageFlags usage)
+void Texture::Load(const std::string imagePath, VkQueue queue, VkFormat format, VkMemoryPropertyFlags _memProperties, VkImageUsageFlags usage)
 {
 	device = Locator::GetDevices()->GetDevice();
-	pixels = stbi_load(imagePath, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-	size = texWidth * texHeight * 4;
+	pixels = Locator::GetImage()->pixels[Locator::GetImage()->images[imagePath]];
+	size = Locator::GetImage()->imageSize[Locator::GetImage()->images[imagePath]];
+	auto textureDetails = Locator::GetImage()->textureDetails[Locator::GetImage()->images[imagePath]];
+
+	texWidth = textureDetails.x;
+	texHeight = textureDetails.y;
+	texChannels = textureDetails.z;
 
 	if (!pixels) {
 		throw std::runtime_error("failed to load texture image!");
@@ -37,6 +40,10 @@ void Texture::Load(const char* imagePath, VkQueue queue, VkFormat format, VkMemo
 	VkHelper::CreateImageView(device, image, imageView, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	CreateTextureSampler();
+
+	descriptor.imageLayout = imageLayout;
+	descriptor.imageView = imageView;
+	descriptor.sampler = sampler;
 }
 
 void Texture::createImage(VkFormat format, VkImageUsageFlags usage) {
@@ -81,6 +88,8 @@ void Texture::AllocateImageMemory(VkMemoryPropertyFlags properties)
 void Texture::transitionImageLayout(VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkQueue queue) {
 
 	VkCommandBuffer commandBuffer = Locator::GetDevices()->BeginSingleTimeCommands(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+
+	imageLayout = newLayout;
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;

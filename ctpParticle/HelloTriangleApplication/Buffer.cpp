@@ -167,6 +167,13 @@ VkResult Buffer::BindMemory(VkDeviceSize _offset)
 	return vkBindBufferMemory(device, buffer, memory, _offset);
 }
 
+void Buffer::UpdateDescriptor(VkDeviceSize _range, VkDeviceSize _offset)
+{
+	descriptor.buffer = buffer;
+	descriptor.offset = _offset;
+	descriptor.range = _range;
+}
+
 void Buffer::DestoryBuffer()
 {
 	if (buffer)

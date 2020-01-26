@@ -9,6 +9,7 @@ struct Buffer
 	VkDeviceSize size = 0;
 	VkBufferUsageFlags usage;
 	VkMemoryPropertyFlags memProperties;
+	VkDescriptorBufferInfo descriptor;
 	void* data = nullptr;
 
 	VkResult CreateBuffer(VkDevice _device);
@@ -36,6 +37,8 @@ struct Buffer
 	VkResult CopyTo(void* _data, VkDeviceSize _size = VK_WHOLE_SIZE, VkDeviceSize _offset = 0);
 
 	VkResult BindMemory(VkDeviceSize _offset = 0);
+
+	void UpdateDescriptor(VkDeviceSize _range = VK_WHOLE_SIZE, VkDeviceSize _offset = 0);
 
 	void DestoryBuffer();
 };

@@ -12,6 +12,8 @@ struct Texture
 	VkDeviceMemory memory;
 	VkImageView imageView;
 	VkSampler sampler;
+	VkImageLayout imageLayout;
+	VkDescriptorImageInfo descriptor;
 
 	void* pixels;
 	VkDeviceSize size;
@@ -19,7 +21,7 @@ struct Texture
 
 	~Texture();
 
-	void Load(const char* imagePath, VkQueue queue, VkFormat format, VkMemoryPropertyFlags _memProperties, VkImageUsageFlags usage);
+	void Load(const std::string imagePath, VkQueue queue, VkFormat format, VkMemoryPropertyFlags _memProperties, VkImageUsageFlags usage);
 
 	void createImage(VkFormat format, VkImageUsageFlags usage);
 

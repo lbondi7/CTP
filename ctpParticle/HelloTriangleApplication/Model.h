@@ -6,10 +6,9 @@
 
 struct Model
 {
-
 	~Model();
 
-	void Load(const char* modelPath, VkQueue queue);
+	void Load(const std::string& filepath, VkQueue queue);
 
 	void CreateBuffers(VkQueue queue);
 
@@ -23,10 +22,5 @@ struct Model
 	std::vector<Buffer> uniform;
 
 	Transform transform;
-
-	void Load(const char* modelPath);
-
-	void CreateBuffers();
-
 };
 

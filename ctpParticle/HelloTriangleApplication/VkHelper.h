@@ -15,7 +15,7 @@ namespace VkHelper
 
 	VkVertexInputBindingDescription createVertexBindingDescription(uint32_t binding, uint32_t stride, VkVertexInputRate inputRate);
 
-	VkDescriptorSetLayoutBinding createDescriptorLayoputBinding(uint32_t binding, uint32_t descriptorCount, VkDescriptorType descriptorType, VkSampler* immutableSamplers, VkShaderStageFlags stageFlags);
+	VkDescriptorSetLayoutBinding createDescriptorLayoutBinding(uint32_t binding, uint32_t descriptorCount, VkDescriptorType descriptorType, VkSampler* immutableSamplers, VkShaderStageFlags stageFlags);
 
 	VkDescriptorSetLayoutCreateInfo createDescSetLayoutInfo(uint32_t BindingCount, const VkDescriptorSetLayoutBinding* bindings);
 

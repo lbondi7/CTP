@@ -2,7 +2,6 @@
 
 #include "VkSetup.h"
 #include "Image.h"
-#include "Scene.h"
 #include "Buffer.h"
 #include "Object.h"
 #include "SwapChain.h"
@@ -15,36 +14,12 @@ struct Light
 	float radius;
 };
 
-//struct Model
-//{
-//	glm::vec3 pos;
-//	glm::vec3 rot;
-//	float scale;
-//	glm::vec4 color;
-//
-//	static VkVertexInputBindingDescription getBindingDescription() {
-//		return VkHelper::createVertexBindingDescription(1, sizeof(Model), VK_VERTEX_INPUT_RATE_INSTANCE);
-//	}
-//
-//	static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
-//		std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
-//
-//		attributeDescriptions[0] = VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Model, pos));
-//		attributeDescriptions[1] = VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Model, rot));
-//		attributeDescriptions[2] = VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32_SFLOAT, offsetof(Model, scale));
-//		attributeDescriptions[3] = VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Model, color));
-//
-//		return attributeDescriptions;
-//	}
-//
-//};
-
 class CTPApp {
 public:
 
 	void run();
 
-private:
+protected:
 
 	GLFWwindow* window;
 
@@ -61,10 +36,8 @@ private:
 	VkRenderPass renderPass;
 
 	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorSet particleSysDesc;
 
 	VkPipelineLayout pipelineLayout;
-	VkPipeline particleSysPipe;
 
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -77,49 +50,45 @@ private:
 	std::vector<VkViewport> m_Viewports;
 	std::vector<VkRect2D> m_ScissorRects;
 
-	Image image;
-
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-	std::vector<InstanceData> instanceData;
-
-	std::vector<Particle> particles;
-
 	//Scene scene;
 
 	Light light;
-
-	Texture texture1;
-	Texture texture2;
-	Model model;
-	Model model2;
-	VkDescriptorSet particleSysDesc2;
-	VkPipeline particleSysPipe2;
 
 	SwapChain swapchain;
 
 	VkCommandPool commandPool;
 	std::vector<VkCommandBuffer> commandBuffers;
 	VkDescriptorPool descriptorPool;
-	VkDescriptorSet descriptorSet;
 
-	Object obj;
 	VkDescriptorSet objDesc;
 	std::vector<Object> objs;
 	std::vector<VkDescriptorSet> objDescs;
+
+	//Object object;
+	//VkDescriptorSet objectDescSet;
+	//VkPipeline objectPipeline;
+
+	//Vertex point;
+	//std::vector<Buffer> uniformPoint;
+	//Buffer vertex;
+	//VkDescriptorSet pointDescSet;
+	//VkPipeline pointPipeline;
+	//Texture pointTexture;
 
 	float minDist = 0.0f;
 
 	std::vector<float> minDists;
 
-	float camSpeed = 50.0f;
-	float distFromOrigin = 30.0f;
-	glm::vec3 camPos = glm::vec3(0, 3.0f, -30.0f);
-	float angleX = 0.0f;
-	float angleY = 0.0f;
-	float angleSpeed = 2.5f;
+	//float camSpeed = 50.0f;
+	//float distFromOrigin = 30.0f;
+	//glm::vec3 camPos = glm::vec3(0, 3.0f, -30.0f);
+	//float angleX = 0.0f;
+	//float angleY = 0.0f;
+	//float angleSpeed = 2.5f;
 
 	float ok = 0.0f;
 	int activeNum = 0;
@@ -133,7 +102,7 @@ private:
 
 	void initVulkan();
 
-	void mainLoop();
+//	void mainLoop();
 
 	void cleanup();
 
@@ -143,21 +112,17 @@ private:
 
 	void createRenderPass();
 
-	void createDescriptorSetLayout();
+	//void createDescriptorSetLayout();
 
-	void createDescriptorSets();
+//	void createDescriptorSets();
 
-	void createGraphicsPipeline();
+//	void createGraphicsPipeline();
 
-	void createInstances();
+	//glm::vec3 getFlowField(glm::vec3 pos);
 
-	glm::vec3 getFlowField(glm::vec3 pos);
+	//void createCommandBuffers();
 
-	void updateInstanceBuffer();
-
-	void createCommandBuffers();
-
-	void createDescriptorPool();
+//	void createDescriptorPool();
 
 	void createFramebuffers();
 
@@ -169,18 +134,22 @@ private:
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
-	void createUniformBuffers();
+//	void createUniformBuffers();
 
 	void AllocateImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
 	void createSyncObjects();
 
+	void prepareFrame(uint32_t& imageIndex);
+
 	void updateUniformBuffer(uint32_t currentImage);
 
-	void drawFrame();
-	void Update();
+	//void drawFrame();
+	void endFrame(uint32_t& imageIndex);
+	//void Update();
 	void createLight();
 	bool checkDistanceFromLight(glm::vec3 pos);
-	void remapInstanceData();
-	void remapVertexData();
+
+	//void LoadAssets();
+
 };

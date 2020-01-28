@@ -204,6 +204,8 @@
     <ClInclude Include="VkSetupHelper.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shaders\basicA\basicA.frag" />
+    <None Include="shaders\basicA\basicA.vert" />
     <None Include="shaders\basic\basic.frag" />
     <None Include="shaders\basic\basic.vert" />
   </ItemGroup>

@@ -3,23 +3,440 @@
 #include "Keyboard.h"
 #include "Timer.h"
 
-#include <chrono>
+#include "VkSetupHelper.h"
+#include "VkHelper.h"
+#include "VkInitializer.h"
+#include "Locator.h"
+#include "Timer.h"
+#include "Devices.h"
+#include "Keyboard.h"
+#include "Mesh.h"
+#include "Image.h"
+
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
+
 #include <iostream>
+#include <fstream>
+#include <stdexcept>
+#include <algorithm>
+#include <chrono>
+#include <vector>
+#include <cstring>
+#include <cstdlib>
+#include <cstdint>
+#include <array>
+#include <optional>
+#include <set>
+#include <unordered_map>
+#include <random>
+
+const int WIDTH = 800;
+const int HEIGHT = 600;
+
+const int INSTANCE_COUNT = 1;
+const int OBJECT_COUNT = 2;
+const int OBJ_COUNT = 200;
+
+const std::string MODEL_PATH = "../../../Models/sphere.obj";
+const std::string TEXTURE_PATH = "textures/texture.jpg";
+
 
 Scene::~Scene()
 {
 }
 
-void Scene::Init(VkPhysicalDevice* _phyDevice, VkDevice* _device, GLFWwindow* _window, VkQueue* gQueue, VkQueue* pQueue)
-{
-	physicalDevice = _phyDevice;
-	device = _device;
-	window = _window;
-	graphicsQueue = gQueue;
-	presentQueue = pQueue;
+void Scene::run() {
+	initWindow();
+	initVulkan();
+	Locator::InitMeshes(new Mesh());
+	Locator::GetMesh()->Load("sphere");
+	Locator::InitImages(new Image());
+	Locator::GetImage()->Load("texture");
+	Locator::GetImage()->Load("orange");
+	createDescriptorSetLayout();
+	Locator::GetDevices()->CreateCommandPool(commandPool);
+	createGraphicsPipeline();
+	LoadAssets();
+	createUniformBuffers();
+	createDescriptorPool();
+	createDescriptorSets();
+	createCommandBuffers();
+
+
+	mainLoop();
+	cleanup();
 }
 
-void Scene::Update(uint32_t currentImage)
+void Scene::mainLoop() {
+	while (!glfwWindowShouldClose(window)) {
+		glfwPollEvents();
+		Locator::GetTimer()->GetTimePoint();
+		drawFrame();
+	}
+
+	vkDeviceWaitIdle(device);
+}
+
+void Scene::createDescriptorPool() {
+
+	std::array<VkDescriptorPoolSize, 2> poolSizes = {
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, static_cast<uint32_t>(swapchain.swapChainImages.size() * 2)),
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, static_cast<uint32_t>(swapchain.swapChainImages.size() * 2))
+	};
+
+	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
+		static_cast<uint32_t>(swapchain.swapChainImages.size()));
+
+	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor pool!");
+	}
+}
+
+void Scene::createDescriptorSetLayout() {
+
+	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT);
+
+	VkDescriptorSetLayoutBinding samplerLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding, };
+	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
+
+	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor set layout!");
+	}
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
+
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create pipeline layout!");
+	}
+
+}
+
+void Scene::createDescriptorSets() {
+
+	std::vector<VkDescriptorSetLayout> layouts(1, descriptorSetLayout);
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = descriptorPool;
+	allocInfo.descriptorSetCount = static_cast<uint32_t>(1);
+	allocInfo.pSetLayouts = layouts.data();
+
+	if (vkAllocateDescriptorSets(device, &allocInfo, &pointDescSet) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate descriptor sets!");
+	}
+
+	for (size_t j = 0; j < swapchain.swapChainImages.size(); j++) {
+
+		std::vector<VkWriteDescriptorSet> descriptorWrites = {
+		VkHelper::writeDescSet(pointDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformPoint[j].descriptor),
+		VkHelper::writeDescSet(pointDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &pointTexture.descriptor)
+		};
+
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+	}
+
+	if (vkAllocateDescriptorSets(device, &allocInfo, &objectDescSet) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate descriptor sets!");
+	}
+
+	for (size_t j = 0; j < swapchain.swapChainImages.size(); j++) {
+
+		std::vector<VkWriteDescriptorSet> descriptorWrites = {
+		VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &object.GetModel().uniform[j].descriptor),
+		VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor)
+		};
+
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+	}
+}
+
+void Scene::createGraphicsPipeline() {
+
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+	std::vector<VkVertexInputBindingDescription> bindingDescriptions;
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+
+	bindingDescriptions = {
+		Vertex::getBindingDescription()
+	};
+
+	attributeDescriptions = {
+		Vertex::getAttributeDescriptions()[0],
+		Vertex::getAttributeDescriptions()[1],
+		Vertex::getAttributeDescriptions()[2]
+	};
+
+	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	VkViewport viewport = VkHelper::createViewport(0.0f, 0.0f, (float)swapchain.swapChainExtent.width, (float)swapchain.swapChainExtent.height, 0.0f, 1.0f);
+
+	//VkViewport viewport = VkHelper::createViewport(0, 0, swapchain.swapChainExtent.width, swapchain.swapChainExtent.height, 0.0f, 1.0f);
+	VkRect2D scissor = VkHelper::createScissorRect({ 0, 0 }, swapchain.swapChainExtent);
+
+	VkPipelineViewportStateCreateInfo viewportState = VkHelper::createViewPortStateInfo(1, 1, &viewport, &scissor);
+
+	VkPipelineRasterizationStateCreateInfo rasterizer = VkHelper::createRasteriser(
+		VK_FALSE, VK_FALSE,
+		VK_POLYGON_MODE_FILL, 1.0f,
+		VK_CULL_MODE_BACK_BIT,
+		VK_FRONT_FACE_CLOCKWISE,
+		VK_FALSE);
+
+	VkPipelineMultisampleStateCreateInfo multisampling =
+		VkHelper::createMultiSampling(VK_FALSE, VK_SAMPLE_COUNT_1_BIT);
+
+	VkPipelineColorBlendAttachmentState colorBlendAttachment =
+		VkHelper::createColourBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
+
+	VkPipelineColorBlendStateCreateInfo colorBlending = VkHelper::createColourBlendStateInfo(
+		VK_FALSE, VK_LOGIC_OP_COPY, 1, &colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f });
+
+	VkPipelineDepthStencilStateCreateInfo depthStencil = VkHelper::createDepthStencilInfo(
+		VK_TRUE, VK_TRUE,
+		VK_COMPARE_OP_LESS,
+		VK_FALSE, VK_FALSE);
+
+	VkGraphicsPipelineCreateInfo pipelineInfo = {};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.renderPass = renderPass;
+	pipelineInfo.subpass = 0;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	pipelineInfo.pDepthStencilState = &depthStencil;
+
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo =
+		VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
+
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo =
+		VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device);
+
+	VkPipelineShaderStageCreateInfo geomShaderStageInfo =
+		VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteGeom.spv", VK_SHADER_STAGE_GEOMETRY_BIT, device);
+
+	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = { vertShaderStageInfo, fragShaderStageInfo, geomShaderStageInfo };
+
+	pipelineInfo.stageCount = shaderStages.size();
+	pipelineInfo.pStages = shaderStages.data();
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pointPipeline) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create graphics pipeline!");
+	}
+
+	vertShaderStageInfo =
+		VkHelper::createShaderStageInfo("shaders/basicA/basicAVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
+
+	fragShaderStageInfo =
+		VkHelper::createShaderStageInfo("shaders/basicA/basicAFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device);
+
+	shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
+
+	pipelineInfo.stageCount = shaderStages.size();
+	pipelineInfo.pStages = shaderStages.data();
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &objectPipeline) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create graphics pipeline!");
+	}
+}
+
+void Scene::createCommandBuffers() {
+
+	commandBuffers.resize(swapchain.swapChainFramebuffers.size());
+
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = commandPool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+
+	if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate command buffers!");
+	}
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = renderPass;
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = swapchain.swapChainExtent;
+
+	std::array<VkClearValue, 2> clearValues = {};
+	//	clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
+
+	for (size_t i = 0; i < commandBuffers.size(); i++) {
+
+		renderPassInfo.framebuffer = swapchain.swapChainFramebuffers[i];
+
+		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS) {
+			throw std::runtime_error("failed to begin recording command buffer!");
+		}
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pointDescSet, 0, nullptr);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pointPipeline);
+
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex.buffer, offsets);
+		vkCmdDraw(commandBuffers[i], 1, 1, 0, 0);
+
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
+
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], object.GetModel().index.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(object.GetModel().indices.size()), 1, 0, 0, 0);
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to record command buffer!");
+		}
+	}
+}
+
+glm::vec3 Scene::getFlowField(glm::vec3 pos)
+{
+	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
+	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
+	//vel.y = 0;
+	//vel.z = 0;
+
+	return vel;
+}
+
+void Scene::createUniformBuffers() {
+
+	uniformPoint.resize(swapchain.swapChainImages.size());
+	object.GetModel().uniform.resize(swapchain.swapChainImages.size());
+
+	for (size_t j = 0; j < swapchain.swapChainImages.size(); j++) {
+
+		uniformPoint[j].CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
+
+		uniformPoint[j].UpdateDescriptor(sizeof(UniformBufferObject));
+
+
+		object.GetModel().uniform[j].CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
+
+		object.GetModel().uniform[j].UpdateDescriptor(sizeof(UniformBufferObject));
+	}
+
+
+
+
+}
+
+void Scene::updateUniformBuffer(uint32_t currentImage) {
+
+	UniformBufferObject ubo = {};
+	ubo.model = glm::translate(glm::mat4(1.0f), point.pos);
+	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
+	ubo.proj[1][1] *= -1;
+
+	uniformPoint[currentImage].CopyMem(&ubo, sizeof(ubo));
+
+	object.GetModel().transform.pos += getFlowField(object.GetModel().transform.pos) * Locator::GetTimer()->DeltaTime();
+
+	ubo.model = glm::translate(glm::mat4(1.0f), object.GetModel().transform.pos);
+	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
+	ubo.proj[1][1] *= -1;
+
+	object.GetModel().uniform[currentImage].CopyMem(&ubo, sizeof(ubo));
+
+}
+
+void Scene::LoadAssets()
+{
+	//obj.Init("sphere", "texture", graphicsQueue);
+
+	//objs.resize(OBJ_COUNT);
+	//objDescs.resize(OBJ_COUNT);
+	//for (size_t i = 0; i < OBJ_COUNT; i++)
+	//{
+	//	if (i == 2)
+	//	{
+	//		objs[i].Init("sphere", "orange", graphicsQueue);
+	//		continue;
+	//	}
+	//	objs[i].Init("sphere", "texture", graphicsQueue);
+	//}
+
+	point.pos = { 1, 1, 1 };
+	point.color = { 1, 1, 0, 1 };
+	point.texCoord = { 0, 0 };
+
+	pointTexture.Load("texture", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+
+
+	vertex.CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex));
+
+	vertex.StageBuffer(vertex.size, graphicsQueue, &point);
+
+
+	object.Init("sphere", "texture", graphicsQueue);
+
+	object.GetModel().transform.pos = { 1, 1, 1 };
+
+
+}
+
+void Scene::drawFrame() {
+
+	uint32_t imageIndex;
+	prepareFrame(imageIndex);
+	/* Updating obejcts*/
+	/////////////////////
+
+	Update();
+	//updateInstanceBuffer();
+	//scene.Update(imageIndex);
+	updateUniformBuffer(imageIndex);
+	//VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
+
+	endFrame(imageIndex);
+}
+
+void Scene::Update()
 {
 
 	camPos = glm::vec3(sin(angleX) * distFromOrigin, sin(angleY) * distFromOrigin, cos(angleX) * distFromOrigin);
@@ -35,11 +452,11 @@ void Scene::Update(uint32_t currentImage)
 
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_8) && angleY < 1.5f)
 	{
-		angleY += angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
+		angleY -= angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
 	}
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_5) && angleY > -1.5f)
 	{
-		angleY -= angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
+		angleY += angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
 	}
 
 	//camPos *= distFromOrigin;
@@ -53,45 +470,10 @@ void Scene::Update(uint32_t currentImage)
 	{
 		distFromOrigin += camSpeed * Locator::GetTimer()->DeltaTime();
 	}
-	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_9))
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_9) && distFromOrigin > 5.0f)
 	{
 		distFromOrigin -= camSpeed * Locator::GetTimer()->DeltaTime();
 	}
 
 	camPos = diff * distFromOrigin;
-
-
-	//UpdateUniformBuffers(currentImage);
-}
-
-void Scene::Render()
-{
-}
-
-void Scene::CreateUniformBuffers() {
-	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-	//uniformBuffers.resize(graphics->GetSwapChain().swapChainImages.size());
-	//uniformBuffersMemory.resize(graphics->GetSwapChain().swapChainImages.size());
-
-	//for (size_t i = 0; i < graphics->GetSwapChain().swapChainImages.size(); i++) {
-	//	VkHelper::createBufferWithoutStaging(*physicalDevice, *device,
-	//		VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, bufferSize,
-	//		uniformBuffers[i], uniformBuffersMemory[i]);
-	//}
-}
-
-void Scene::UpdateUniformBuffers(uint32_t currentImage) {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-
-	UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(0.0f), glm::vec3(time * glm::radians(90.0f), 1.0f, time * glm::radians(90.0f)));
-	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
-	ubo.proj[1][1] *= -1;
-
-	//VkHelper::copyMemory(*device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
 }

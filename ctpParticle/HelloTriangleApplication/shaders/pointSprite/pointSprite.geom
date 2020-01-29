@@ -14,47 +14,48 @@ layout(location = 1) out vec2 fragTexCoord;
 
 void main() {
 
-    vec4 offset = vec4(-0.2, 0.2, 0, 1);
-    vec4 vertexPos = inPosition[0] + offset;
+    float size = 1.0;
+    vec4 offset = vec4(-size, size, 0, 1);
+    vec4 vertexPos = gl_in[0].gl_Position + offset;
     gl_Position = vertexPos;
-    fragColor = inColor[0];
+    fragColor = vec4(0, 1, 1, 1);
     fragTexCoord = vec2(0, 0);
     EmitVertex();
 
-    offset = vec4(0.2, -0.2, 0, 1);
-    vertexPos = inPosition[0] + offset;
+    offset = vec4(size, -size, 0, 1);
+    vertexPos = gl_in[0].gl_Position + offset;
     gl_Position = vertexPos;
-    fragColor = inColor[0];
+    fragColor = vec4(0, 1, 1, 1);
     fragTexCoord = vec2(1, 1);
     EmitVertex();
 
-    offset = vec4(-0.2, -0.2, 0, 1);
-    vertexPos = inPosition[0] + offset;
+    offset = vec4(-size, -size, 0, 1);
+    vertexPos = gl_in[0].gl_Position + offset;
     gl_Position = vertexPos;
-    fragColor = inColor[0];
+    fragColor = vec4(0, 1, 1, 1);
     fragTexCoord = vec2(0, 1);
     EmitVertex();
 
     EndPrimitive();
 
-    offset = vec4(-0.2, 0.2, 0, 1);
-    vertexPos = inPosition[0] + offset;
+    offset = vec4(-size, size, 0, 1);
+    vertexPos = gl_in[0].gl_Position + offset;
     gl_Position = vertexPos;
-    fragColor = inColor[0];
+    fragColor = vec4(0, 1, 1, 1);
     fragTexCoord = vec2(0, 0);
     EmitVertex();
 
-    offset = vec4(0.2, 0.2, 0, 1);
-    vertexPos = inPosition[0] + offset;
+    offset = vec4(size, size, 0, 1);
+    vertexPos = gl_in[0].gl_Position + offset;
     gl_Position = vertexPos;
-    fragColor = inColor[0];
+    fragColor = vec4(0, 1, 1, 1);
     fragTexCoord = vec2(1, 0);
     EmitVertex();
 
-    offset = vec4(0.2, -0.2, 0, 1);
-    vertexPos = inPosition[0] + offset;
+    offset = vec4(size, -size, 0, 1);
+    vertexPos = gl_in[0].gl_Position + offset;
     gl_Position = vertexPos;
-    fragColor = inColor[0];
+    fragColor = vec4(0, 1, 1, 1);
     fragTexCoord = vec2(1, 1);
     EmitVertex();
 

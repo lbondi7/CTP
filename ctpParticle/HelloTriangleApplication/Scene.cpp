@@ -39,14 +39,6 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-const int INSTANCE_COUNT = 1;
-const int OBJECT_COUNT = 2;
-const int OBJ_COUNT = 200;
-
-const std::string MODEL_PATH = "../../../Models/sphere.obj";
-const std::string TEXTURE_PATH = "textures/texture.jpg";
-
-
 Scene::~Scene()
 {
 }
@@ -67,8 +59,6 @@ void Scene::run() {
 	createDescriptorPool();
 	createDescriptorSets();
 	createCommandBuffers();
-
-
 	mainLoop();
 	cleanup();
 }
@@ -198,7 +188,7 @@ void Scene::createGraphicsPipeline() {
 		VK_FALSE, VK_FALSE,
 		VK_POLYGON_MODE_FILL, 1.0f,
 		VK_CULL_MODE_BACK_BIT,
-		VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		VK_FRONT_FACE_CLOCKWISE,
 		VK_FALSE);
 
 	VkPipelineMultisampleStateCreateInfo multisampling =
@@ -212,7 +202,7 @@ void Scene::createGraphicsPipeline() {
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil = VkHelper::createDepthStencilInfo(
 		VK_TRUE, VK_TRUE,
-		VK_COMPARE_OP_ALWAYS,
+		VK_COMPARE_OP_LESS,
 		VK_FALSE, VK_FALSE);
 
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -288,7 +278,7 @@ void Scene::createCommandBuffers() {
 
 	std::array<VkClearValue, 2> clearValues = {};
 	//clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
-	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	clearValues[0].color = { 1.0f, 1.0f, 0.0f, 1.0f };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -422,7 +412,7 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 void Scene::LoadAssets()
 {
 	point.pos = { 1, 0, 0 };
-	point.color = { 1, 1, 1, 1 };
+	point.color = { 1, 0, 1, 1 };
 	point.texCoord = { 1, 1 };
 
 	points.resize(pointCount);
@@ -439,17 +429,17 @@ void Scene::LoadAssets()
 		vertexs[i].CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex));
 
-		vertexs[i].StageBuffer(vertex.size, graphicsQueue, points.data());
+		vertexs[i].StageBuffer(vertex.size, graphicsQueue, &points[i]);
 
 	}
 
 	pointTexture.Load("texture", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-	vertex.CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex));
+	//vertex.CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex));
 
-	vertex.StageBuffer(vertex.size, graphicsQueue, points.data());
+	//vertex.StageBuffer(vertex.size, graphicsQueue, points.data());
 
 	object.Init("sphere", "texture", graphicsQueue);
 

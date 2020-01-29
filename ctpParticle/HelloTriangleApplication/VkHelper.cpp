@@ -79,20 +79,6 @@ namespace VkHelper
 		return layoutInfo;
 	}
 
-	VkPipelineShaderStageCreateInfo createShaderStageInfo(VkStructureType structureType, VkShaderStageFlagBits stage, const VkShaderModule& shaderModule, const char* name)
-	{
-
-
-
-		VkPipelineShaderStageCreateInfo shaderStageInfo = {};
-		shaderStageInfo.sType = structureType;
-		shaderStageInfo.stage = stage;
-		shaderStageInfo.module = shaderModule;
-		shaderStageInfo.pName = name;
-
-		return shaderStageInfo;
-	}
-
 	VkPipelineShaderStageCreateInfo createShaderStageInfo(std::string filepath, VkShaderStageFlagBits stage, VkDevice device)
 	{
 		VkPipelineShaderStageCreateInfo shaderStageInfo = {};

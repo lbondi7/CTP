@@ -17,7 +17,7 @@ private:
 	VkPipeline objectPipeline;
 
 	Vertex point;
-	std::vector<Buffer> uniformPoint;
+	Buffer uniformPoint;
 	Buffer vertex;
 	VkDescriptorSet pointDescSet;
 	VkPipeline pointPipeline;

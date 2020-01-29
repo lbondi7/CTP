@@ -46,27 +46,3 @@ namespace std {
 		}
 	};
 }
-
-struct InstanceData {
-	glm::vec3 pos;
-	glm::vec3 rot;
-	glm::vec4 color;
-	float scale;
-	uint32_t texIndex;
-
-	static VkVertexInputBindingDescription getBindingDescription() {
-		return VkHelper::createVertexBindingDescription(1, sizeof(InstanceData), VK_VERTEX_INPUT_RATE_INSTANCE);
-	}
-
-	static std::array<VkVertexInputAttributeDescription, 5> getAttributeDescriptions() {
-		std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions = {};
-
-		attributeDescriptions[0] = VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceData, pos));
-		attributeDescriptions[1] = VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceData, rot));
-		attributeDescriptions[2] = VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32_SFLOAT, offsetof(InstanceData, scale));
-		attributeDescriptions[3] = VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(InstanceData, color));
-		attributeDescriptions[4] = VkHelper::createVertexAttributeDescription(1, 7, VK_FORMAT_R32_SINT, offsetof(InstanceData, texIndex));
-
-		return attributeDescriptions;
-	}
-};

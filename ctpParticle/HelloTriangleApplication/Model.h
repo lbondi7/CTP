@@ -19,7 +19,8 @@ struct Model
 
 	Buffer vertex;
 	Buffer index;
-	std::vector<Buffer> uniform;
+	//std::vector<Buffer> uniform;
+	Buffer uniform;
 
 	Transform transform;
 };

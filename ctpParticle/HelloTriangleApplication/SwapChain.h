@@ -12,9 +12,9 @@ struct SwapChain
 	VkSwapchainKHR swapChain;
 	std::vector<VkImage> swapChainImages;
 	VkFormat swapChainImageFormat;
-	VkExtent2D swapChainExtent;
+	VkExtent2D extent;
 	std::vector<VkImageView> swapChainImageViews;
-	std::vector<VkFramebuffer> swapChainFramebuffers;
+	std::vector<VkFramebuffer> framebuffers;
 
 	void Init(VkInstance _instance);
 

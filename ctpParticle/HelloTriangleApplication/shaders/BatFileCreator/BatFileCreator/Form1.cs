@@ -34,22 +34,7 @@ namespace BatFileCreator
                 else if (!vertShdChBox.Checked && !fragShdChBox.Checked && !geomShdChBox.Checked)
                     throw new Exception("Select at least 1 shader file to generate.");
 
-                foreach (var dir in directories)
-                {
-                    for (int j = dir.Length - 1; j > -1; --j)
-                    {
-                        if (dir[j] == '\\')
-                        {
-                            int charIndex = j + 1;
-                            var subDir = dir.Substring(charIndex, (dir.Length) - charIndex);
-                            if (subDir == sdkVersionCmbBox.Text)
-                            {
-                                fullDirectory = dir;
-                            }
-                            break;
-                        }
-                    }
-                }
+                GetFullDirectory();
 
                 if (!Directory.Exists(fullDirectory + @"\Bin32"))
                 {
@@ -83,7 +68,7 @@ namespace BatFileCreator
                     {
                         // Closes the parent form.
                         return;
-                    }     
+                    }
                 }
 
                 checkBatFile(batFile);
@@ -121,6 +106,26 @@ namespace BatFileCreator
                 MessageBox.Show($"The process failed: {ex.Message}");
             }
 
+        }
+
+        private void GetFullDirectory()
+        {
+            foreach (var dir in directories)
+            {
+                for (int j = dir.Length - 1; j > -1; --j)
+                {
+                    if (dir[j] == '\\')
+                    {
+                        int charIndex = j + 1;
+                        var subDir = dir.Substring(charIndex, (dir.Length) - charIndex);
+                        if (subDir == sdkVersionCmbBox.Text)
+                        {
+                            fullDirectory = dir;
+                        }
+                        break;
+                    }
+                }
+            }
         }
 
         private void checkShaderFile(bool checkBoxTicked, string file)

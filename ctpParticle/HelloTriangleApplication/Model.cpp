@@ -14,11 +14,7 @@ Model::~Model()
 {
 	vertex.DestoryBuffer();
 	index.DestoryBuffer();
-	for (size_t i = 0; i < uniform.size(); ++i)
-	{
-		uniform[i].DestoryBuffer();
-	}
-	uniform.clear();
+	uniform.DestoryBuffer();
 }
 
 void Model::Load(const std::string& filepath, VkQueue queue)

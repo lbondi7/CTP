@@ -37,13 +37,6 @@
 const int WIDTH = 800;
 const int HEIGHT = 600;
 
-const int INSTANCE_COUNT = 1;
-const int OBJECT_COUNT = 2;
-const int OBJ_COUNT = 200;
-
-const std::string MODEL_PATH = "../../../Models/sphere.obj";
-const std::string TEXTURE_PATH = "textures/texture.jpg";
-
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
 void CTPApp::initWindow() {
@@ -140,7 +133,7 @@ void CTPApp::cleanupSwapChain() {
 	vkDestroyImage(device, depthImage, nullptr);
 	vkFreeMemory(device, depthImageMemory, nullptr);
 
-	for (auto framebuffer : swapchain.swapChainFramebuffers) {
+	for (auto framebuffer : swapchain.framebuffers) {
 		vkDestroyFramebuffer(device, framebuffer, nullptr);
 	}
 
@@ -219,7 +212,7 @@ void CTPApp::createRenderPass() {
 }
 
 void CTPApp::createFramebuffers() {
-	swapchain.swapChainFramebuffers.resize(swapchain.swapChainImageViews.size());
+	swapchain.framebuffers.resize(swapchain.swapChainImageViews.size());
 
 	for (size_t i = 0; i < swapchain.swapChainImageViews.size(); i++) {
 
@@ -233,11 +226,11 @@ void CTPApp::createFramebuffers() {
 		framebufferInfo.renderPass = renderPass;
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = swapchain.swapChainExtent.width;
-		framebufferInfo.height = swapchain.swapChainExtent.height;
+		framebufferInfo.width = swapchain.extent.width;
+		framebufferInfo.height = swapchain.extent.height;
 		framebufferInfo.layers = 1;
 
-		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapchain.swapChainFramebuffers[i]) != VK_SUCCESS) {
+		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapchain.framebuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create framebuffer!");
 		}
 	}
@@ -247,7 +240,7 @@ void CTPApp::createDepthResources() {
 
 	VkFormat depthFormat = VkSetupHelper::findDepthFormat(physicalDevice);
 
-	createImage(swapchain.swapChainExtent.width, swapchain.swapChainExtent.height,depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
+	createImage(swapchain.extent.width, swapchain.extent.height,depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthImage);
 	AllocateImageMemory(physicalDevice, device, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
 	depthImageView = VkSetupHelper::createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 

@@ -25,7 +25,7 @@ void SwapChain::Create(GLFWwindow* window) {
 
 	VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.formats);
 	VkPresentModeKHR presentMode = ChooseSwapPresentMode(swapChainSupport.presentModes);
-	VkExtent2D extent = ChooseSwapExtent(swapChainSupport.capabilities, window);
+	VkExtent2D _extent = ChooseSwapExtent(swapChainSupport.capabilities, window);
 
 	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
@@ -39,7 +39,7 @@ void SwapChain::Create(GLFWwindow* window) {
 	createInfo.minImageCount = imageCount;
 	createInfo.imageFormat = surfaceFormat.format;
 	createInfo.imageColorSpace = surfaceFormat.colorSpace;
-	createInfo.imageExtent = extent;
+	createInfo.imageExtent = _extent;
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -69,7 +69,7 @@ void SwapChain::Create(GLFWwindow* window) {
 	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
 
 	swapChainImageFormat = surfaceFormat.format;
-	swapChainExtent = extent;
+	extent = _extent;
 
 	swapChainImageViews.resize(swapChainImages.size());
 

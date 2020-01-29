@@ -21,7 +21,7 @@ private:
 	Buffer vertex;
 	VkDescriptorSet pointDescSet;
 
-	int pointCount = 1000;
+	int pointCount = 10;
 	std::vector<Vertex> points;
 	std::vector<Buffer> uniformPoints;
 	std::vector<Buffer> vertexs;

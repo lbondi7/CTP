@@ -86,12 +86,12 @@ void Scene::mainLoop() {
 void Scene::createDescriptorPool() {
 
 	std::array<VkDescriptorPoolSize, 2> poolSizes = {
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, pointCount + 1),
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, pointCount + 1)
 	};
 
 	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
-		2);
+		pointCount + 1);
 
 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor pool!");
@@ -131,22 +131,27 @@ void Scene::createDescriptorSets() {
 	allocInfo.descriptorSetCount = 1;
 	allocInfo.pSetLayouts = layouts.data();
 
-	if (vkAllocateDescriptorSets(device, &allocInfo, &pointDescSet) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate descriptor sets!");
+	pointDescSets.resize(pointCount);
+
+	for (size_t i = 0; i < pointCount; i++)
+	{
+		if (vkAllocateDescriptorSets(device, &allocInfo, &pointDescSets[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to allocate descriptor sets!");
+		}
+
+		std::vector<VkWriteDescriptorSet> descriptorWrites = {
+		VkHelper::writeDescSet(pointDescSets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformPoints[i].descriptor),
+		VkHelper::writeDescSet(pointDescSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &pointTexture.descriptor)
+		};
+
+		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
-
-	std::vector<VkWriteDescriptorSet> descriptorWrites = {
-	VkHelper::writeDescSet(pointDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformPoint.descriptor),
-	VkHelper::writeDescSet(pointDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &pointTexture.descriptor)
-	};
-
-	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 
 	if (vkAllocateDescriptorSets(device, &allocInfo, &objectDescSet) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate descriptor sets!");
 	}
 
-	descriptorWrites = {
+	std::vector<VkWriteDescriptorSet> descriptorWrites = {
 	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &object.GetModel().uniform.descriptor),
 	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor)
 	};
@@ -207,7 +212,7 @@ void Scene::createGraphicsPipeline() {
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil = VkHelper::createDepthStencilInfo(
 		VK_TRUE, VK_TRUE,
-		VK_COMPARE_OP_LESS,
+		VK_COMPARE_OP_ALWAYS,
 		VK_FALSE, VK_FALSE);
 
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -300,11 +305,15 @@ void Scene::createCommandBuffers() {
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		VkDeviceSize offsets[] = { 0 };
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pointDescSet, 0, nullptr);
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pointPipeline);
 
-		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex.buffer, offsets);
-		vkCmdDraw(commandBuffers[i], 3, 10, 0, 0);
+		for (size_t j = 0; j < pointCount; j++)
+		{
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pointDescSets[j], 0, nullptr);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pointPipeline);
+
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexs[j].buffer, offsets);
+			vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
+		}
 
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
@@ -323,8 +332,9 @@ void Scene::createCommandBuffers() {
 
 glm::vec3 Scene::getFlowField(glm::vec3 pos)
 {
-	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
-	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
+	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, pos.z) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
 	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
 	//vel.y = 0;
 	//vel.z = 0;
@@ -351,12 +361,20 @@ void Scene::createUniformBuffers() {
 	//	object.GetModel().uniform[j].UpdateDescriptor(sizeof(UniformBufferObject));
 	//}
 
+	//uniformPoint.CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
 
+	//uniformPoint.UpdateDescriptor(sizeof(UniformBufferObject));
 
-	uniformPoint.CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
+	uniformPoints.resize(pointCount);
 
-	uniformPoint.UpdateDescriptor(sizeof(UniformBufferObject));
+	for (size_t i = 0; i < pointCount; i++)
+	{
+		uniformPoints[i].CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
+
+		uniformPoints[i].UpdateDescriptor(sizeof(UniformBufferObject));
+	}
 
 	object.GetModel().uniform.CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
@@ -369,15 +387,26 @@ void Scene::createUniformBuffers() {
 void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 
-	point.pos += getFlowField(point.pos) * Locator::GetTimer()->DeltaTime();
+	//point.pos += getFlowField(point.pos) * Locator::GetTimer()->DeltaTime();
 
 	UniformBufferObject ubo = {};
-	ubo.model = glm::translate(glm::mat4(1.0f), point.pos);
-	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
-	ubo.proj[1][1] *= -1;
+	//ubo.model = glm::translate(glm::mat4(1.0f), point.pos);
+	//ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	//ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
+	//ubo.proj[1][1] *= -1;
 
-	uniformPoint.CopyMem(&ubo, sizeof(ubo));
+	//uniformPoint.CopyMem(&ubo, sizeof(ubo));
+
+	for (size_t i = 0; i < pointCount; i++)
+	{
+		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime();
+		ubo.model = glm::translate(glm::mat4(1.0f), points[i].pos);
+		ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
+		ubo.proj[1][1] *= -1;
+
+		uniformPoints[i].CopyMem(&ubo, sizeof(ubo));
+	}
 
 	object.GetModel().transform.pos += getFlowField(object.GetModel().transform.pos) * Locator::GetTimer()->DeltaTime();
 
@@ -396,13 +425,31 @@ void Scene::LoadAssets()
 	point.color = { 1, 1, 1, 1 };
 	point.texCoord = { 1, 1 };
 
+	points.resize(pointCount);
+	vertexs.resize(pointCount);
+	std::random_device rd;
+	std::uniform_int_distribution<int> rand(-20, 20);
+
+	for (size_t i = 0; i < pointCount; i++)
+	{
+		points[i].pos = { rand(rd), rand(rd), rand(rd) };
+		points[i].color = { 1, 0, 1, 1 };
+		points[i].texCoord = { 1, 1 };
+
+		vertexs[i].CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex));
+
+		vertexs[i].StageBuffer(vertex.size, graphicsQueue, points.data());
+
+	}
+
 	pointTexture.Load("texture", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
 	vertex.CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex));
 
-	vertex.StageBuffer(vertex.size, graphicsQueue, &point);
+	vertex.StageBuffer(vertex.size, graphicsQueue, points.data());
 
 	object.Init("sphere", "texture", graphicsQueue);
 

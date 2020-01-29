@@ -20,6 +20,13 @@ private:
 	Buffer uniformPoint;
 	Buffer vertex;
 	VkDescriptorSet pointDescSet;
+
+	int pointCount = 1000;
+	std::vector<Vertex> points;
+	std::vector<Buffer> uniformPoints;
+	std::vector<Buffer> vertexs;
+	std::vector<VkDescriptorSet> pointDescSets;
+
 	VkPipeline pointPipeline;
 	Texture pointTexture;
 

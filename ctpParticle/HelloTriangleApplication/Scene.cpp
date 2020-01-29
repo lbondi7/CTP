@@ -387,7 +387,7 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 	for (size_t i = 0; i < pointCount; i++)
 	{
-		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 10.0f;
+		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 20.0f;
 		 ubo.model = glm::translate(glm::mat4(1.0f), points[i].pos);
 		ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);

@@ -72,7 +72,6 @@ void CTPApp::initVulkan() {
 	createDepthResources();
 	createFramebuffers();
 	createSyncObjects();
-	createLight();
 }
 
 void CTPApp::cleanup() {
@@ -354,17 +353,6 @@ void CTPApp::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout
 	);
 
 	Locator::GetDevices()->EndSingleTimeCommands(commandBuffer, 1, graphicsQueue);
-}
-
-void CTPApp::createLight()
-{
-	light.pos = { 0, 0, 0 };
-	light.radius = 20;
-}
-
-bool CTPApp::checkDistanceFromLight(glm::vec3 pos)
-{
-	return glm::distance(pos, light.pos) < light.radius;
 }
 
 void CTPApp::createSyncObjects() {

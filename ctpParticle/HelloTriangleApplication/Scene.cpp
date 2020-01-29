@@ -188,7 +188,7 @@ void Scene::createGraphicsPipeline() {
 		VK_FALSE, VK_FALSE,
 		VK_POLYGON_MODE_FILL, 1.0f,
 		VK_CULL_MODE_BACK_BIT,
-		VK_FRONT_FACE_CLOCKWISE,
+		VK_FRONT_FACE_COUNTER_CLOCKWISE,
 		VK_FALSE);
 
 	VkPipelineMultisampleStateCreateInfo multisampling =
@@ -202,7 +202,7 @@ void Scene::createGraphicsPipeline() {
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil = VkHelper::createDepthStencilInfo(
 		VK_TRUE, VK_TRUE,
-		VK_COMPARE_OP_LESS,
+		VK_COMPARE_OP_ALWAYS,
 		VK_FALSE, VK_FALSE);
 
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -278,7 +278,7 @@ void Scene::createCommandBuffers() {
 
 	std::array<VkClearValue, 2> clearValues = {};
 	//clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
-	clearValues[0].color = { 1.0f, 1.0f, 0.0f, 1.0f };
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -322,8 +322,8 @@ void Scene::createCommandBuffers() {
 
 glm::vec3 Scene::getFlowField(glm::vec3 pos)
 {
-	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
-	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, pos.z) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
 	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
 	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
 	//vel.y = 0;
@@ -370,8 +370,6 @@ void Scene::createUniformBuffers() {
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
 
 	object.GetModel().uniform.UpdateDescriptor(sizeof(UniformBufferObject));
-
-
 }
 
 void Scene::updateUniformBuffer(uint32_t currentImage) {
@@ -389,8 +387,8 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 	for (size_t i = 0; i < pointCount; i++)
 	{
-		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime();
-		ubo.model = glm::translate(glm::mat4(1.0f), points[i].pos);
+		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 20.0f;
+		 ubo.model = glm::translate(glm::mat4(1.0f), points[i].pos);
 		ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 		ubo.proj[1][1] *= -1;
@@ -406,19 +404,19 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	ubo.proj[1][1] *= -1;
 
 	object.GetModel().uniform.CopyMem(&ubo, sizeof(ubo));
-
 }
 
 void Scene::LoadAssets()
 {
 	point.pos = { 1, 0, 0 };
-	point.color = { 1, 0, 1, 1 };
+	point.color = { 1, 1, 1, 1 };
 	point.texCoord = { 1, 1 };
 
 	points.resize(pointCount);
 	vertexs.resize(pointCount);
+
 	std::random_device rd;
-	std::uniform_int_distribution<int> rand(-20, 20);
+	std::uniform_int_distribution<int> rand(-25, 25);
 
 	for (size_t i = 0; i < pointCount; i++)
 	{
@@ -430,7 +428,6 @@ void Scene::LoadAssets()
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex));
 
 		vertexs[i].StageBuffer(vertex.size, graphicsQueue, &points[i]);
-
 	}
 
 	pointTexture.Load("texture", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
@@ -501,4 +498,25 @@ void Scene::Update()
 	}
 
 	camPos = diff * distFromOrigin;
+}
+
+void Scene::createLight()
+{
+	for (size_t i = 0; i < pointCount; i++)
+	{
+		lights[i].pos = { 0, 0, 0 };
+		lights[i].radius = 20;
+	}
+}
+
+void Scene::updateLight()
+{
+	for (auto i = 0; i < pointCount; i++) {
+		lights[i].pos = points[i].pos;
+	}
+}
+
+bool Scene::checkDistanceFromLight(glm::vec3 pos, int i)
+{
+	return glm::distance(pos, lights[i].pos) < lights[i].radius;
 }

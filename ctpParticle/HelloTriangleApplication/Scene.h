@@ -2,6 +2,12 @@
 
 #include "App.h"
 
+struct Light
+{
+	glm::vec3 pos;
+	float radius;
+};
+
 class Scene : public CTPApp
 {
 public:
@@ -21,7 +27,7 @@ private:
 	Buffer vertex;
 	VkDescriptorSet pointDescSet;
 
-	int pointCount = 10;
+	int pointCount = 1000;
 	std::vector<Vertex> points;
 	std::vector<Buffer> uniformPoints;
 	std::vector<Buffer> vertexs;
@@ -36,6 +42,12 @@ private:
 	float angleX = 0.0f;
 	float angleY = 0.0f;
 	float angleSpeed = 2.5f;
+
+	Light light;
+
+	std::vector<Light> lights;
+	std::vector<float> minDists;
+	float minDist = 0.0f;
 
 	void mainLoop();
 
@@ -60,6 +72,14 @@ private:
 	void drawFrame();
 
 	void Update();
+
+	void createLight();
+
+	void updateLight();
+
+	bool checkDistanceFromLight(glm::vec3 pos, int i);
+
+	bool checkDistanceFromLight(glm::vec3 pos);
 
 };
 

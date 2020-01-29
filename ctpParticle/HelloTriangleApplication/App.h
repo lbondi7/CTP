@@ -6,14 +6,6 @@
 #include "Object.h"
 #include "SwapChain.h"
 
-
-
-struct Light
-{
-	glm::vec3 pos;
-	float radius;
-};
-
 class CTPApp {
 public:
 
@@ -53,8 +45,6 @@ protected:
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
-
-	Light light;
 
 	SwapChain swapchain;
 
@@ -98,9 +88,5 @@ protected:
 
 
 	void endFrame(uint32_t& imageIndex);
-
-	void createLight();
-	bool checkDistanceFromLight(glm::vec3 pos);
-
 
 };

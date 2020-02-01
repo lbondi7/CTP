@@ -13,7 +13,7 @@ layout(location = 1) out vec2 fragTexCoord;
 
 void main() {
 
-    float size = 0.5;
+    float size = 0.25;
     vec4 offset = vec4(-size, size, 0, 1);
     vec4 vertexPos = gl_in[0].gl_Position + offset;
     gl_Position = vertexPos;

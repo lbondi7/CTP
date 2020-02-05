@@ -323,7 +323,7 @@ void Scene::createCommandBuffers() {
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pointDescSet, 0, nullptr);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pointPipeline);
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex.buffer, offsets);
-		vkCmdDraw(commandBuffers[i], 3, pointCount, 0, 0);
+		vkCmdDraw(commandBuffers[i], pointCount, 1, 0, 0);
 
 		//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pointDescSet, 0, nullptr);
 		//vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pointPipeline);
@@ -350,7 +350,7 @@ void Scene::createCommandBuffers() {
 glm::vec3 Scene::getFlowField(glm::vec3 pos)
 {
 	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
-	glm::vec3 vel = (glm::vec3(-pos.y, pos.x, pos.x) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+	glm::vec3 vel = glm::vec3(-pos.y, pos.x, pos.x) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z));
 	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
 	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
 	//vel.y = 0;
@@ -418,7 +418,7 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	//uboVS.model = viewMatrix * glm::translate(uboVS.model, glm::vec3(0.0f, 15.0f, 0.0f));
 
 	UniformBufferParticle ubp = {};
-	//glm::mat4 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	ubp.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	ubp.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	ubp.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	ubp.proj[1][1] *= -1;
@@ -426,7 +426,7 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	uniformPoint.CopyMem(&ubp, sizeof(ubp));
 
 
-	//MoveVertex();
+	MoveVertex();
 
 	UniformBufferObject ubo = {};
 	//for (size_t i = 0; i < pointCount; i++)
@@ -461,25 +461,15 @@ void Scene::LoadAssets()
 	instPos.resize(pointCount);
 
 	std::random_device rd;
-	std::uniform_real_distribution<float> rand(-10.0f, 10.0f);
+	std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
 
 	for (size_t i = 0; i < pointCount; i++)
 	{
-		instPos[i] = { rand(rd), rand(rd), 0.0f };
-
-		points[i].pos = { rand(rd), rand(rd), rand(rd) };
-		points[i].color = { 1.0f, 1.0f, 1.0f, 0.1f };
-		points[i].texCoord = { 1, 1 };
-
-		glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-
-		glm::vec4 vector(trans[3]);
-		//points[i].pos *= vector;
-		points[i].pos *= glm::vec3(vector.x, vector.y, vector.z);
-
+		points[i].pos = { rand(rd), rand(rd), rand(rd) * 100.0f };
+		points[i].color = { 1.0f, 0.0f, 0.0f, 0.5f };
 	}
 
-	pointTexture.Load("texture", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
+	pointTexture.Load("particle", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
 	vertex.CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -501,15 +491,18 @@ void Scene::MoveVertex()
 {
 	for (size_t i = 0; i < pointCount; i++)
 	{
-		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 10.0f;
+		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 100.0f;
 
-		glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		//glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(instPos[i]));
 
-		glm::vec4 vector(trans[3]);
-		//points[i].pos *= vector;
-		points[i].pos *= glm::vec3(vector.x, vector.y, vector.z);
+		////glm::vec4 vector(trans[3]);
+		////points[i].pos *= vector;
+		//auto vec = points[i].pos * trans;
 
+		//points[i].pos = vec;
 	}
+
+	//::cout << points[0].pos.x << ", " << points[0].pos.y << ", " << points[0].pos.z << std::endl;
 
 	vertex.CopyMem(points.data(), vertex.size);
 }

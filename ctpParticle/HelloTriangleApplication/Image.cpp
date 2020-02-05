@@ -13,7 +13,7 @@ void Image::Load(const std::string& texture)
 	textureDetails.resize(imageCount);
 	imageSize.resize(imageCount);
 
-	std::string filepath = "textures/"+ texture +".jpg";
+	std::string filepath = "textures/"+ texture +".png";
 	int texWidth, texHeight, texChannels;
 	pixels[images[texture]] = stbi_load(filepath.c_str(),
 		&texWidth, &texHeight, &texChannels, STBI_rgb_alpha);

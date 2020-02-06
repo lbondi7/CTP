@@ -29,7 +29,7 @@ private:
 	VkDescriptorSet pointDescSet;
 	std::vector<glm::vec3> instPos;
 
-	int pointCount = 100000;
+	int pointCount = 150000;
 	std::vector<Vertex> points;
 	std::vector<Buffer> uniformPoints;
 	std::vector<Buffer> vertexs;

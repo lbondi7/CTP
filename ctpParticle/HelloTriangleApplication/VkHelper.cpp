@@ -163,14 +163,14 @@ namespace VkHelper
 	{
 		VkPipelineColorBlendStateCreateInfo colourBlending = {};
 		colourBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		colourBlending.logicOpEnable = logicOpEnabled;
-		colourBlending.logicOp = logicOp;
+		//colourBlending.logicOpEnable = logicOpEnabled;
+		//colourBlending.logicOp = logicOp;
 		colourBlending.attachmentCount = attachmentCount;
 		colourBlending.pAttachments = colourBlendAttachment;
-		colourBlending.blendConstants[0] = blendConstants[0];
-		colourBlending.blendConstants[1] = blendConstants[1];
-		colourBlending.blendConstants[2] = blendConstants[2];
-		colourBlending.blendConstants[3] = blendConstants[3];
+		//colourBlending.blendConstants[0] = blendConstants[0];
+		//colourBlending.blendConstants[1] = blendConstants[1];
+		//colourBlending.blendConstants[2] = blendConstants[2];
+		//colourBlending.blendConstants[3] = blendConstants[3];
 
 		return colourBlending;
 	}
@@ -183,9 +183,8 @@ namespace VkHelper
 		depthStencil.depthTestEnable = depthTestEnabled;
 		depthStencil.depthWriteEnable = depthWriteEnabled;
 		depthStencil.depthCompareOp = depthCompareOp;
-		depthStencil.depthBoundsTestEnable = depthBoundsTestEnabled;
-		depthStencil.stencilTestEnable = stencilTestEnabled;
-
+		//depthStencil.depthBoundsTestEnable = depthBoundsTestEnabled;
+		//depthStencil.stencilTestEnable = stencilTestEnabled;
 
 		return depthStencil;
 	}

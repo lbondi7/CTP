@@ -52,6 +52,8 @@ void Scene::run() {
 	Locator::InitImages(new Image());
 	Locator::GetImage()->Load("texture");
 	Locator::GetImage()->Load("particle");
+	Locator::GetImage()->Load("particle2");
+	Locator::GetImage()->Load("particle3");
 	createDescriptorSetLayout();
 	Locator::GetDevices()->CreateCommandPool(commandPool);
 	createGraphicsPipeline();
@@ -250,7 +252,7 @@ void Scene::createGraphicsPipeline() {
 
 	depthStencil.depthWriteEnable = VK_FALSE;
 	colorBlendAttachment.blendEnable = VK_TRUE;
-	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
 	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
@@ -325,13 +327,6 @@ void Scene::createCommandBuffers() {
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex.buffer, offsets);
 		vkCmdDraw(commandBuffers[i], pointCount, 1, 0, 0);
 
-		//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pointDescSet, 0, nullptr);
-		//vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pointPipeline);
-
-		//vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex.buffer, offsets);
-		//vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, &instance.buffer, offsets);
-		//vkCmdDraw(commandBuffers[i], 3, pointCount, 0, 0);
-
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
 
@@ -361,37 +356,10 @@ glm::vec3 Scene::getFlowField(glm::vec3 pos)
 
 void Scene::createUniformBuffers() {
 
-	//uniformPoint.resize(swapchain.swapChainImages.size());
-	//object.GetModel().uniform.resize(swapchain.swapChainImages.size());
-
-	//for (size_t j = 0; j < swapchain.swapChainImages.size(); j++) {
-
-	//	uniformPoint[j].CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-	//		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
-
-	//	uniformPoint[j].UpdateDescriptor(sizeof(UniformBufferObject));
-
-
-	//	object.GetModel().uniform[j].CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-	//		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
-
-	//	object.GetModel().uniform[j].UpdateDescriptor(sizeof(UniformBufferObject));
-	//}
-
 	uniformPoint.CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferParticle));
 
 	uniformPoint.UpdateDescriptor(sizeof(UniformBufferParticle));
-
-	//uniformPoints.resize(pointCount);
-
-	//for (size_t i = 0; i < pointCount; i++)
-	//{
-	//	uniformPoints[i].CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-	//		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
-
-	//	uniformPoints[i].UpdateDescriptor(sizeof(UniformBufferObject));
-	//}
 
 	object.GetModel().uniform.CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
@@ -400,22 +368,6 @@ void Scene::createUniformBuffers() {
 }
 
 void Scene::updateUniformBuffer(uint32_t currentImage) {
-
-
-	//point.pos += getFlowField(point.pos) * Locator::GetTimer()->DeltaTime();
-	//for (size_t i = 0; i < pointCount; i++)
-	//{
-	//	//instPos[i] += getFlowField(instPos[i]) * Locator::GetTimer()->DeltaTime() * 100.0f;
-	//}
-
-	//instance.CopyMem(instPos.data(), instance.size);
-
-	//glm::mat4 viewMatrix = glm::mat4(1.0f);
-	//uboVS.projection = glm::perspective(glm::radians(60.0f), (float)width / (float)height, 0.001f, 256.0f);
-	//viewMatrix = glm::translate(viewMatrix, glm::vec3(0.0f, 0.0f, zoom));
-
-	//uboVS.model = glm::mat4(1.0f);
-	//uboVS.model = viewMatrix * glm::translate(uboVS.model, glm::vec3(0.0f, 15.0f, 0.0f));
 
 	UniformBufferParticle ubp = {};
 	ubp.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
@@ -429,16 +381,6 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	MoveVertex();
 
 	UniformBufferObject ubo = {};
-	//for (size_t i = 0; i < pointCount; i++)
-	//{
-	//	points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 20.0f;
-	//	ubo.model = glm::translate(glm::mat4(1.0f), points[i].pos);
-	//	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	//	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
-	//	ubo.proj[1][1] *= -1;
-
-	//	uniformPoints[i].CopyMem(&ubo, sizeof(ubo));
-	//}
 
 	object.GetModel().transform.pos += getFlowField(object.GetModel().transform.pos) * Locator::GetTimer()->DeltaTime();
 
@@ -453,34 +395,31 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 void Scene::LoadAssets()
 {
 	point.pos = { 0, 0, 0 };
-	point.color = { 1.0f, 1.0f, 1.0f, 0.1f };
+	point.color = { 1.0f, 1.0f, 1.0f, 0.5f };
 	point.texCoord = { 1, 1 };
 
 	points.resize(pointCount);
 	vertexs.resize(pointCount);
-	instPos.resize(pointCount);
 
 	std::random_device rd;
 	std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
+	std::uniform_real_distribution<float> rand2(0, 1.0f);
 
 	for (size_t i = 0; i < pointCount; i++)
 	{
+		//points[i].pos = { 0, 0, 0 };
 		points[i].pos = { rand(rd), rand(rd), rand(rd) * 100.0f };
-		points[i].color = { 1.0f, 0.0f, 0.0f, 0.5f };
+		//points[i].color = { 65.0f / 255.0f, 0.0f / 255.0f, 211.0f / 255.0f, 0.9f };
+		points[i].color = { rand2(rd), rand2(rd), rand2(rd), rand2(rd) };
 	}
 
-	pointTexture.Load("particle", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
+	pointTexture.Load("particle2", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
 	vertex.CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex) * pointCount);
 
 	vertex.StageBuffer(vertex.size, graphicsQueue, points.data());
-
-	instance.CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(glm::vec3) * instPos.size());
-
-	instance.StageBuffer(instance.size, graphicsQueue, instPos.data());
 
 	object.Init("sphere", "texture", graphicsQueue);
 
@@ -492,17 +431,7 @@ void Scene::MoveVertex()
 	for (size_t i = 0; i < pointCount; i++)
 	{
 		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 100.0f;
-
-		//glm::mat4 trans = glm::translate(glm::mat4(1.0f), glm::vec3(instPos[i]));
-
-		////glm::vec4 vector(trans[3]);
-		////points[i].pos *= vector;
-		//auto vec = points[i].pos * trans;
-
-		//points[i].pos = vec;
 	}
-
-	//::cout << points[0].pos.x << ", " << points[0].pos.y << ", " << points[0].pos.z << std::endl;
 
 	vertex.CopyMem(points.data(), vertex.size);
 }

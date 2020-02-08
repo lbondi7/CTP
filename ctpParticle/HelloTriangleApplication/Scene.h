@@ -81,5 +81,7 @@ private:
 
 	bool checkDistanceFromLight(glm::vec3 pos, int i);
 
+	void Cleanup();
+
 };
 

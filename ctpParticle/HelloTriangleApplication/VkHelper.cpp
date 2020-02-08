@@ -84,8 +84,15 @@ namespace VkHelper
 		VkPipelineShaderStageCreateInfo shaderStageInfo = {};
 		shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		shaderStageInfo.stage = stage;
-		shaderStageInfo.module = VkSetupHelper::createShaderModule(filepath, device);
 		shaderStageInfo.pName = "main";
+
+		VkShaderModule shaderModule;
+		if (vkCreateShaderModule(device, &VkSetupHelper::createShaderModuleInfo(filepath, device), nullptr, &shaderModule) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create shader module!");
+		}
+
+		shaderStageInfo.module = shaderModule;
+		vkDestroyShaderModule(device, shaderModule, nullptr);
 
 		return shaderStageInfo;
 	}

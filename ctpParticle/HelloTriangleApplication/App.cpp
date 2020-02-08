@@ -86,13 +86,14 @@ void CTPApp::cleanup() {
 	}
 
 	vkDestroyCommandPool(device, commandPool, nullptr);
-
+	Locator::GetDevices()->DestroyCommandPool();
 	vkDestroyDevice(device, nullptr);
 
 	if (enableValidationLayers) {
 		VkSetup::DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 	}
 
+	vkDestroySurfaceKHR(swapchain.instance, swapchain.surface, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
 

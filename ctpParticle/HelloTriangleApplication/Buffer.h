@@ -14,7 +14,7 @@ struct Buffer
 
 	VkResult CreateBuffer(VkDevice _device);
 
-	void CreateBuffer(VkDevice _device, VkBufferUsageFlags _usage, VkMemoryPropertyFlags _memProperties, VkDeviceSize _size = VK_WHOLE_SIZE, const void* _data = nullptr);
+	void CreateBuffer(VkBufferUsageFlags _usage, VkMemoryPropertyFlags _memProperties, VkDeviceSize _size = VK_WHOLE_SIZE, const void* _data = nullptr);
 
 	void CreateStagingBuffer(Buffer& stagingBuffer, VkDevice _device, VkBufferUsageFlags _usage);
 

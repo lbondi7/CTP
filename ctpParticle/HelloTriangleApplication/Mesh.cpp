@@ -48,7 +48,7 @@ void Mesh::Load(const std::string& mesh)
 	            attrib.normals[3 * index.normal_index + 2]
 			};
 
-			vertex.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+			vertex.color = { 0.8f, 0.8f, 0.8f, 0.4f };
 
 			if (uniqueVertices.count(vertex) == 0) {
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices[meshes[mesh]].size());

@@ -25,22 +25,20 @@ private:
 	Vertex point;
 	Buffer uniformPoint;
 	Buffer vertex;
-	Buffer instance;
+	Buffer size;
 	VkDescriptorSet pointDescSet;
-	std::vector<glm::vec3> instPos;
 
-	int pointCount = 150000;
+	int pointCount = 2000;
 	std::vector<Vertex> points;
-	std::vector<Buffer> uniformPoints;
-	std::vector<Buffer> vertexs;
-	std::vector<VkDescriptorSet> pointDescSets;
+	std::vector<float> sizes;
 
 	VkPipeline pointPipeline;
 	Texture pointTexture;
 
-	float camSpeed = 50.0f;
-	float distFromOrigin = 30.0f;
+	float camSpeed = 100.0f;
+	float distFromOrigin = 1000.0f;
 	glm::vec3 camPos = glm::vec3(0, 3.0f, -30.0f);
+	glm::vec3 lookAtPos;
 	float angleX = 0.0f;
 	float angleY = 0.0f;
 	float angleSpeed = 2.5f;

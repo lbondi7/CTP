@@ -7,13 +7,14 @@ layout (triangle_strip, max_vertices = 6) out;
 
 layout(location = 0) in vec4 inColor[];
 layout(location = 1) in vec2 inTexCoord[];
+layout(location = 2) in float inSize[];
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 
 void main() {
 
-    float size = 1.0f;
+    float size = inSize[0];
     vec4 offset = vec4(-size, size, 0, 1);
     vec4 vertexPos = gl_in[0].gl_Position + offset;
     gl_Position = vertexPos;

@@ -49,11 +49,14 @@ void Scene::run() {
 	initVulkan();
 	Locator::InitMeshes(new Mesh());
 	Locator::GetMesh()->Load("sphere");
+	Locator::GetMesh()->Load("cube");
+	Locator::GetMesh()->Load("cubeSkybox");
 	Locator::InitImages(new Image());
 	Locator::GetImage()->Load("texture");
 	Locator::GetImage()->Load("particle");
 	Locator::GetImage()->Load("particle2");
-	Locator::GetImage()->Load("particle3");
+	Locator::GetImage()->Load("spaceBackground3");
+	Locator::GetImage()->Load("spaceSkybox2");
 	createDescriptorSetLayout();
 	Locator::GetDevices()->CreateCommandPool(commandPool);
 	createGraphicsPipeline();
@@ -124,22 +127,6 @@ void Scene::createDescriptorSets() {
 	allocInfo.descriptorSetCount = 1;
 	allocInfo.pSetLayouts = layouts.data();
 
-	pointDescSets.resize(pointCount);
-
-	//for (size_t i = 0; i < pointCount; i++)
-	//{
-	//	if (vkAllocateDescriptorSets(device, &allocInfo, &pointDescSets[i]) != VK_SUCCESS) {
-	//		throw std::runtime_error("failed to allocate descriptor sets!");
-	//	}
-
-	//	std::vector<VkWriteDescriptorSet> descriptorWrites = {
-	//	VkHelper::writeDescSet(pointDescSets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformPoints[i].descriptor),
-	//	VkHelper::writeDescSet(pointDescSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &pointTexture.descriptor)
-	//	};
-
-	//	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-	//}
-
 	if (vkAllocateDescriptorSets(device, &allocInfo, &pointDescSet) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate descriptor sets!");
 	}
@@ -168,24 +155,6 @@ void Scene::createGraphicsPipeline() {
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
-	std::vector<VkVertexInputBindingDescription> bindingDescriptions;
-	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
-
-	bindingDescriptions = {
-		Vertex::getBindingDescription()
-	};
-
-	attributeDescriptions = {
-		Vertex::getAttributeDescriptions()[0],
-		Vertex::getAttributeDescriptions()[1],
-		Vertex::getAttributeDescriptions()[2]
-	};
-
-	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
-	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
-	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
-	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -203,20 +172,28 @@ void Scene::createGraphicsPipeline() {
 		VK_POLYGON_MODE_FILL, 1.0f,
 		VK_CULL_MODE_BACK_BIT,
 		VK_FRONT_FACE_COUNTER_CLOCKWISE,
-		VK_FALSE);
+		VK_TRUE);
 
 	VkPipelineMultisampleStateCreateInfo multisampling =
-		VkHelper::createMultiSampling(VK_FALSE, VK_SAMPLE_COUNT_1_BIT);
+		VkHelper::createMultiSampling(VK_TRUE, VK_SAMPLE_COUNT_1_BIT);
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment =
 		VkHelper::createColourBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
+
+	colorBlendAttachment.blendEnable = VK_TRUE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	VkPipelineColorBlendStateCreateInfo colorBlending = VkHelper::createColourBlendStateInfo(
 		VK_FALSE, VK_LOGIC_OP_COPY, 1, &colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f });
 
 	VkPipelineDepthStencilStateCreateInfo depthStencil = VkHelper::createDepthStencilInfo(
 		VK_TRUE, VK_TRUE,
-		VK_COMPARE_OP_LESS_OR_EQUAL,
+		VK_COMPARE_OP_LESS,
 		VK_FALSE, VK_FALSE);
 
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -232,6 +209,20 @@ void Scene::createGraphicsPipeline() {
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.pDepthStencilState = &depthStencil;
+	
+
+	std::vector<VkVertexInputBindingDescription> bindingDescriptions = {
+		Vertex::getBindingDescription()
+	};
+
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
+		Vertex::getAttributeDescriptions()
+	};
+
+	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo =
 		VkHelper::createShaderStageInfo("shaders/basicA/basicAVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
@@ -250,6 +241,8 @@ void Scene::createGraphicsPipeline() {
 		throw std::runtime_error("failed to create graphics pipeline!");
 	}
 
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+
 	depthStencil.depthWriteEnable = VK_FALSE;
 	colorBlendAttachment.blendEnable = VK_TRUE;
 	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
@@ -258,6 +251,15 @@ void Scene::createGraphicsPipeline() {
 	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	bindingDescriptions.push_back(VkHelper::createVertexBindingDescription(1, sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX));
+
+	attributeDescriptions.push_back(VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32_SFLOAT, sizeof(float)));
+
+	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
 	vertShaderStageInfo =
 		VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
@@ -321,18 +323,18 @@ void Scene::createCommandBuffers() {
 
 		VkDeviceSize offsets[] = { 0 };
 
-		
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pointDescSet, 0, nullptr);
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pointPipeline);
-		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex.buffer, offsets);
-		vkCmdDraw(commandBuffers[i], pointCount, 1, 0, 0);
-
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
 
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], object.GetModel().index.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(object.GetModel().indices.size()), 1, 0, 0, 0);
+
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pointDescSet, 0, nullptr);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pointPipeline);
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex.buffer, offsets);
+		vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, &size.buffer, offsets);
+		vkCmdDraw(commandBuffers[i], pointCount, 1, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -372,7 +374,7 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	UniformBufferParticle ubp = {};
 	ubp.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	ubp.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubp.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
+	ubp.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.01f, 1000.0f);
 	ubp.proj[1][1] *= -1;
 
 	uniformPoint.CopyMem(&ubp, sizeof(ubp));
@@ -384,9 +386,9 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 	object.GetModel().transform.pos += getFlowField(object.GetModel().transform.pos) * Locator::GetTimer()->DeltaTime();
 
-	ubo.model = glm::translate(glm::mat4(1.0f), object.GetModel().transform.pos);
+	ubo.model = glm::translate(glm::mat4(1.0f), object.GetModel().transform.pos) * glm::scale(glm::mat4(1.0f), object.GetModel().transform.scale);
 	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
+	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 10000.0f);
 	ubo.proj[1][1] *= -1;
 
 	object.GetModel().uniform.CopyMem(&ubo, sizeof(ubo));
@@ -399,18 +401,21 @@ void Scene::LoadAssets()
 	point.texCoord = { 1, 1 };
 
 	points.resize(pointCount);
-	vertexs.resize(pointCount);
+	sizes.resize(pointCount);
 
 	std::random_device rd;
-	std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
-	std::uniform_real_distribution<float> rand2(0, 1.0f);
+	std::uniform_real_distribution<float> rand(-3.0f, 3.0f);
+	std::uniform_real_distribution<float> rand2(0.0f, 1.0f);
+	std::uniform_real_distribution<float> rand3(0.5f, 5.0f);
 
 	for (size_t i = 0; i < pointCount; i++)
 	{
 		//points[i].pos = { 0, 0, 0 };
-		points[i].pos = { rand(rd), rand(rd), rand(rd) * 100.0f };
+		points[i].pos = { rand(rd) * 100.0f, rand(rd) * 20.0f, rand(rd) * 100.0f };
 		//points[i].color = { 65.0f / 255.0f, 0.0f / 255.0f, 211.0f / 255.0f, 0.9f };
 		points[i].color = { rand2(rd), rand2(rd), rand2(rd), rand2(rd) };
+		//points[i].color = { 0.0f, 0.0f, 1.0f, rand2(rd) };
+		sizes[i] = rand3(rd);
 	}
 
 	pointTexture.Load("particle2", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
@@ -421,9 +426,17 @@ void Scene::LoadAssets()
 
 	vertex.StageBuffer(vertex.size, graphicsQueue, points.data());
 
-	object.Init("sphere", "texture", graphicsQueue);
+	size.CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(float) * pointCount);
+
+	size.StageBuffer(size.size, graphicsQueue, sizes.data());
+
+	object.Init("sphere", "spaceBackground3", graphicsQueue);
 
 	object.GetModel().transform.pos = { 0, 4, 0 };
+
+	object.GetModel().transform.scale = { 2.0f, 2.0f, 2.0f };
+	//object.GetModel().transform.scale = { 5000.0f, 5000.0f, 5000.0f };
 }
 
 void Scene::MoveVertex()
@@ -431,9 +444,11 @@ void Scene::MoveVertex()
 	for (size_t i = 0; i < pointCount; i++)
 	{
 		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 100.0f;
+		//sizes[i] -= Locator::GetTimer()->DeltaTime() * 100.0f;
 	}
 
 	vertex.CopyMem(points.data(), vertex.size);
+	//size.CopyMem(sizes.data(), size.size);
 }
 
 void Scene::drawFrame() {

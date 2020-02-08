@@ -90,7 +90,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\VulkanLibs\glfw-3.3.bin.WIN64\include;C:\VulkanSDK\1.1.126.0\Include;C:\VulkanLibs\glm;C:\VulkanLibs\stb;C:\VulkanLibs\tinyobjloader</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanLibs\tinyobjloader;C:\VulkanLibs\stb;C:\VulkanLibs\glfw-3.3.bin.WIN64\include;C:\VulkanLibs\glm;C:\VulkanSDK\1.1.126.0\Include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -107,7 +107,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\VulkanLibs\glfw-3.3.bin.WIN64\include;C:\VulkanSDK\1.1.126.0\Include;C:\VulkanLibs\glm;C:\VulkanLibs\stb;C:\VulkanLibs\tinyobjloader</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanLibs\tinyobjloader;C:\VulkanLibs\stb;C:\VulkanLibs\glfw-3.3.bin.WIN64\include;C:\VulkanLibs\glm;C:\VulkanSDK\1.1.126.0\Include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -126,7 +126,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\VulkanLibs\glfw-3.3.bin.WIN64\include;C:\VulkanSDK\1.1.126.0\Include;C:\VulkanLibs\glm;C:\VulkanLibs\stb;C:\VulkanLibs\tinyobjloader</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanLibs\tinyobjloader;C:\VulkanLibs\stb;C:\VulkanLibs\glfw-3.3.bin.WIN64\include;C:\VulkanLibs\glm;C:\VulkanSDK\1.1.126.0\Include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -147,7 +147,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\VulkanLibs\glfw-3.3.bin.WIN64\include;C:\VulkanSDK\1.1.126.0\Include;C:\VulkanLibs\glm;C:\VulkanLibs\stb;C:\VulkanLibs\tinyobjloader</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\VulkanLibs\tinyobjloader;C:\VulkanLibs\stb;C:\VulkanLibs\glfw-3.3.bin.WIN64\include;C:\VulkanLibs\glm;C:\VulkanSDK\1.1.126.0\Include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -161,20 +161,23 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
+    <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="Devices.cpp" />
-    <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="Locator.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Model.cpp" />
+    <ClCompile Include="Object.cpp" />
     <ClCompile Include="ParticleSystem.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="Shaders.cpp" />
+    <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Timer.cpp" />
-    <ClCompile Include="VkCmdAndDesc.cpp" />
-    <ClCompile Include="VkGraphicsSetup.cpp" />
     <ClCompile Include="VkHelper.cpp" />
+    <ClCompile Include="VkInitializer.cpp" />
     <ClCompile Include="VkSetup.cpp" />
     <ClCompile Include="VkSetupHelper.cpp" />
   </ItemGroup>
@@ -182,24 +185,29 @@
     <ClInclude Include="App.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="Devices.h" />
-    <ClInclude Include="Graphics.h" />
     <ClInclude Include="Image.h" />
     <ClInclude Include="Keyboard.h" />
     <ClInclude Include="Locator.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="Model.h" />
+    <ClInclude Include="Object.h" />
     <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="Shaders.h" />
+    <ClInclude Include="SwapChain.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Timer.h" />
+    <ClInclude Include="Transform.h" />
     <ClInclude Include="Vertex.h" />
-    <ClInclude Include="VkCmdAndDesc.h" />
     <ClInclude Include="VkConstants.h" />
-    <ClInclude Include="VkGraphicsSetup.h" />
     <ClInclude Include="VkHelper.h" />
+    <ClInclude Include="VkInitializer.h" />
     <ClInclude Include="VkSetup.h" />
     <ClInclude Include="VkSetupHelper.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shaders\basicA\basicA.frag" />
+    <None Include="shaders\basicA\basicA.vert" />
     <None Include="shaders\basic\basic.frag" />
     <None Include="shaders\basic\basic.vert" />
   </ItemGroup>

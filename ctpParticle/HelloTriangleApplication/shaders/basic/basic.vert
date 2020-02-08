@@ -8,15 +8,16 @@ layout(binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inColor;
+layout(location = 1) in vec4 inColor;
 layout(location = 2) in vec2 inTexCoord;
 
 layout (location = 3) in vec3 instancePos;
 layout (location = 4) in vec3 instanceRot;
 layout (location = 5) in float instanceScale;
-layout (location = 6) in int instanceTexIndex;
+layout (location = 6) in vec4 instanceColor;
+layout (location = 7) in int instanceTexIndex;
 
-layout(location = 0) out vec3 fragColor;
+layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
 
 void main() {
@@ -24,6 +25,6 @@ void main() {
 
 	gl_Position = ubo.proj * ubo.view * ubo.model * pos;
 
-    fragColor = inColor;
+    fragColor = instanceColor * inColor;
     fragTexCoord = inTexCoord;
 }

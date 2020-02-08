@@ -5,15 +5,23 @@
 
 #include <stdexcept>
 #include <unordered_map>
+#include <random>
 
-void Mesh::loadModel(const char* modelPath)
+void Mesh::Load(const std::string& mesh)
 {
+	meshes[mesh] = meshCount;
+	++meshCount;
+	vertices.resize(meshCount);
+	indices.resize(meshCount);
+
+	std::string filePath = "../../../Models/" + mesh + ".obj";
+
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
 	std::string warn, err;
 
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath)) {
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filePath.c_str())) {
 		throw std::runtime_error(warn + err);
 	}
 
@@ -34,15 +42,20 @@ void Mesh::loadModel(const char* modelPath)
 				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
 			};
 
-			vertex.color = { 1.0f, 1.0f, 1.0f };
+			vertex.normal = {
+	            attrib.normals[3 * index.normal_index + 0],
+	            attrib.normals[3 * index.normal_index + 1],
+	            attrib.normals[3 * index.normal_index + 2]
+			};
+
+			vertex.color = { 0.8f, 0.8f, 0.8f, 0.4f };
 
 			if (uniqueVertices.count(vertex) == 0) {
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-				vertices.push_back(vertex);
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices[meshes[mesh]].size());
+				vertices[meshes[mesh]].push_back(vertex);
 			}
 
-			indices.push_back(uniqueVertices[vertex]);
+			indices[meshes[mesh]].push_back(uniqueVertices[vertex]);
 		}
 	}
-
 }

@@ -3,6 +3,9 @@
 class Timer;
 class Devices;
 class Keyboard;
+struct Mesh;
+struct Image;
+struct Shaders;
 
 struct Locator
 {
@@ -20,9 +23,24 @@ public:
 
 	static Devices* GetDevices() { return devices; }
 
+	static void InitMeshes(Mesh* _mesh) { mesh = _mesh; }
+
+	static Mesh* GetMesh() { return mesh; }
+
+	static void InitImages(Image* _image) { image = _image; }
+
+	static Image* GetImage() { return image; }
+
+	static void InitShader(Shaders* _shader) { shader = _shader; }
+
+	static Shaders* GetShader() { return shader; }
+
 private:
 	static Timer* timer;
 	static Devices* devices;
 	static Keyboard* keyboard;
+	static Mesh* mesh;
+	static Image* image;
+	static Shaders* shader;
 };
 

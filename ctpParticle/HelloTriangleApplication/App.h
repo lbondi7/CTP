@@ -1,17 +1,17 @@
 #pragma once
 
 #include "VkSetup.h"
-#include "Mesh.h"
 #include "Image.h"
-#include "Graphics.h"
-#include "Scene.h"
+#include "Buffer.h"
+#include "Object.h"
+#include "SwapChain.h"
 
 class CTPApp {
 public:
 
 	void run();
 
-private:
+protected:
 
 	GLFWwindow* window;
 
@@ -25,36 +25,11 @@ private:
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 
-	SwapChainData swapChainData;
-	GraphicsData graphicsData;
-	CmdAndDescData cmdAndDescData;
-
-	VkDescriptorPool descriptorPool;
+	VkRenderPass renderPass;
 
 	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorSet particleSysDesc;
 
 	VkPipelineLayout pipelineLayout;
-	std::vector<VkPipeline> particleSysPipe;
-
-	VkCommandPool commandPool;
-	std::vector<VkCommandBuffer> commandBuffers;
-
-
-	//std::vector<Vertex> vertices;
-	//std::vector<uint32_t> indices;
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vertexBufferMemory;
-	VkBuffer indexBuffer;
-	VkDeviceMemory indexBufferMemory;
-
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
-
-	//VkDescriptorPool descriptorPool;
-	//std::vector<VkDescriptorSet> descriptorSets;
-
-	//std::vector<VkCommandBuffer> commandBuffers;
 
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
@@ -64,33 +39,18 @@ private:
 
 	bool framebufferResized = false;
 
-	//VkBuffer stagingBuffer;
-	//VkDeviceMemory stagingBufferMemory;
-
 	std::vector<VkViewport> m_Viewports;
 	std::vector<VkRect2D> m_ScissorRects;
-
-	Graphics graphics;
-
-	TextureData textureData;
-	Mesh mesh;
-	Image image;
 
 	VkImage depthImage;
 	VkDeviceMemory depthImageMemory;
 	VkImageView depthImageView;
 
-	std::vector<InstanceData> instanceData;
-	std::vector<float> lifetimes;
-	std::vector<float> currentLife;
+	SwapChain swapchain;
 
-	std::vector<Particle> particles;
-
-	Scene scene;
-
-	std::vector<glm::vec3> randVels;
-	float ok = 0.0f;
-	int activeNum = 0;
+	VkCommandPool commandPool;
+	std::vector<VkCommandBuffer> commandBuffers;
+	VkDescriptorPool descriptorPool;
 
 	static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
 		auto app = reinterpret_cast<CTPApp*>(glfwGetWindowUserPointer(window));
@@ -101,31 +61,13 @@ private:
 
 	void initVulkan();
 
-	void mainLoop();
-
 	void cleanup();
 
 	void recreateSwapChain();
 
 	void cleanupSwapChain();
 
-	void createDescriptorSetLayout();
-
-	void createDescriptorSets();
-
-	void createCommandPool();
-
-	void createGraphicsPipeline();
-
-	void createInstances();
-
-	glm::vec3 getFlowField(glm::vec3 pos);
-
-	void updateInstanceBuffer();
-
-	void createCommandBuffers();
-
-	void createDescriptorPool();
+	void createRenderPass();
 
 	void createFramebuffers();
 
@@ -133,27 +75,18 @@ private:
 
 	bool hasStencilComponent(VkFormat format);
 
-	void createTextureImage();
-
 	void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkImage& image);
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
-	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-
-	void createTextureImageView();
-
-	void createTextureSampler();
-
-	void createUniformBuffers();
-
-	void createBuffers();
 
 	void AllocateImageMemory(const VkPhysicalDevice& physicalDevice, const VkDevice& device, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
 	void createSyncObjects();
 
-	void updateUniformBuffer(uint32_t currentImage);
+	void prepareFrame(uint32_t& imageIndex);
 
-	void drawFrame();
+
+	void endFrame(uint32_t& imageIndex);
+
 };

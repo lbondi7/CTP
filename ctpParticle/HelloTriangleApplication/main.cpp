@@ -1,6 +1,6 @@
 #pragma once
 
-#include "App.h"
+#include "Scene.h"
 
 //
 //#include "VkSetup.h"
@@ -1161,7 +1161,7 @@
 
 int main() {
 
-	CTPApp app;
+	Scene app;
 
 	try {
 		app.run();

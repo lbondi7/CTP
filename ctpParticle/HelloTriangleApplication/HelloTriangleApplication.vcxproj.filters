@@ -33,16 +33,10 @@
     <ClCompile Include="App.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="VkGraphicsSetup.cpp">
-      <Filter>Vulkan\Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="VkSetup.cpp">
       <Filter>Vulkan\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="VkSetupHelper.cpp">
-      <Filter>Vulkan\Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="VkCmdAndDesc.cpp">
       <Filter>Vulkan\Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Mesh.cpp">
@@ -60,9 +54,6 @@
     <ClCompile Include="Locator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ParticleSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -78,6 +69,24 @@
     <ClCompile Include="Keyboard.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Buffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Model.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VkInitializer.cpp">
+      <Filter>Vulkan\Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SwapChain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Shaders.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h">
@@ -89,16 +98,10 @@
     <ClInclude Include="VkConstants.h">
       <Filter>Vulkan\Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="VkGraphicsSetup.h">
-      <Filter>Vulkan\Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="VkSetup.h">
       <Filter>Vulkan\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="VkSetupHelper.h">
-      <Filter>Vulkan\Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="VkCmdAndDesc.h">
       <Filter>Vulkan\Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Mesh.h">
@@ -114,9 +117,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Locator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ParticleSystem.h">
@@ -137,12 +137,36 @@
     <ClInclude Include="Keyboard.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Model.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkInitializer.h">
+      <Filter>Vulkan\Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SwapChain.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Object.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\basic\basic.frag">
       <Filter>shaders</Filter>
     </None>
     <None Include="shaders\basic\basic.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\basicA\basicA.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shaders\basicA\basicA.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

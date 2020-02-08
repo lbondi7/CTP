@@ -6,15 +6,6 @@
 #include <optional>
 #include <fstream>
 
-struct QueueFamilyIndices {
-	std::optional<uint32_t> graphicsFamily;
-	std::optional<uint32_t> presentFamily;
-
-	bool isComplete() {
-		return graphicsFamily.has_value() && presentFamily.has_value();
-	}
-};
-
 namespace VkSetupHelper
 {
 	QueueFamilyIndices findQueueFamilies(const VkPhysicalDevice& physicalDevice, const VkSurfaceKHR& surface);
@@ -32,6 +23,7 @@ namespace VkSetupHelper
 	VkFormat findDepthFormat(const VkPhysicalDevice& physicalDevice);
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features, const VkPhysicalDevice& physicalDevice);
 	VkShaderModule createShaderModule(const std::vector<char>& code, const VkDevice& device);
+	VkShaderModuleCreateInfo createShaderModuleInfo(std::string filePath, const VkDevice& device);
 	std::vector<char> readFile(const std::string& filename);
 	VkImageView createImageView(const VkDevice& device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 };

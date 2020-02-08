@@ -2,14 +2,18 @@
 
 #include "VkConstants.h"
 
+#include <map>
+#include <string>
+
 struct Image
 {
-	//stbi_uc* pixels;
-	void* pixels;
-	VkDeviceSize imageSize;
-	int texWidth, texHeight, texChannels;
+	std::vector<void*> pixels;
+	std::vector<VkDeviceSize> imageSize;
+	std::vector<glm::vec3> textureDetails;
 
-	void loadImage(const char* imagePath);
-	void freeImage();
+	std::map<std::string, int> images;
+	int imageCount = 0;
+
+	void Load(const std::string& texture);
 };
 

@@ -25,15 +25,10 @@ private:
 	Vertex point;
 	Buffer uniformPoint;
 	Buffer vertex;
-	Buffer instance;
 	VkDescriptorSet pointDescSet;
-	std::vector<glm::vec3> instPos;
 
-	int pointCount = 150000;
+	int pointCount = 500000;
 	std::vector<Vertex> points;
-	std::vector<Buffer> uniformPoints;
-	std::vector<Buffer> vertexs;
-	std::vector<VkDescriptorSet> pointDescSets;
 
 	VkPipeline pointPipeline;
 	Texture pointTexture;
@@ -82,6 +77,8 @@ private:
 	void updateLight();
 
 	bool checkDistanceFromLight(glm::vec3 pos, int i);
+
+	void Cleanup();
 
 };
 

@@ -29,15 +29,10 @@ struct Texture
 
 	void transitionImageLayout(VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, VkQueue queue);
 
-	bool hasStencilComponent(VkFormat format);
-
 	void CopyBufferToImage(VkBuffer buffer, VkQueue queue);
-
-	void CreateImageView(VkFormat format, VkImageAspectFlags aspectFlags);
 
 	void CreateTextureSampler();
 
-
-
+	void Destroy();
 };
 

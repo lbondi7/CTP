@@ -23,7 +23,7 @@ namespace VkSetupHelper
 	VkFormat findDepthFormat(const VkPhysicalDevice& physicalDevice);
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features, const VkPhysicalDevice& physicalDevice);
 	VkShaderModule createShaderModule(const std::vector<char>& code, const VkDevice& device);
-	VkShaderModule createShaderModule(std::string filePath, const VkDevice& device);
+	VkShaderModuleCreateInfo createShaderModuleInfo(std::string filePath, const VkDevice& device);
 	std::vector<char> readFile(const std::string& filename);
 	VkImageView createImageView(const VkDevice& device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
 };

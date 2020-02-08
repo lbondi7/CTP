@@ -14,6 +14,8 @@ public:
 	Model& GetModel();
 	Texture& GetTexture();
 
+	void Destroy();
+
 private:
 
 	Model model;

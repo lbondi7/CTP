@@ -1,7 +1,4 @@
 #include "Scene.h"
-#include "Locator.h"
-#include "Keyboard.h"
-#include "Timer.h"
 
 #include "VkSetupHelper.h"
 #include "VkHelper.h"
@@ -12,6 +9,7 @@
 #include "Keyboard.h"
 #include "Mesh.h"
 #include "Image.h"
+#include "Shaders.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -41,7 +39,7 @@ const int HEIGHT = 600;
 
 Scene::~Scene()
 {
-
+	
 }
 
 void Scene::run() {
@@ -54,6 +52,7 @@ void Scene::run() {
 	Locator::GetImage()->Load("particle");
 	Locator::GetImage()->Load("particle2");
 	Locator::GetImage()->Load("particle3");
+	Locator::InitShader(new Shaders());
 	createDescriptorSetLayout();
 	Locator::GetDevices()->CreateCommandPool(commandPool);
 	createGraphicsPipeline();
@@ -63,7 +62,7 @@ void Scene::run() {
 	createDescriptorSets();
 	createCommandBuffers();
 	mainLoop();
-	cleanup();
+	Cleanup();
 }
 
 void Scene::mainLoop() {
@@ -123,22 +122,6 @@ void Scene::createDescriptorSets() {
 	allocInfo.descriptorPool = descriptorPool;
 	allocInfo.descriptorSetCount = 1;
 	allocInfo.pSetLayouts = layouts.data();
-
-	pointDescSets.resize(pointCount);
-
-	//for (size_t i = 0; i < pointCount; i++)
-	//{
-	//	if (vkAllocateDescriptorSets(device, &allocInfo, &pointDescSets[i]) != VK_SUCCESS) {
-	//		throw std::runtime_error("failed to allocate descriptor sets!");
-	//	}
-
-	//	std::vector<VkWriteDescriptorSet> descriptorWrites = {
-	//	VkHelper::writeDescSet(pointDescSets[i], VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformPoints[i].descriptor),
-	//	VkHelper::writeDescSet(pointDescSets[i], VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &pointTexture.descriptor)
-	//	};
-
-	//	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-	//}
 
 	if (vkAllocateDescriptorSets(device, &allocInfo, &pointDescSet) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate descriptor sets!");
@@ -233,11 +216,12 @@ void Scene::createGraphicsPipeline() {
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.pDepthStencilState = &depthStencil;
 
-	VkPipelineShaderStageCreateInfo vertShaderStageInfo =
-		VkHelper::createShaderStageInfo("shaders/basicA/basicAVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo = Locator::GetShader()->CreateShaderInfo("basicAVert", VK_SHADER_STAGE_VERTEX_BIT);
+		//VkHelper::createShaderStageInfo("shaders/basicA/basicAVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
 
-	VkPipelineShaderStageCreateInfo fragShaderStageInfo =
-		VkHelper::createShaderStageInfo("shaders/basicA/basicAFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device);
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo = Locator::GetShader()->CreateShaderInfo("basicAFrag", VK_SHADER_STAGE_FRAGMENT_BIT);
+	//VkHelper::createShaderStageInfo("shaders/basicA/basicAFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device);
+
 
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
 
@@ -259,14 +243,14 @@ void Scene::createGraphicsPipeline() {
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-	vertShaderStageInfo =
-		VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
+	vertShaderStageInfo = Locator::GetShader()->CreateShaderInfo("pointSpriteVert", VK_SHADER_STAGE_VERTEX_BIT);
+		//VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
 
-	fragShaderStageInfo =
-		VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device);
+	fragShaderStageInfo = Locator::GetShader()->CreateShaderInfo("pointSpriteFrag", VK_SHADER_STAGE_FRAGMENT_BIT);
+		//VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device);
 
-	VkPipelineShaderStageCreateInfo geomShaderStageInfo =
-		VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteGeom.spv", VK_SHADER_STAGE_GEOMETRY_BIT, device);
+	VkPipelineShaderStageCreateInfo geomShaderStageInfo = Locator::GetShader()->CreateShaderInfo("pointSpriteGeom", VK_SHADER_STAGE_GEOMETRY_BIT);
+		//VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteGeom.spv", VK_SHADER_STAGE_GEOMETRY_BIT, device);
 
 	shaderStages = { vertShaderStageInfo, fragShaderStageInfo, geomShaderStageInfo };
 
@@ -276,6 +260,8 @@ void Scene::createGraphicsPipeline() {
 	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pointPipeline) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create graphics pipeline!");
 	}
+
+	Locator::GetShader()->DestroyShaders();
 }
 
 void Scene::createCommandBuffers() {
@@ -356,12 +342,12 @@ glm::vec3 Scene::getFlowField(glm::vec3 pos)
 
 void Scene::createUniformBuffers() {
 
-	uniformPoint.CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	uniformPoint.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferParticle));
 
 	uniformPoint.UpdateDescriptor(sizeof(UniformBufferParticle));
 
-	object.GetModel().uniform.CreateBuffer(device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	object.GetModel().uniform.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
 
 	object.GetModel().uniform.UpdateDescriptor(sizeof(UniformBufferObject));
@@ -399,7 +385,6 @@ void Scene::LoadAssets()
 	point.texCoord = { 1, 1 };
 
 	points.resize(pointCount);
-	vertexs.resize(pointCount);
 
 	std::random_device rd;
 	std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
@@ -416,7 +401,7 @@ void Scene::LoadAssets()
 	pointTexture.Load("particle2", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-	vertex.CreateBuffer(device, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	vertex.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex) * pointCount);
 
 	vertex.StageBuffer(vertex.size, graphicsQueue, points.data());
@@ -511,4 +496,19 @@ void Scene::updateLight()
 bool Scene::checkDistanceFromLight(glm::vec3 pos, int i)
 {
 	return glm::distance(pos, lights[i].pos) < lights[i].radius;
+}
+
+void Scene::Cleanup()
+{
+
+	vkDestroyPipeline(device, objectPipeline, nullptr);
+	vkDestroyPipeline(device, pointPipeline, nullptr);
+	uniformPoint.DestoryBuffer();
+	vertex.DestoryBuffer();
+	pointTexture.Destroy();
+
+	object.Destroy();
+
+
+	CTPApp::cleanup();
 }

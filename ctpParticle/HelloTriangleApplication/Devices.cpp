@@ -205,3 +205,9 @@ void Devices::EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBuffer
 
 	vkFreeCommandBuffers(device, cmdPool, cmdBufferCount, &commandBuffer);
 }
+
+void Devices::DestroyCommandPool() {
+
+	vkDestroyCommandPool(device, cmdPool, nullptr);
+
+}

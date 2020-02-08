@@ -241,7 +241,7 @@ namespace VkSetupHelper
 		return shaderModule;
 	}
 
-	VkShaderModule createShaderModule(std::string filePath, const VkDevice& device) {
+	VkShaderModuleCreateInfo createShaderModuleInfo(std::string filePath, const VkDevice& device) {
 
 		auto shaderCode = VkSetupHelper::readFile(filePath);
 
@@ -250,12 +250,7 @@ namespace VkSetupHelper
 		createInfo.codeSize = shaderCode.size();
 		createInfo.pCode = reinterpret_cast<const uint32_t*>(shaderCode.data());
 
-		VkShaderModule shaderModule;
-		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create shader module!");
-		}
-
-		return shaderModule;
+		return createInfo;
 	}
 
 	std::vector<char> readFile(const std::string& filename) {

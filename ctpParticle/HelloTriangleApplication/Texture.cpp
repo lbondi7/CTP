@@ -44,6 +44,9 @@ void Texture::Load(const std::string imagePath, VkQueue queue, VkFormat format, 
 	descriptor.imageLayout = imageLayout;
 	descriptor.imageView = imageView;
 	descriptor.sampler = sampler;
+
+	staging.DestoryBuffer();
+
 }
 
 void Texture::createImage(VkFormat format, VkImageUsageFlags usage) {
@@ -211,4 +214,25 @@ void Texture::CreateTextureSampler() {
 	if (vkCreateSampler(Locator::GetDevices()->GetDevice(), &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create texture sampler!");
 	}
+}
+
+void Texture::Destroy()
+{
+	if (imageView)
+	{
+		vkDestroyImageView(device, imageView, nullptr);
+	}
+	if (image)
+	{
+		vkDestroyImage(device, image, nullptr);
+	}
+	if (memory)
+	{
+		vkFreeMemory(device, memory, nullptr);
+	}
+	if (sampler)
+	{
+		vkDestroySampler(device, sampler, nullptr);
+	}
+
 }

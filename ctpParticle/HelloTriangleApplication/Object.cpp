@@ -21,3 +21,9 @@ Texture& Object::GetTexture()
 {
 	return texture;
 }
+
+void Object::Destroy()
+{
+	model.Destroy();
+	texture.Destroy();
+}

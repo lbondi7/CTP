@@ -18,7 +18,7 @@ VkResult Buffer::CreateBuffer(VkDevice _device)
 	return vkCreateBuffer(device, &bufferInfo, nullptr, &buffer);
 }
 
-void Buffer::CreateBuffer(VkDevice _device, VkBufferUsageFlags _usage, VkMemoryPropertyFlags _memProperties, VkDeviceSize _size, const void* _data)
+void Buffer::CreateBuffer(VkBufferUsageFlags _usage, VkMemoryPropertyFlags _memProperties, VkDeviceSize _size, const void* _data)
 {
 	device = Locator::GetDevices()->GetDevice();
 	usage = _usage;
@@ -129,6 +129,7 @@ void Buffer::StageBuffer(VkDeviceSize _size, VkQueue queue, const void* _data)
 
 	Locator::GetDevices()->EndSingleTimeCommands(cmdBuffer, 1, queue);
 
+	staging.DestoryBuffer();
 }
 
 void Buffer::Unmap(bool clearData = false)
@@ -178,10 +179,10 @@ void Buffer::DestoryBuffer()
 {
 	if (buffer)
 	{
-		vkDestroyBuffer(device, buffer, nullptr);
+		vkDestroyBuffer(Locator::GetDevices()->GetDevice(), buffer, nullptr);
 	}
 	if (memory)
 	{
-		vkFreeMemory(device, memory, nullptr);
+		vkFreeMemory(Locator::GetDevices()->GetDevice(), memory, nullptr);
 	}
 }

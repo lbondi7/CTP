@@ -19,12 +19,6 @@ public:
 
 	void CreateCommandPool(VkCommandPool& commandPool);
 
-	//void CreateBuffer(Buffer& buffer, VkBufferUsageFlags usage, VkMemoryPropertyFlags memProperties);
-
-	//void StageBuffer(Buffer& buffer, VkCommandBuffer cmdBuffer);
-
-	//Buffer StageBuffer(Buffer& buffer);
-
 	QueueFamilyIndices FindQueueFamilies(VkSurfaceKHR surface);
 
 	VkCommandBuffer BeginSingleTimeCommands(VkCommandBufferLevel cmdBufferLevel, VkCommandPool cmdPool, int cmdBufferCount);
@@ -32,6 +26,8 @@ public:
 	VkCommandBuffer BeginSingleTimeCommands(VkCommandBufferLevel cmdBufferLevel, int cmdBufferCount);
 
 	void EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBufferCount, VkQueue queue);
+
+	void DestroyCommandPool();
 
 	void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkCommandPool cmdPool, int cmdBufferCount, VkQueue queue);
 

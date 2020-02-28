@@ -28,7 +28,7 @@ private:
 	Buffer size;
 	VkDescriptorSet pointDescSet;
 
-	int pointCount = 2000;
+	int pointCount = 3;
 	std::vector<Vertex> points;
 	std::vector<float> sizes;
 
@@ -36,7 +36,7 @@ private:
 	Texture pointTexture;
 
 	float camSpeed = 100.0f;
-	float distFromOrigin = 1000.0f;
+	float distFromOrigin = 10.0f;
 	glm::vec3 camPos = glm::vec3(0, 3.0f, -30.0f);
 	glm::vec3 lookAtPos;
 	float angleX = 0.0f;

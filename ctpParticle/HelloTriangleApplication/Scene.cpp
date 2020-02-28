@@ -210,7 +210,6 @@ void Scene::createGraphicsPipeline() {
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.pDepthStencilState = &depthStencil;
 	
-
 	std::vector<VkVertexInputBindingDescription> bindingDescriptions = {
 		Vertex::getBindingDescription()
 	};
@@ -229,7 +228,6 @@ void Scene::createGraphicsPipeline() {
 
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo = Locator::GetShader()->CreateShaderInfo("basicAFrag", VK_SHADER_STAGE_FRAGMENT_BIT);
 	//VkHelper::createShaderStageInfo("shaders/basicA/basicAFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device);
-
 
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
 
@@ -253,7 +251,6 @@ void Scene::createGraphicsPipeline() {
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-
 	bindingDescriptions.push_back(VkHelper::createVertexBindingDescription(1, sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX));
 
 	attributeDescriptions.push_back(VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32_SFLOAT, sizeof(float)));
@@ -262,7 +259,6 @@ void Scene::createGraphicsPipeline() {
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
-
 
 	vertShaderStageInfo = Locator::GetShader()->CreateShaderInfo("pointSpriteVert", VK_SHADER_STAGE_VERTEX_BIT);
 		//VkHelper::createShaderStageInfo("shaders/pointSprite/pointSpriteVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
@@ -382,10 +378,10 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	ubp.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.01f, 1000.0f);
 	ubp.proj[1][1] *= -1;
 
-	uniformPoint.CopyMem(&ubp, sizeof(ubp));
+	 uniformPoint.CopyMem(&ubp, sizeof(ubp));
 
 
-	MoveVertex();
+	//MoveVertex();
 
 	UniformBufferObject ubo = {};
 
@@ -415,8 +411,8 @@ void Scene::LoadAssets()
 
 	for (size_t i = 0; i < pointCount; i++)
 	{
-		//points[i].pos = { 0, 0, 0 };
-		points[i].pos = { rand(rd) * 100.0f, rand(rd) * 20.0f, rand(rd) * 100.0f };
+		points[i].pos = { 0, 0, 0 };
+		//points[i].pos = { rand(rd) * 100.0f, rand(rd) * 20.0f, rand(rd) * 100.0f };
 		//points[i].color = { 65.0f / 255.0f, 0.0f / 255.0f, 211.0f / 255.0f, 0.9f };
 		points[i].color = { rand2(rd), rand2(rd), rand2(rd), rand2(rd) };
 		//points[i].color = { 0.0f, 0.0f, 1.0f, rand2(rd) };

@@ -176,6 +176,7 @@
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Timer.cpp" />
+    <ClCompile Include="Triangle.cpp" />
     <ClCompile Include="VkHelper.cpp" />
     <ClCompile Include="VkInitializer.cpp" />
     <ClCompile Include="VkSetup.cpp" />
@@ -198,6 +199,7 @@
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="Transform.h" />
+    <ClInclude Include="Triangle.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="VkConstants.h" />
     <ClInclude Include="VkHelper.h" />

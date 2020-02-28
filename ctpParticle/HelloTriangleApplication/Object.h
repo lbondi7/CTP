@@ -3,7 +3,7 @@
 #include "Model.h"
 #include "Texture.h"
 
-class Object
+class Object : public TransformObject
 {
 public:
 	Object() = default;

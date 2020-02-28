@@ -1,23 +1,26 @@
 #pragma once
 
+#include "Transform.h"
+
 #include "glm/glm.hpp"
 #include <array>
 
 struct Triangle
 {
-
 	Triangle() = default;
-	Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 _pos);
+	Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 _pos = glm::vec3(0.0f, 0.0f, 0.0f));
 
-	float dot2(glm::vec3 v);
+	void Update(const glm::vec3& p);
 
 	float udTriangle(glm::vec3 p);
 
-	glm::vec3 pos;
+	void operator =(const Triangle& other);
+
+
 	glm::vec3 center;
 	glm::vec3 normal;
+	std::array<glm::vec3, 3> localVertices;
 	std::array<glm::vec3, 3> vertices;
 	std::array<glm::vec3, 3> edges;
-
 };
 

@@ -3,9 +3,6 @@
 #include "Mesh.h"
 #include "Locator.h"
 
-//#define TINYOBJLOADER_IMPLEMENTATION
-//#include <tiny_obj_loader.h>
-
 #include <stdexcept>
 #include <unordered_map>
 #include <random>
@@ -16,6 +13,8 @@ Model::~Model()
 
 void Model::Load(const std::string& filepath, VkQueue queue)
 {
+	Destroy();
+
 	vertices = Locator::GetMesh()->vertices[Locator::GetMesh()->meshes[filepath]];
 	indices = Locator::GetMesh()->indices[Locator::GetMesh()->meshes[filepath]];
 
@@ -40,4 +39,64 @@ void Model::Destroy()
 	vertex.DestoryBuffer();
 	index.DestoryBuffer();
 	uniform.DestoryBuffer();
+
+	vertices.clear();
+	indices.clear();
+}
+
+FfModel::~FfModel()
+{
+}
+
+void FfModel::Load(const std::string& filepath)
+{
+	Destroy();
+
+	vertices = Locator::GetMesh()->vertices[Locator::GetMesh()->meshes[filepath]];
+	indices = Locator::GetMesh()->indices[Locator::GetMesh()->meshes[filepath]];
+
+	for (size_t i = 0; i < indices.size(); i += 3)
+	{
+		Triangle tri(vertices[indices[i]].pos, vertices[indices[i + 1]].pos, vertices[indices[i + 2]].pos);
+
+		triangles.push_back(tri);
+	}
+}
+
+void FfModel::Load(const std::string& filepath, glm::vec3 pos)
+{
+	Destroy();
+
+	vertices = Locator::GetMesh()->vertices[Locator::GetMesh()->meshes[filepath]];
+	indices = Locator::GetMesh()->indices[Locator::GetMesh()->meshes[filepath]];
+
+	SetPos(pos);
+
+	for (size_t i = 0; i < indices.size(); i += 3)
+	{
+		Triangle tri(vertices[indices[i]].pos, vertices[indices[i + 1]].pos, vertices[indices[i + 2]].pos, pos);
+
+		triangles.push_back(tri);
+	}
+}
+
+void FfModel::Destroy()
+{
+	vertices.clear();
+	indices.clear();
+	triangles.clear();
+}
+
+void FfModel::Update()
+{
+	if (Transform() == PrevTransform())
+		return;
+
+	for (size_t i = 0; i < triangles.size(); ++i)
+	{
+		triangles[i].Update(Transform().pos);
+	}
+
+	PrevTransform(Transform());
+
 }

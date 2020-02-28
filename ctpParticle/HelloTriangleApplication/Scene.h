@@ -2,6 +2,9 @@
 
 #include "App.h"
 
+#include "Camera.h"
+#include "ParticleSystem.h"
+
 struct Light
 {
 	glm::vec3 pos;
@@ -16,26 +19,27 @@ public:
 
 	void run();
 
+	void LocatorSetup();
+
 private:
+
+	ParticleSystem pSystem;
+	Camera camera;
 
 	Object object;
 	VkDescriptorSet objectDescSet;
 	VkPipeline objectPipeline;
 
-	Vertex point;
-	Buffer uniformPoint;
-	Buffer vertex;
-	Buffer size;
-	VkDescriptorSet pointDescSet;
+	VkDescriptorSet pSystemDescSet;
 
-	int pointCount = 3;
-	std::vector<Vertex> points;
-	std::vector<float> sizes;
+	std::vector<Triangle> nearestTri;
 
-	VkPipeline pointPipeline;
+	VkPipeline pSystemPipeline;
 	Texture pointTexture;
 
-	float camSpeed = 100.0f;
+	FfModel ffModel;
+
+	float zoomSpeed = 100.0f;
 	float distFromOrigin = 10.0f;
 	glm::vec3 camPos = glm::vec3(0, 3.0f, -30.0f);
 	glm::vec3 lookAtPos;
@@ -77,11 +81,12 @@ private:
 
 	void createLight();
 
+	void GetClosestTri();
+
 	void updateLight();
 
 	bool checkDistanceFromLight(glm::vec3 pos, int i);
 
 	void Cleanup();
-
 };
 

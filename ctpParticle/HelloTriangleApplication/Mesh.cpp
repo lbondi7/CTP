@@ -6,16 +6,51 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <random>
+#include <filesystem>
+#include <iostream>
 
-void Mesh::Load(const std::string& mesh)
+void Mesh::LoadFile(const std::string& mesh)
 {
+	if (meshes.find(mesh) != meshes.end())
+	{
+		std::cout << "Mesh is already loaded!" << std::endl;
+		return;
+	}
+
 	meshes[mesh] = meshCount;
 	++meshCount;
 	vertices.resize(meshCount);
 	indices.resize(meshCount);
 
-	std::string filePath = "../../../Models/" + mesh + ".obj";
+	std::string filePath = "models/" + mesh + ".obj";
 
+	LoadMesh(mesh, filePath);
+}
+
+void Mesh::LoadAll()
+{
+
+	std::string dir = "models";
+
+	for (const auto& entry : std::filesystem::directory_iterator(dir))
+	{
+		std::string mesh = entry.path().filename().string();
+
+		mesh.resize(mesh.size() - 4);
+
+		meshes[mesh] = meshCount;
+		++meshCount;
+		vertices.resize(meshCount);
+		indices.resize(meshCount);
+
+		std::string filePath = dir + "/" + mesh + ".obj";
+
+		LoadMesh(mesh, filePath);
+	}
+}
+
+void Mesh::LoadMesh(const std::string& mesh, const std::string& filePath)
+{
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
@@ -43,9 +78,9 @@ void Mesh::Load(const std::string& mesh)
 			};
 
 			vertex.normal = {
-	            attrib.normals[3 * index.normal_index + 0],
-	            attrib.normals[3 * index.normal_index + 1],
-	            attrib.normals[3 * index.normal_index + 2]
+				attrib.normals[3 * index.normal_index + 0],
+				attrib.normals[3 * index.normal_index + 1],
+				attrib.normals[3 * index.normal_index + 2]
 			};
 
 			vertex.color = { 0.8f, 0.8f, 0.8f, 0.4f };

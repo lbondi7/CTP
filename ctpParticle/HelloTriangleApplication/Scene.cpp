@@ -11,13 +11,13 @@
 #include "Image.h"
 #include "Shaders.h"
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
+//#define GLM_FORCE_RADIANS
+//#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+//#include <glm/glm.hpp>
 
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/hash.hpp>
+//#define GLM_ENABLE_EXPERIMENTAL
+//#include <glm/gtx/hash.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -31,7 +31,6 @@
 #include <array>
 #include <optional>
 #include <set>
-#include <unordered_map>
 #include <random>
 
 const int WIDTH = 800;
@@ -43,22 +42,11 @@ Scene::~Scene()
 }
 
 void Scene::run() {
+
 	initWindow();
 	initVulkan();
-	Locator::InitMeshes(new Mesh());
-	Locator::GetMesh()->Load("sphere");
-	Locator::GetMesh()->Load("cube");
-	Locator::GetMesh()->Load("cubeSkybox");
-	Locator::InitImages(new Image());
-	Locator::GetImage()->Load("texture");
-	Locator::GetImage()->Load("particle");
-	Locator::GetImage()->Load("particle2");
-	Locator::GetImage()->Load("spaceBackground3");
-	Locator::GetImage()->Load("spaceSkybox2");
-	Locator::GetImage()->Load("particle3");
-	Locator::InitShader(new Shaders());
+	LocatorSetup();
 	createDescriptorSetLayout();
-	Locator::GetDevices()->CreateCommandPool(commandPool);
 	createGraphicsPipeline();
 	LoadAssets();
 	createUniformBuffers();
@@ -67,9 +55,30 @@ void Scene::run() {
 	createCommandBuffers();
 	mainLoop();
 	Cleanup();
+
 }
 
+void Scene::LocatorSetup()
+{
+	Locator::InitMeshes(new Mesh());
+	Locator::GetMesh()->LoadAll();
+
+	Locator::InitImages(new Image());
+	Locator::GetImage()->Load("texture");
+	Locator::GetImage()->Load("particle");
+	Locator::GetImage()->Load("particle2");
+	Locator::GetImage()->Load("spaceBackground3");
+	Locator::GetImage()->Load("spaceSkybox2");
+	Locator::GetImage()->Load("particle3");
+
+	Locator::InitShader(new Shaders());
+
+	Locator::GetDevices()->CreateCommandPool(commandPool);
+}
+
+
 void Scene::mainLoop() {
+
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		Locator::GetTimer()->GetTimePoint();
@@ -127,13 +136,13 @@ void Scene::createDescriptorSets() {
 	allocInfo.descriptorSetCount = 1;
 	allocInfo.pSetLayouts = layouts.data();
 
-	if (vkAllocateDescriptorSets(device, &allocInfo, &pointDescSet) != VK_SUCCESS) {
+	if (vkAllocateDescriptorSets(device, &allocInfo, &pSystemDescSet) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate descriptor sets!");
 	}
 
 	std::vector<VkWriteDescriptorSet> descriptorWrites = {
-	VkHelper::writeDescSet(pointDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformPoint.descriptor),
-	VkHelper::writeDescSet(pointDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &pointTexture.descriptor)
+	VkHelper::writeDescSet(pSystemDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &pSystem.UBuffer().descriptor),
+	VkHelper::writeDescSet(pSystemDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &pSystem.PsTexture().descriptor)
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -175,18 +184,10 @@ void Scene::createGraphicsPipeline() {
 		VK_TRUE);
 
 	VkPipelineMultisampleStateCreateInfo multisampling =
-		VkHelper::createMultiSampling(VK_TRUE, VK_SAMPLE_COUNT_1_BIT);
+		VkHelper::createMultiSampling(VK_FALSE, VK_SAMPLE_COUNT_1_BIT);
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment =
 		VkHelper::createColourBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
-
-	colorBlendAttachment.blendEnable = VK_TRUE;
-	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	VkPipelineColorBlendStateCreateInfo colorBlending = VkHelper::createColourBlendStateInfo(
 		VK_FALSE, VK_LOGIC_OP_COPY, 1, &colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -240,6 +241,8 @@ void Scene::createGraphicsPipeline() {
 		throw std::runtime_error("failed to create graphics pipeline!");
 	}
 
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+
 	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 
 	depthStencil.depthWriteEnable = VK_FALSE;
@@ -251,9 +254,13 @@ void Scene::createGraphicsPipeline() {
 	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-	bindingDescriptions.push_back(VkHelper::createVertexBindingDescription(1, sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX));
 
-	attributeDescriptions.push_back(VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32_SFLOAT, sizeof(float)));
+	bindingDescriptions = { Particle::getBindingDescription() };
+	//bindingDescriptions.push_back(VkHelper::createVertexBindingDescription(1, sizeof(float), VK_VERTEX_INPUT_RATE_VERTEX));
+
+	attributeDescriptions = { Particle::getAttributeDescriptions() };
+
+	//attributeDescriptions.push_back(VkHelper::createVertexAttributeDescription(1, 3, VK_FORMAT_R32_SFLOAT, sizeof(float)));
 
 	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -274,7 +281,7 @@ void Scene::createGraphicsPipeline() {
 	pipelineInfo.stageCount = shaderStages.size();
 	pipelineInfo.pStages = shaderStages.data();
 
-	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pointPipeline) != VK_SUCCESS) {
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pSystemPipeline) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create graphics pipeline!");
 	}
 
@@ -305,8 +312,8 @@ void Scene::createCommandBuffers() {
 	renderPassInfo.renderArea.extent = swapchain.extent;
 
 	std::array<VkClearValue, 2> clearValues = {};
-	//clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
-	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
+	//clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -326,16 +333,14 @@ void Scene::createCommandBuffers() {
 
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
-
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], object.GetModel().index.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(object.GetModel().indices.size()), 1, 0, 0, 0);
 
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pointDescSet, 0, nullptr);
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pointPipeline);
-		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex.buffer, offsets);
-		vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, &size.buffer, offsets);
-		vkCmdDraw(commandBuffers[i], pointCount, 1, 0, 0);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pSystemDescSet, 0, nullptr);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pSystemPipeline);
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &pSystem.PBuffer().buffer, offsets);
+		vkCmdDraw(commandBuffers[i], pSystem.ParticleCount(), 1, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -357,12 +362,13 @@ glm::vec3 Scene::getFlowField(glm::vec3 pos)
 	return vel;
 }
 
-void Scene::createUniformBuffers() {
+void Scene::createUniformBuffers() 
+{
 
-	uniformPoint.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferParticle));
+	//uniformPoint.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferParticle));
 
-	uniformPoint.UpdateDescriptor(sizeof(UniformBufferParticle));
+	//uniformPoint.UpdateDescriptor(sizeof(UniformBufferParticle));
 
 	object.GetModel().uniform.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
@@ -374,21 +380,22 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 	UniformBufferParticle ubp = {};
 	ubp.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-	ubp.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubp.view = camera.ViewMatrix();
 	ubp.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.01f, 1000.0f);
 	ubp.proj[1][1] *= -1;
 
-	 uniformPoint.CopyMem(&ubp, sizeof(ubp));
+	pSystem.UBuffer().CopyMem(&ubp, sizeof(ubp));
 
+	/* uniformPoint.CopyMem(&ubp, sizeof(ubp));*/
 
 	//MoveVertex();
 
 	UniformBufferObject ubo = {};
 
-	object.GetModel().transform.pos += getFlowField(object.GetModel().transform.pos) * Locator::GetTimer()->DeltaTime();
+	//object.GetModel().transform.pos += getFlowField(object.GetModel().transform.pos) * Locator::GetTimer()->DeltaTime();
 
-	ubo.model = glm::translate(glm::mat4(1.0f), object.GetModel().transform.pos) * glm::scale(glm::mat4(1.0f), object.GetModel().transform.scale);
-	ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	ubo.model = glm::translate(glm::mat4(1.0f), object.Transform().pos) * glm::scale(glm::mat4(1.0f), object.Transform().scale);
+	ubo.view = camera.ViewMatrix();
 	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 10000.0f);
 	ubo.proj[1][1] *= -1;
 
@@ -397,58 +404,45 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 void Scene::LoadAssets()
 {
-	point.pos = { 0, 0, 0 };
-	point.color = { 1.0f, 1.0f, 1.0f, 0.5f };
-	point.texCoord = { 1, 1 };
 
-	points.resize(pointCount);
-	sizes.resize(pointCount);
+	camera.Setup(glm::vec3(0, 3.0f, -30.0f), glm::vec3(0, 0.0f, 0.0f));
 
-	std::random_device rd;
-	std::uniform_real_distribution<float> rand(-3.0f, 3.0f);
-	std::uniform_real_distribution<float> rand2(0.0f, 1.0f);
-	std::uniform_real_distribution<float> rand3(0.5f, 5.0f);
+	pSystem.Create(graphicsQueue);
 
-	for (size_t i = 0; i < pointCount; i++)
-	{
-		points[i].pos = { 0, 0, 0 };
-		//points[i].pos = { rand(rd) * 100.0f, rand(rd) * 20.0f, rand(rd) * 100.0f };
-		//points[i].color = { 65.0f / 255.0f, 0.0f / 255.0f, 211.0f / 255.0f, 0.9f };
-		points[i].color = { rand2(rd), rand2(rd), rand2(rd), rand2(rd) };
-		//points[i].color = { 0.0f, 0.0f, 1.0f, rand2(rd) };
-		sizes[i] = rand3(rd);
-	}
+	nearestTri.resize(pSystem.ParticleCount());
 
-	pointTexture.Load("particle2", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
-	vertex.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex) * pointCount);
 
-	vertex.StageBuffer(vertex.size, graphicsQueue, points.data());
+	/*pointTexture.Load("particle2", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);*/
 
-	size.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(float) * pointCount);
+	//vertex.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex) * pointCount);
 
-	size.StageBuffer(size.size, graphicsQueue, sizes.data());
+	//vertex.StageBuffer(vertex.size, graphicsQueue, points.data());
 
 	object.Init("sphere", "spaceBackground3", graphicsQueue);
 
-	object.GetModel().transform.pos = { 0, 4, 0 };
+	TransformData transform;
+	transform.pos = { 0.0f, 4.0f, 0.0f };
+	transform.scale = { 2.0f, 2.0f, 2.0f };
 
-	object.GetModel().transform.scale = { 2.0f, 2.0f, 2.0f };
-	//object.GetModel().transform.scale = { 5000.0f, 5000.0f, 5000.0f };
+	object.Transform(transform);
+
+	ffModel.Load("triangle", glm::vec3(5.0f, 5.0f, 5.0f));
+
+	GetClosestTri();
 }
 
 void Scene::MoveVertex()
 {
-	for (size_t i = 0; i < pointCount; i++)
-	{
-		points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 100.0f;
-		//sizes[i] -= Locator::GetTimer()->DeltaTime() * 100.0f;
-	}
+	//for (size_t i = 0; i < pointCount; i++)
+	//{
+	//	points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 100.0f;
+	//	//sizes[i] -= Locator::GetTimer()->DeltaTime() * 100.0f;
+	//}
 
-	vertex.CopyMem(points.data(), vertex.size);
+	//vertex.CopyMem(points.data(), vertex.size);
 	//size.CopyMem(sizes.data(), size.size);
 }
 
@@ -470,58 +464,40 @@ void Scene::drawFrame() {
 
 void Scene::Update()
 {
-	camPos = glm::vec3(sin(angleX) * distFromOrigin, sin(angleY) * distFromOrigin, cos(angleX) * distFromOrigin);
+	ffModel.Update();
+	pSystem.Update();
 
-	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_4))
-	{
-		angleX -= angleSpeed * Locator::GetTimer()->DeltaTime();
-	}
-	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_6))
-	{
-		angleX += angleSpeed * Locator::GetTimer()->DeltaTime();
-	}
+	camera.Update();
 
-	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_8) && angleY < 1.5f)
-	{
-		angleY += angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
-	}
-	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_5) && angleY > -1.5f)
-	{
-		angleY -= angleSpeed * Locator::GetTimer()->DeltaTime() * 0.5f;
-	}
-
-	//camPos *= distFromOrigin;
-
-	auto diff = camPos - glm::vec3(0, 0, 0);
-
-	diff = glm::normalize(diff);
-
-	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_7))
-	{
-		distFromOrigin += camSpeed * Locator::GetTimer()->DeltaTime();
-	}
-	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_9) && distFromOrigin > 5.0f)
-	{
-		distFromOrigin -= camSpeed * Locator::GetTimer()->DeltaTime();
-	}
-
-	camPos = diff * distFromOrigin;
 }
 
 void Scene::createLight()
 {
-	for (size_t i = 0; i < pointCount; i++)
+
+}
+
+void Scene::GetClosestTri()
+{
+	for (size_t i = 0; i < nearestTri.size(); ++i)
 	{
-		lights[i].pos = { 0, 0, 0 };
-		lights[i].radius = 20;
+		for (size_t j = 0; j < ffModel.triangles.size(); ++j)
+		{
+			if (j == 0)
+				nearestTri[i] = ffModel.triangles[j];
+			else
+			{
+				if ((pSystem.PsParticle(i).position - nearestTri[i].center).length >
+					(pSystem.PsParticle(i).position - ffModel.triangles[j].center).length)
+				{
+					nearestTri[i] = ffModel.triangles[j];
+				}
+			}
+		}
 	}
 }
 
 void Scene::updateLight()
 {
-	for (auto i = 0; i < pointCount; i++) {
-		lights[i].pos = points[i].pos;
-	}
 }
 
 bool Scene::checkDistanceFromLight(glm::vec3 pos, int i)
@@ -533,13 +509,10 @@ void Scene::Cleanup()
 {
 
 	vkDestroyPipeline(device, objectPipeline, nullptr);
-	vkDestroyPipeline(device, pointPipeline, nullptr);
-	uniformPoint.DestoryBuffer();
-	vertex.DestoryBuffer();
-	pointTexture.Destroy();
+	vkDestroyPipeline(device, pSystemPipeline, nullptr);
 
 	object.Destroy();
-
+	pSystem.Destroy();
 
 	CTPApp::cleanup();
 }

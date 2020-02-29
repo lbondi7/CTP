@@ -2,42 +2,42 @@
 
 #include "glm/glm.hpp"
 
-struct TransformData
+struct Transform
 {
 	glm::vec3 pos = {0, 0, 0};
 	glm::vec3 rot = { 0, 0, 0 };
 	glm::vec3 scale = { 1, 1, 1 };
 
 
-	bool operator==(const TransformData& other) const;
+	bool operator==(const Transform& other) const;
 
-	void operator=(const TransformData& other);
+	void operator=(const Transform& other);
 
 };
 
 
-class TransformObject
-{
-public:
-
-	TransformObject() = default;
-
-	virtual ~TransformObject() = default;
-
-	const TransformData& Transform() { return transform; }
-	void Transform(const TransformData& t) { transform = t; }
-	void SetPos(const glm::vec3& pos) { transform.pos = pos; }
-	void SetScale(const glm::vec3& scale) { transform.scale = scale; }
-	void SetRot(const glm::vec3& rot) { transform.rot = rot; }
-
-
-protected:
-
-	const TransformData& PrevTransform() { return prevTransform; }
-
-	void PrevTransform(const TransformData& t) { prevTransform = t; }
-
-private:
-	TransformData transform;
-	TransformData prevTransform;
-};
+//class TransformObject
+//{
+//public:
+//
+//	TransformObject() = default;
+//
+//	virtual ~TransformObject() = default;
+//
+//	const Transform& Transform() { return transform; }
+//	void Transform(const Transform& t) { transform = t; }
+//	void SetPos(const glm::vec3& pos) { transform.pos = pos; }
+//	void SetScale(const glm::vec3& scale) { transform.scale = scale; }
+//	void SetRot(const glm::vec3& rot) { transform.rot = rot; }
+//
+//
+//protected:
+//
+//	const Transform& PrevTransform() { return prevTransform; }
+//
+//	void PrevTransform(const Transform& t) { prevTransform = t; }
+//
+//private:
+//	Transform transform;
+//	Transform prevTransform;
+//};

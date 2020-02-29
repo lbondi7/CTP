@@ -1,11 +1,11 @@
 #include "Transform.h"
 
-bool TransformData::operator==(const TransformData& other) const
+bool Transform::operator==(const Transform& other) const
 {
 	return pos == other.pos && scale == other.scale && rot == other.rot;
 }
 
-void TransformData::operator=(const TransformData& other)
+void Transform::operator=(const Transform& other)
 {
 	pos = other.pos;
 	scale = other.scale;

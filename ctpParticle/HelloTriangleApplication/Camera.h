@@ -1,8 +1,8 @@
 #pragma once
-#include "Transform.h"
+#include "Object.h"
 
 
-class Camera : public TransformObject
+class Camera : public Object
 {
 
 public:
@@ -25,11 +25,11 @@ private:
 	glm::vec3 lookAtPos;
 	glm::mat4 viewMatrix;
 
-	float zoomSpeed = 100.0f;
+	float zoomSpeed = 10.0f;
 	float distFromOrigin = 10.0f;
 	float angleX = 0.0f;
 	float angleY = 0.0f;
-	float angleSpeed = 2.5f;
+	float angleSpeed = 5.0f;
 
 	glm::vec3 prevUp = { 0.0f, 1.0f, 0.0f };
 	glm::vec3 prevLookAtPos;

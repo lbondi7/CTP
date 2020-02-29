@@ -4,6 +4,7 @@
 
 #include "Camera.h"
 #include "ParticleSystem.h"
+#include "FlowFieldObject.h"
 
 struct Light
 {
@@ -26,26 +27,19 @@ private:
 	ParticleSystem pSystem;
 	Camera camera;
 
-	Object object;
+	GameObject object;
 	VkDescriptorSet objectDescSet;
 	VkPipeline objectPipeline;
 
 	VkDescriptorSet pSystemDescSet;
 
+	VkPipeline pSystemPipeline;
+
+	glm::mat4 perspective;
+
 	std::vector<Triangle> nearestTri;
 
-	VkPipeline pSystemPipeline;
-	Texture pointTexture;
-
-	FfModel ffModel;
-
-	float zoomSpeed = 100.0f;
-	float distFromOrigin = 10.0f;
-	glm::vec3 camPos = glm::vec3(0, 3.0f, -30.0f);
-	glm::vec3 lookAtPos;
-	float angleX = 0.0f;
-	float angleY = 0.0f;
-	float angleSpeed = 2.5f;
+	FfObject ffModel;
 
 	Light light;
 
@@ -76,6 +70,8 @@ private:
 	void MoveVertex();
 
 	void drawFrame();
+
+	void Update(size_t currentImage);
 
 	void Update();
 

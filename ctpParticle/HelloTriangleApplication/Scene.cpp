@@ -10,14 +10,16 @@
 #include "Mesh.h"
 #include "Image.h"
 #include "Shaders.h"
+#include "Constants.h"
 
-//#define GLM_FORCE_RADIANS
-//#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-//#include <glm/glm.hpp>
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/vec3.hpp>
 
 
-//#define GLM_ENABLE_EXPERIMENTAL
-//#include <glm/gtx/hash.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -32,9 +34,6 @@
 #include <optional>
 #include <set>
 #include <random>
-
-const int WIDTH = 800;
-const int HEIGHT = 600;
 
 Scene::~Scene()
 {
@@ -55,7 +54,6 @@ void Scene::run() {
 	createCommandBuffers();
 	mainLoop();
 	Cleanup();
-
 }
 
 void Scene::LocatorSetup()
@@ -81,10 +79,9 @@ void Scene::mainLoop() {
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
-		Locator::GetTimer()->GetTimePoint();
+		Locator::GetTimer()->GetTimePoint((float)glfwGetTime());
 		drawFrame();
 	}
-
 	vkDeviceWaitIdle(device);
 }
 
@@ -128,7 +125,7 @@ void Scene::createDescriptorSetLayout() {
 }
 
 void Scene::createDescriptorSets() {
-
+	
 	std::vector<VkDescriptorSetLayout> layouts(1, descriptorSetLayout);
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -183,11 +180,20 @@ void Scene::createGraphicsPipeline() {
 		VK_FRONT_FACE_COUNTER_CLOCKWISE,
 		VK_TRUE);
 
+
 	VkPipelineMultisampleStateCreateInfo multisampling =
 		VkHelper::createMultiSampling(VK_FALSE, VK_SAMPLE_COUNT_1_BIT);
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment =
 		VkHelper::createColourBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
+
+	colorBlendAttachment.blendEnable = VK_TRUE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	VkPipelineColorBlendStateCreateInfo colorBlending = VkHelper::createColourBlendStateInfo(
 		VK_FALSE, VK_LOGIC_OP_COPY, 1, &colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -378,13 +384,12 @@ void Scene::createUniformBuffers()
 
 void Scene::updateUniformBuffer(uint32_t currentImage) {
 
-	UniformBufferParticle ubp = {};
-	ubp.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-	ubp.view = camera.ViewMatrix();
-	ubp.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.01f, 1000.0f);
-	ubp.proj[1][1] *= -1;
+	//UniformBufferParticle ubp = {};
+	//ubp.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	//ubp.view = camera.ViewMatrix();
+	//ubp.proj = perspective;
 
-	pSystem.UBuffer().CopyMem(&ubp, sizeof(ubp));
+	//pSystem.UBuffer().CopyMem(&ubp, sizeof(ubp));
 
 	/* uniformPoint.CopyMem(&ubp, sizeof(ubp));*/
 
@@ -394,7 +399,7 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 	//object.GetModel().transform.pos += getFlowField(object.GetModel().transform.pos) * Locator::GetTimer()->DeltaTime();
 
-	ubo.model = glm::translate(glm::mat4(1.0f), object.Transform().pos) * glm::scale(glm::mat4(1.0f), object.Transform().scale);
+	ubo.model = glm::translate(glm::mat4(1.0f), object.GetTransform().pos) * glm::scale(glm::mat4(1.0f), object.GetTransform().scale);
 	ubo.view = camera.ViewMatrix();
 	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 10000.0f);
 	ubo.proj[1][1] *= -1;
@@ -404,46 +409,27 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 void Scene::LoadAssets()
 {
+	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 10000.0f);;
+	perspective[1][1] *= -1;
 
 	camera.Setup(glm::vec3(0, 3.0f, -30.0f), glm::vec3(0, 0.0f, 0.0f));
 
-	pSystem.Create(graphicsQueue);
+	pSystem.Create(graphicsQueue, &camera.ViewMatrix(), &perspective);
 
 	nearestTri.resize(pSystem.ParticleCount());
 
+	object.Init("cube", "spaceBackground3", graphicsQueue);
+
+	Transform transform;
+	transform.pos = { 0.0f, 5.0f, 0.0f };
+	//transform.scale = { 1.0f, 1.0f, 1.0f };
+
+	object.SetTransform(transform);
 
 
-	/*pointTexture.Load("particle2", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);*/
-
-	//vertex.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Vertex) * pointCount);
-
-	//vertex.StageBuffer(vertex.size, graphicsQueue, points.data());
-
-	object.Init("sphere", "spaceBackground3", graphicsQueue);
-
-	TransformData transform;
-	transform.pos = { 0.0f, 4.0f, 0.0f };
-	transform.scale = { 2.0f, 2.0f, 2.0f };
-
-	object.Transform(transform);
-
-	ffModel.Load("triangle", glm::vec3(5.0f, 5.0f, 5.0f));
+	ffModel.Load("sphere", glm::vec3(0.0f, 0.0f, 0.0f));
 
 	GetClosestTri();
-}
-
-void Scene::MoveVertex()
-{
-	//for (size_t i = 0; i < pointCount; i++)
-	//{
-	//	points[i].pos += getFlowField(points[i].pos) * Locator::GetTimer()->DeltaTime() * 100.0f;
-	//	//sizes[i] -= Locator::GetTimer()->DeltaTime() * 100.0f;
-	//}
-
-	//vertex.CopyMem(points.data(), vertex.size);
-	//size.CopyMem(sizes.data(), size.size);
 }
 
 void Scene::drawFrame() {
@@ -464,40 +450,51 @@ void Scene::drawFrame() {
 
 void Scene::Update()
 {
-	ffModel.Update();
+
+	float length, length2;
+	for (size_t i = 0; i < pSystem.ParticleCount(); i++)
+	{
+		length = glm::distance(pSystem.PsParticle(i).position, nearestTri[i].center);
+		length2 = glm::distance(nearestTri[i].center + (nearestTri[i].normal * 0.1f), nearestTri[i].center);
+		if (length <= length2)
+		{
+			/*pSystem.SetNewDestination(i, pSystem.PsParticle(i).position);*/
+			pSystem.PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
+		}
+	}
+
 	pSystem.Update();
 
 	camera.Update();
-
-}
-
-void Scene::createLight()
-{
-
 }
 
 void Scene::GetClosestTri()
 {
+	float nearestPoint = INFINITY;
+	float nP = INFINITY;
 	for (size_t i = 0; i < nearestTri.size(); ++i)
 	{
 		for (size_t j = 0; j < ffModel.triangles.size(); ++j)
 		{
 			if (j == 0)
+			{
+				nearestPoint = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
 				nearestTri[i] = ffModel.triangles[j];
+			}
 			else
 			{
-				if ((pSystem.PsParticle(i).position - nearestTri[i].center).length >
-					(pSystem.PsParticle(i).position - ffModel.triangles[j].center).length)
+				nP = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
+				if (nearestPoint > nP)
 				{
+					nearestPoint = nP;
 					nearestTri[i] = ffModel.triangles[j];
+					pSystem.PsParticle(i).destination = nearestTri[i].center;
+					pSystem.SetNewDestination(i, nearestTri[i].center);
 				}
 			}
 		}
 	}
-}
-
-void Scene::updateLight()
-{
+	int x = 0;
 }
 
 bool Scene::checkDistanceFromLight(glm::vec3 pos, int i)

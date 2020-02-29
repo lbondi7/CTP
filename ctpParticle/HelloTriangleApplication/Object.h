@@ -3,11 +3,30 @@
 #include "Model.h"
 #include "Texture.h"
 
-class Object : public TransformObject
+
+class Object
 {
 public:
-	Object() = default;
-	~Object() = default;
+	
+	virtual ~Object() = default;
+
+	const Transform& GetTransform() { return transform; }
+	void SetTransform(const Transform& t) { transform = t; }
+	void SetPos(const glm::vec3& pos) { transform.pos = pos; }
+	void SetScale(const glm::vec3& scale) { transform.scale = scale; }
+	void SetRot(const glm::vec3& rot) { transform.rot = rot; }
+
+protected:
+
+	Transform transform;
+
+};
+
+class GameObject : public Object
+{
+public:
+	GameObject() = default;
+	~GameObject() = default;
 
 	void Init(const char* _model, const char* _texture, VkQueue queue);
 

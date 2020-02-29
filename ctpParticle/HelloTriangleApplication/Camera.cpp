@@ -4,15 +4,20 @@
 #include "Keyboard.h"
 #include "Timer.h"
 
-#define GLM_ENABLE_RADIANS
-
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
 void Camera::Setup(const glm::vec3& pos, const glm::vec3& lookAt)
 {
-	SetPos(pos);
+	transform.pos = pos;
 	lookAtPos = lookAt;
+
+	auto diff = glm::vec3(sin(angleX) * distFromOrigin, sin(angleY) * distFromOrigin, cos(angleX) * distFromOrigin)
+		- lookAtPos;
+
+	diff = glm::normalize(diff);
+	transform.pos =  diff * distFromOrigin;
+	viewMatrix = glm::lookAt(transform.pos, lookAtPos, up);
 }
 
 void Camera::Update()
@@ -49,16 +54,7 @@ void Camera::Update()
 
 	diff = glm::normalize(diff);
 
-	SetPos(diff * distFromOrigin);
+	transform.pos = diff * distFromOrigin;
 
-	if (PrevTransform() == Transform() && lookAtPos == prevLookAtPos && up == prevUp)
-		return;
-
-	viewMatrix = glm::lookAt(Transform().pos, lookAtPos, up);
-
-	PrevTransform(Transform());
-
-	prevLookAtPos = lookAtPos;
-
-	prevUp = up;
+	viewMatrix = glm::lookAt(transform.pos, lookAtPos, up);
 }

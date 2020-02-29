@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Object.h"
 #include "Buffer.h"
-#include "Texture.h"
 #include "VkHelper.h"
 
 #include "glm//glm.hpp"
@@ -11,6 +11,8 @@ struct Particle
 {
 	glm::vec3 position;
 	glm::vec3 velocity;
+
+	glm::vec3 destination;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
 		return VkHelper::createVertexBindingDescription(0, sizeof(Particle), VK_VERTEX_INPUT_RATE_VERTEX);
@@ -31,7 +33,7 @@ struct Particle
 	//}
 };
 
-class ParticleSystem
+class ParticleSystem : public Object
 {
 public:
 
@@ -40,12 +42,13 @@ public:
 
 	void Create(int _amount, VkQueue graphicsQueue);
 
-	void Create(VkQueue graphicsQueue);
+	void Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::mat4* _perspective);
 
 	void Update();
 
-	void Destroy();
+	void UpdateBuffers();
 
+	void Destroy();
 
 	int ParticleCount() { return amount; }
 
@@ -55,21 +58,31 @@ public:
 
 	Buffer& UBuffer() { return uniformBuffer; }
 
-
-	std::vector<Particle>& PsParticles(int i) { return particles; }
+	std::vector<Particle>& PsParticles() { return particles; }
 	
-	const std::vector<Particle>& ConstPsParticles(int i) { return particles; }
+	const std::vector<Particle>& ConstPsParticles() { return particles; }
 
 	Particle& PsParticle(int i) { return particles[i]; }
 
+	void SetNewDestination(int i, const glm::vec3& newDest);
+
+
 private:
 
-	int amount = 2000000;
+	int amount = 1000;
 
 	std::vector<Particle> particles;
 
 	Buffer particleBuffer;
 	Buffer uniformBuffer;
 	Texture texture;
+
+	glm::vec3 pos;
+
+	const glm::mat4* view = nullptr;
+	glm::mat4* perspective = nullptr;
+
+	UniformBufferParticle ubp;
+
 };
 

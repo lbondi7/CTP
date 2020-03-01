@@ -10,10 +10,13 @@ layout(binding = 0) uniform UniformBufferParticle {
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inVelocity;
+layout(location = 2) in float inAlpha;
 
+layout(location = 0) out float outAlpha;
 //layout(location = 0) out vec4 fragColor;
 
 void main() {    
 
 	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1);
+    outAlpha = inAlpha;
 }

@@ -3,6 +3,7 @@
 #include "VkConstants.h"
 #include "Locator.h"
 #include "Timer.h"
+#include "Keyboard.h"
 
 #include <random>
 
@@ -22,16 +23,19 @@ void ParticleSystem::Create(int _amount, VkQueue graphicsQueue)
 void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::mat4* _perspective)
 {
 	std::random_device rd;
-	std::uniform_real_distribution<float> rand(-100.0f, 100.0f);
+	std::uniform_real_distribution<float> rand(-150.0f, 150.0f);
+	//std::uniform_int_distribution<int> rand(-100, 100);
+	std::uniform_real_distribution<float> rand2(1.0f, 10.0f);
 
 	particles.resize(amount);
 
 	for (size_t i = 0; i < amount; ++i)
 	{
+		//particles[i].position = { 100, 0.0f, 100 };
 		particles[i].position = { rand(rd), rand(rd), rand(rd) };
-		//particles[i].position = { 0.0f + rand(rd), 0.0f + rand(rd), 0.0f + rand(rd) };
 		//particles[i].position = { i - 2.0f, i + i + 2.0f, i + i + 2.0f };
 		particles[i].velocity = { 0.0f, 0.0f, 0.0f };
+		particles[i].maxLife = rand2(rd);
 	}
 
 	particleBuffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -67,8 +71,27 @@ void ParticleSystem::Update()
 {
 	for (size_t i = 0; i < amount; ++i)
 	{
-		float go = Locator::GetTimer()->FixedDeltaTime();
-		particles[i].position += particles[i].velocity * Locator::GetTimer()->FixedDeltaTime();
+		particles[i].position += particles[i].velocity * Locator::GetTimer()->DeltaTime();
+
+		particles[i].alpha = 0.5f - ((particles[i].life / particles[i].maxLife) * 0.5f);
+
+		//if (particles[i].life >= (particles[i].maxLife - 0.8f))
+		//	particles[i].alpha = (particles[i].maxLife - particles[i].life);
+		if (!lifeEnabled)
+			continue;
+
+		particles[i].life += Locator::GetTimer()->DeltaTime();
+		if (particles[i].life >= particles[i].maxLife)
+		{
+			std::random_device rd;
+			std::uniform_real_distribution<float> rand(-5.0f, 5.0f);
+			std::uniform_real_distribution<float> rand2(1.0f, 10.0f);
+
+			particles[i].position = { rand(rd), rand(rd), rand(rd) };
+
+			particles[i].life = 0.0f;
+			particles[i].maxLife = rand2(rd);
+		}
 	}
 
 	ubp.model = glm::translate(glm::mat4(1.0f),  glm::vec3(0, 0, 0));
@@ -95,7 +118,7 @@ void ParticleSystem::Destroy()
 	particles.clear();
 }
 
-void ParticleSystem::SetNewDestination(int i, const glm::vec3& newDest)
+void ParticleSystem::SetNewTarget(int i, const glm::vec3& newDest)
 {
-	particles[i].velocity = glm::normalize(newDest - particles[i].position) * 1000.0f;
+	particles[i].velocity = glm::normalize(newDest - particles[i].position) * 10.0f;
 }

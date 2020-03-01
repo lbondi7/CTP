@@ -7,8 +7,7 @@ Timer::Timer()
 
 float Timer::FixedDeltaTime()
 {
-	float delta = std::chrono::duration<float_t, std::ratio<1, 60>>().count();
-	return delta;
+	return 1.0f / 60.0f;
 }
 
 float Timer::DeltaTime()

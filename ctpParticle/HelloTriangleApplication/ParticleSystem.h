@@ -11,8 +11,13 @@ struct Particle
 {
 	glm::vec3 position;
 	glm::vec3 velocity;
+	float alpha = 0.25f;
 
-	glm::vec3 destination;
+	float life = 0.0f;
+	float maxLife = 10.0f;
+	glm::vec3 target;
+	bool goToTri = false;
+	float ranDirDuration = 0.0f;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
 		return VkHelper::createVertexBindingDescription(0, sizeof(Particle), VK_VERTEX_INPUT_RATE_VERTEX);
@@ -22,7 +27,8 @@ struct Particle
 
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
 		VkHelper::createVertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Particle, position)),
-		VkHelper::createVertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Particle, velocity))
+		VkHelper::createVertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Particle, velocity)),
+		VkHelper::createVertexAttributeDescription(0, 2, VK_FORMAT_R32_SFLOAT, offsetof(Particle, alpha))
 		};
 
 		return attributeDescriptions;
@@ -64,12 +70,12 @@ public:
 
 	Particle& PsParticle(int i) { return particles[i]; }
 
-	void SetNewDestination(int i, const glm::vec3& newDest);
+	void SetNewTarget(int i, const glm::vec3& newDest);
 
 
 private:
 
-	int amount = 1000;
+	int amount = 50000;
 
 	std::vector<Particle> particles;
 
@@ -84,5 +90,6 @@ private:
 
 	UniformBufferParticle ubp;
 
+	bool lifeEnabled = false;
 };
 

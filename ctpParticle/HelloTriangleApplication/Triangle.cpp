@@ -43,7 +43,7 @@ void Triangle::Update(const glm::vec3& p)
 
     center = (vertices[0] + vertices[1] + vertices[2]) / 3.0f;
 
-    normal = glm::normalize(glm::cross(edges[0], edges[1]));
+    normal = glm::cross(edges[0], edges[1]);
 }
 
 float Triangle::udTriangle(glm::vec3 p)

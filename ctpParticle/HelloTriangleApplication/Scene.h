@@ -75,9 +75,13 @@ private:
 
 	void Update();
 
+	void CheckParticles();
+
 	void createLight();
 
 	void GetClosestTri();
+
+	void GetClosestTri(size_t i);
 
 	void updateLight();
 

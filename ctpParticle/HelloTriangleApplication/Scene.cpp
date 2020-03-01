@@ -34,6 +34,10 @@
 #include <optional>
 #include <set>
 #include <random>
+#include <thread>
+#include <mutex>
+
+using namespace std::chrono_literals;
 
 Scene::~Scene()
 {
@@ -81,6 +85,11 @@ void Scene::mainLoop() {
 		glfwPollEvents();
 		Locator::GetTimer()->GetTimePoint((float)glfwGetTime());
 		drawFrame();
+		
+		if(renderCount > 0)
+			renderCount--;
+
+		std::this_thread::sleep_for(10ms);
 	}
 	vkDeviceWaitIdle(device);
 }
@@ -318,8 +327,8 @@ void Scene::createCommandBuffers() {
 	renderPassInfo.renderArea.extent = swapchain.extent;
 
 	std::array<VkClearValue, 2> clearValues = {};
-	clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
-	//clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	//clearValues[0].color = { 100.0f / 255.0f, 149.0f / 255.0f, 237.0f / 255.0f, 1.0f };
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -401,10 +410,64 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 	ubo.model = glm::translate(glm::mat4(1.0f), object.GetTransform().pos) * glm::scale(glm::mat4(1.0f), object.GetTransform().scale);
 	ubo.view = camera.ViewMatrix();
-	ubo.proj = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 10000.0f);
-	ubo.proj[1][1] *= -1;
+	ubo.proj = perspective;
 
 	object.GetModel().uniform.CopyMem(&ubo, sizeof(ubo));
+}
+
+void GetNearestTri(size_t i, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+{
+	if ((*pSystem).PsParticle(i).goToTri)
+		return;
+
+	std::mutex mut;
+	float nearestPoint = INFINITY;
+	float nP = INFINITY;
+	for (size_t j = 0; j < (*ffModel).triangles.size(); ++j)
+	{
+		if (j == 0)
+		{
+			nearestPoint = ffModel->triangles[j].udTriangle((*pSystem).PsParticle(i).position);
+			std::lock_guard<std::mutex> lock(mut);
+			(*nearestTri)[i] = (*ffModel).triangles[j];
+		}
+		else
+		{
+			nP = (*ffModel).triangles[j].udTriangle((*pSystem).PsParticle(i).position);
+			if (nearestPoint > nP)
+			{
+				nearestPoint = nP;
+				std::lock_guard<std::mutex> lock(mut);
+				(*nearestTri)[i] = (*ffModel).triangles[j];
+			}
+		}
+	}
+}
+
+void FindTri(std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+{
+	std::mutex mut;
+	bool first = true;
+
+	while (true)
+	{
+		for (size_t i = 0; i < pSystem->ParticleCount(); ++i)
+		{
+			GetNearestTri(i, nearestTri, ffModel, pSystem);
+		}
+		if (first)
+		{
+			for (size_t i = 0; i < pSystem->ParticleCount(); ++i)
+			{
+				std::lock_guard<std::mutex> lock(mut);
+				(*pSystem).PsParticle(i).goToTri = true;
+			}
+			first = false;
+		}
+
+		std::this_thread::sleep_for(1000ms);
+	}
+
 }
 
 void Scene::LoadAssets()
@@ -418,18 +481,212 @@ void Scene::LoadAssets()
 
 	nearestTri.resize(pSystem.ParticleCount());
 
-	object.Init("cube", "spaceBackground3", graphicsQueue);
+	object.Init("lambo", "spaceBackground3", graphicsQueue);
 
 	Transform transform;
-	transform.pos = { 0.0f, 5.0f, 0.0f };
+	transform.pos = { 0.0f, 20.0f, 0.0f };
 	//transform.scale = { 1.0f, 1.0f, 1.0f };
 
 	object.SetTransform(transform);
 
 
-	ffModel.Load("sphere", glm::vec3(0.0f, 0.0f, 0.0f));
+	ffModel.Load("bunny", glm::vec3(0.0f, 0.0f, 0.0f));
 
 	GetClosestTri();
+
+	std::thread th(FindTri, &nearestTri, &ffModel, &pSystem);
+	th.detach();
+}
+
+void Scene::Update()
+{
+
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_SPACE))
+	{
+		for (size_t i = 0; i < pSystem.ParticleCount(); i++)
+		{
+			pSystem.PsParticle(i).goToTri = false;
+			pSystem.PsParticle(i).ranDirDuration = 4.0f;
+
+			std::random_device rd;
+			std::uniform_real_distribution<float> rand(-5.0f, 5.0f);
+			pSystem.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
+
+		}
+	}
+	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_H))
+	{
+		for (size_t i = 0; i < pSystem.ParticleCount(); i++)
+		{
+			pSystem.PsParticle(i).goToTri = false;
+			pSystem.PsParticle(i).ranDirDuration = 4.0f;
+
+			std::random_device rd;
+			std::uniform_real_distribution<float> rand(0.0f, 5.0f);
+
+			pSystem.PsParticle(i).velocity = glm::normalize(pSystem.PsParticle(i).position - ffModel.GetTransform().pos) * rand(rd);
+
+		}
+	}
+	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_J))
+	{
+		for (size_t i = 0; i < pSystem.ParticleCount(); i++)
+		{
+			pSystem.PsParticle(i).goToTri = false;
+			pSystem.PsParticle(i).ranDirDuration = 4.0f;
+
+			std::random_device rd;
+			std::uniform_real_distribution<float> rand(0.0f, 5.0f);
+
+			pSystem.PsParticle(i).velocity = glm::normalize(ffModel.GetTransform().pos - pSystem.PsParticle(i).position) * rand(rd);
+
+		}
+	}
+
+	CheckParticles();
+
+	pSystem.Update();
+
+	camera.Update();
+}
+
+void Scene::CheckParticles()
+{
+	float length, length2;
+	for (size_t i = 0; i < pSystem.ParticleCount(); i++)
+	{
+		if (pSystem.PsParticle(i).goToTri)
+		{
+			length = glm::distance(pSystem.PsParticle(i).position, pSystem.PsParticle(i).target);
+			length2 = glm::distance(pSystem.PsParticle(i).target + (nearestTri[i].normal), pSystem.PsParticle(i).target);
+			if (length < length2)
+			{
+				std::random_device rd;
+				std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
+				std::uniform_real_distribution<float> rand2(0.05f, 0.1f);
+				//pSystem.SetNewTarget(i, glm::vec3(rand(rd), rand(rd), rand(rd)));
+				pSystem.PsParticle(i).goToTri = false;
+				pSystem.PsParticle(i).ranDirDuration = rand2(rd);
+				/*pSystem.SetNewDestination(i, pSystem.PsParticle(i).position);*/
+				pSystem.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
+
+			}
+		}
+		else
+		{
+			if (pSystem.PsParticle(i).ranDirDuration <= 0.0f)
+			{
+				pSystem.PsParticle(i).target = nearestTri[i].center;
+				pSystem.SetNewTarget(i, nearestTri[i].center);
+				pSystem.PsParticle(i).goToTri = true;
+			}
+			pSystem.PsParticle(i).ranDirDuration -= Locator::GetTimer()->DeltaTime();
+		}
+	}
+}
+
+void GetTri(int minVal, int maxVal, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+{
+	float nearestPoint = INFINITY;
+	float nP = INFINITY;
+
+	for (size_t i = minVal; i < maxVal; ++i)
+	{
+		for (size_t j = 0; j < (*ffModel).triangles.size(); ++j)
+		{
+			if (j == 0)
+			{
+				nearestPoint = (*ffModel).triangles[j].udTriangle((*pSystem).PsParticle(i).position);
+				(*nearestTri)[i] = (*ffModel).triangles[j];
+			}
+			else
+			{
+				nP = (*ffModel).triangles[j].udTriangle((*pSystem).PsParticle(i).position);
+				if (nearestPoint > nP)
+				{
+					nearestPoint = nP;
+					(*nearestTri)[i] = (*ffModel).triangles[j];
+					(*pSystem).PsParticle(i).target = (*nearestTri)[i].center;
+					(*pSystem).SetNewTarget(i, (*nearestTri)[i].center);
+					(*pSystem).PsParticle(i).goToTri = true;
+				}
+			}
+		}
+		std::this_thread::sleep_for(50ms);
+	}
+}
+
+void Scene::GetClosestTri()
+{
+
+	//float nearestPoint = INFINITY;
+	//float nP = INFINITY;
+	int interval = pSystem.ParticleCount() / int(pSystem.ParticleCount() / 100);
+
+	for (size_t i = 0; i < pSystem.ParticleCount(); i += interval)
+	{
+		if (i + interval > pSystem.ParticleCount())
+			interval = pSystem.ParticleCount() - i;
+
+		std::thread th(GetTri, i, i + interval, &nearestTri, &ffModel, &pSystem);
+
+		if (i > pSystem.ParticleCount() - (interval + 10))
+			th.join();
+		else
+			th.detach();
+	}
+
+	//float nearestPoint = INFINITY;
+	//float nP = INFINITY;
+	//for (size_t i = 0; i < pSystem.ParticleCount(); ++i)
+	//{
+	//	for (size_t j = 0; j < ffModel.triangles.size(); ++j)
+	//	{
+	//		if (j == 0)
+	//		{
+	//			nearestPoint = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
+	//			nearestTri[i] = ffModel.triangles[j];
+	//		}
+	//		else
+	//		{
+	//			nP = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
+	//			if (nearestPoint > nP)
+	//			{
+	//				nearestPoint = nP;
+	//				nearestTri[i] = ffModel.triangles[j];
+	//				pSystem.PsParticle(i).target = nearestTri[i].center;
+	//				pSystem.SetNewTarget(i, nearestTri[i].center);
+	//				pSystem.PsParticle(i).goToTri = true;
+	//			}
+	//		}
+	//	}
+	//}
+}
+
+void Scene::GetClosestTri(size_t i)
+{
+	float nearestPoint = INFINITY;
+	float nP = INFINITY;
+	for (size_t j = 0; j < ffModel.triangles.size(); ++j)
+	{
+		if (j == 0)
+		{
+			nearestPoint = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
+			nearestTri[i] = ffModel.triangles[j];
+		}
+		else
+		{
+			nP = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
+			if (nearestPoint > nP)
+			{
+				nearestPoint = nP;
+				nearestTri[i] = ffModel.triangles[j];
+				pSystem.PsParticle(i).target = nearestTri[i].center;
+				pSystem.SetNewTarget(i, nearestTri[i].center);
+				pSystem.PsParticle(i).goToTri = true;
+			}
+		}
+	}
 }
 
 void Scene::drawFrame() {
@@ -439,62 +696,14 @@ void Scene::drawFrame() {
 	/* Updating obejcts*/
 	/////////////////////
 
-	Update();
-	//updateInstanceBuffer();
-	//scene.Update(imageIndex);
-	updateUniformBuffer(imageIndex);
-	//VkHelper::copyMemory(device, sizeof(ubo), uniformBuffersMemory[currentImage], &ubo);
+	if (renderCount <= 0)
+	{
+		Update();
+
+		updateUniformBuffer(imageIndex);
+	}
 
 	endFrame(imageIndex);
-}
-
-void Scene::Update()
-{
-
-	float length, length2;
-	for (size_t i = 0; i < pSystem.ParticleCount(); i++)
-	{
-		length = glm::distance(pSystem.PsParticle(i).position, nearestTri[i].center);
-		length2 = glm::distance(nearestTri[i].center + (nearestTri[i].normal * 0.1f), nearestTri[i].center);
-		if (length <= length2)
-		{
-			/*pSystem.SetNewDestination(i, pSystem.PsParticle(i).position);*/
-			pSystem.PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
-		}
-	}
-
-	pSystem.Update();
-
-	camera.Update();
-}
-
-void Scene::GetClosestTri()
-{
-	float nearestPoint = INFINITY;
-	float nP = INFINITY;
-	for (size_t i = 0; i < nearestTri.size(); ++i)
-	{
-		for (size_t j = 0; j < ffModel.triangles.size(); ++j)
-		{
-			if (j == 0)
-			{
-				nearestPoint = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
-				nearestTri[i] = ffModel.triangles[j];
-			}
-			else
-			{
-				nP = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
-				if (nearestPoint > nP)
-				{
-					nearestPoint = nP;
-					nearestTri[i] = ffModel.triangles[j];
-					pSystem.PsParticle(i).destination = nearestTri[i].center;
-					pSystem.SetNewDestination(i, nearestTri[i].center);
-				}
-			}
-		}
-	}
-	int x = 0;
 }
 
 bool Scene::checkDistanceFromLight(glm::vec3 pos, int i)

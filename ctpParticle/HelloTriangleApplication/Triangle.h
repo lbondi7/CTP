@@ -22,5 +22,7 @@ struct Triangle
 	std::array<glm::vec3, 3> localVertices;
 	std::array<glm::vec3, 3> vertices;
 	std::array<glm::vec3, 3> edges;
+	glm::vec3 min;
+	glm::vec3 max;
 };
 

@@ -9,7 +9,10 @@
 #include <filesystem>
 #include <iostream>
 #include <thread>
+#include <future>
 #include <mutex>
+
+std::mutex mut;
 
 void Mesh::LoadFile(const std::string& mesh)
 {
@@ -29,21 +32,19 @@ void Mesh::LoadFile(const std::string& mesh)
 	LoadMesh(mesh, filePath);
 }
 
-void LoadMeshes(std::string* mesh, std::string* filePath,
-	std::vector< std::vector<Vertex>>* vertices, std::vector< std::vector<uint32_t>>* indices, std::map<std::string, int>* meshes)
+void LoadMeshes(std::string filePath,
+	std::vector< std::vector<Vertex>>* vertices, std::vector< std::vector<uint32_t>>* indices, int mesh, int* modelsReady)
 {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
 	std::string warn, err;
 
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, (*filePath).c_str())) {
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filePath.c_str())) {
 		throw std::runtime_error(warn + err);
 	}
 
 	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
-
-	std::mutex mut;
 
 	for (const auto& shape : shapes) {
 		for (const auto& index : shape.mesh.indices) {
@@ -70,13 +71,16 @@ void LoadMeshes(std::string* mesh, std::string* filePath,
 
 			//std::lock_guard<std::mutex> lock(mut);
 			if (uniqueVertices.count(vertex) == 0) {
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices[(*meshes)[(*mesh)]].size());
-				(*vertices)[(*meshes)[(*mesh)]].push_back(vertex);
+				uniqueVertices[vertex] = static_cast<uint32_t>((*vertices)[mesh].size());
+				(*vertices)[mesh].push_back(vertex);
 			}
 
-			(*indices)[(*meshes)[(*mesh)]].push_back(uniqueVertices[vertex]);
+			(*indices)[mesh].push_back(uniqueVertices[vertex]);
 		}
 	}
+
+	std::lock_guard<std::mutex> lock(mut);
+	(*modelsReady)++;
 }
 
 void Mesh::LoadAll()
@@ -100,17 +104,20 @@ void Mesh::LoadAll()
 		LoadMesh(mesh, filePath);
 	}
 
+	//int modelsReady = 0;
 	//for (const auto& entry : std::filesystem::directory_iterator(dir))
 	//{
 	//	std::string mesh = entry.path().filename().string();
 	//	mesh.resize(mesh.size() - 4);
 	//	std::string filePath = dir + "/" + mesh + ".obj";
-	//	std::thread th(LoadMeshes, &mesh, &filePath, &vertices, &indices, &meshes);
-	//	if (std::filesystem::directory_iterator(dir)._At_end())
-	//		th.join();
-	//	else
-	//		th.detach();
+	//	std::thread th(LoadMeshes, filePath, &vertices, &indices, meshes[mesh], &modelsReady);
+	//	//if (modelCount == (meshCount - 1))
+	//	//	th.join();
+	//	//else
+	//	th.join();
 	//}
+
+
 }
 
 void Mesh::LoadMesh(const std::string& mesh, const std::string& filePath)

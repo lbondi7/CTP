@@ -196,13 +196,13 @@ void Scene::createGraphicsPipeline() {
 	VkPipelineColorBlendAttachmentState colorBlendAttachment =
 		VkHelper::createColourBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
 
-	colorBlendAttachment.blendEnable = VK_TRUE;
-	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+	//colorBlendAttachment.blendEnable = VK_TRUE;
+	//colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	//colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	//colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	//colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	//colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	//colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
 	VkPipelineColorBlendStateCreateInfo colorBlending = VkHelper::createColourBlendStateInfo(
 		VK_FALSE, VK_LOGIC_OP_COPY, 1, &colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -465,7 +465,7 @@ void FindTri(std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSyste
 			first = false;
 		}
 
-		std::this_thread::sleep_for(1000ms);
+		std::this_thread::sleep_for(50ms);
 	}
 
 }
@@ -481,16 +481,16 @@ void Scene::LoadAssets()
 
 	nearestTri.resize(pSystem.ParticleCount());
 
-	object.Init("lambo", "spaceBackground3", graphicsQueue);
+	object.Init("sphere", "spaceBackground3", graphicsQueue);
 
 	Transform transform;
-	transform.pos = { 0.0f, 20.0f, 0.0f };
+	transform.pos = { 0.0f, 5.0f, 0.0f };
 	//transform.scale = { 1.0f, 1.0f, 1.0f };
 
 	object.SetTransform(transform);
 
 
-	ffModel.Load("bunny", glm::vec3(0.0f, 0.0f, 0.0f));
+	ffModel.Load("dog", glm::vec3(0.0f, 0.0f, 0.0f));
 
 	GetClosestTri();
 
@@ -612,7 +612,7 @@ void GetTri(int minVal, int maxVal, std::vector<Triangle>* nearestTri, FfObject*
 				}
 			}
 		}
-		std::this_thread::sleep_for(50ms);
+		std::this_thread::sleep_for(5ms);
 	}
 }
 
@@ -621,7 +621,11 @@ void Scene::GetClosestTri()
 
 	//float nearestPoint = INFINITY;
 	//float nP = INFINITY;
-	int interval = pSystem.ParticleCount() / int(pSystem.ParticleCount() / 100);
+	int interval;
+	if (pSystem.ParticleCount() > 1000)
+		interval = pSystem.ParticleCount() / (pSystem.ParticleCount() / 100);
+	else
+		interval = pSystem.ParticleCount();
 
 	for (size_t i = 0; i < pSystem.ParticleCount(); i += interval)
 	{

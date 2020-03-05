@@ -39,7 +39,7 @@ protected:
 
 	bool framebufferResized = false;
 
-	int renderCount = 10;
+	int updateDelay = 10;
 
 	std::vector<VkViewport> m_Viewports;
 	std::vector<VkRect2D> m_ScissorRects;

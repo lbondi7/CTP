@@ -7,13 +7,14 @@
 #include <optional>
 
 #ifdef NDEBUG
-const bool enableValidationLayers = false;
+const bool enableValidationLayers = true;
 #else
 const bool enableValidationLayers = true;
 #endif
 
 const std::vector<const char*> validationLayers = {
-	"VK_LAYER_KHRONOS_validation"
+	"VK_LAYER_KHRONOS_validation",
+	"VK_LAYER_LUNARG_monitor"
 };
 
 const std::vector<const char*> deviceExtensions = {

@@ -86,8 +86,8 @@ void Scene::mainLoop() {
 		Locator::GetTimer()->GetTimePoint((float)glfwGetTime());
 		drawFrame();
 		
-		if(renderCount > 0)
-			renderCount--;
+		if(updateDelay > 0)
+			updateDelay--;
 
 		std::this_thread::sleep_for(10ms);
 	}
@@ -490,7 +490,7 @@ void Scene::LoadAssets()
 	object.SetTransform(transform);
 
 
-	ffModel.Load("dog", glm::vec3(0.0f, 0.0f, 0.0f));
+	ffModel.Load("bunny", glm::vec3(0.0f, 0.0f, 0.0f));
 
 	GetClosestTri();
 
@@ -559,6 +559,7 @@ void Scene::CheckParticles()
 		{
 			length = glm::distance(pSystem.PsParticle(i).position, pSystem.PsParticle(i).target);
 			length2 = glm::distance(pSystem.PsParticle(i).target + (nearestTri[i].normal), pSystem.PsParticle(i).target);
+			//std::cout << i << ", " << length << ", " << length2 << std::endl;
 			if (length < length2)
 			{
 				std::random_device rd;
@@ -700,7 +701,7 @@ void Scene::drawFrame() {
 	/* Updating obejcts*/
 	/////////////////////
 
-	if (renderCount <= 0)
+	if (updateDelay <= 0)
 	{
 		Update();
 

@@ -23,6 +23,7 @@ void ParticleSystem::Create(int _amount, VkQueue graphicsQueue)
 void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::mat4* _perspective)
 {
 	std::random_device rd;
+	std::mt19937 mt;
 	std::uniform_real_distribution<float> rand(-150.0f, 150.0f);
 	//std::uniform_int_distribution<int> rand(-100, 100);
 	std::uniform_real_distribution<float> rand2(1.0f, 10.0f);
@@ -32,7 +33,8 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 	for (size_t i = 0; i < amount; ++i)
 	{
 		//particles[i].position = { 100, 0.0f, 100 };
-		particles[i].position = { rand(rd), rand(rd), rand(rd) };
+		particles[i].position = { rand(mt), rand(mt), rand(mt) };
+		//particles[i].position = { 0, -5, 0 };
 		//particles[i].position = { i - 2.0f, i + i + 2.0f, i + i + 2.0f };
 		particles[i].velocity = { 0.0f, 0.0f, 0.0f };
 		particles[i].maxLife = rand2(rd);

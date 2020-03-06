@@ -114,6 +114,8 @@ void Scene::createDescriptorSetLayout() {
 	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoutBinding(0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT);
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
+	
+	VkDescriptorSetLayoutBinding lightLayoutBinding = VkHelper::createDescriptorLayoutBinding(2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
@@ -159,7 +161,7 @@ void Scene::createDescriptorSets() {
 
 	descriptorWrites = {
 	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &object.GetModel().uniform.descriptor),
-	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor)
+	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor),
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -227,12 +229,18 @@ void Scene::createGraphicsPipeline() {
 	pipelineInfo.pDepthStencilState = &depthStencil;
 	
 	std::vector<VkVertexInputBindingDescription> bindingDescriptions = {
-		Vertex::getBindingDescription()
+		Vertex::getBindingDescription(),
+		Light::getBindingDescription()
 	};
 
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
-		Vertex::getAttributeDescriptions()
+		Vertex::getAttributeDescriptions(),
+
 	};
+
+	attributeDescriptions.emplace_back(Light::getAttributeDescriptions()[0]);
+	attributeDescriptions.emplace_back(Light::getAttributeDescriptions()[1]);
+	attributeDescriptions.emplace_back(Light::getAttributeDescriptions()[2]);
 
 	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -347,8 +355,10 @@ void Scene::createCommandBuffers() {
 		VkDeviceSize offsets[] = { 0 };
 
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
+		//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &lightDescSet, 0, nullptr);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
+		vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, &lightBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], object.GetModel().index.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(object.GetModel().indices.size()), 1, 0, 0, 0);
 
@@ -385,6 +395,11 @@ void Scene::createUniformBuffers()
 
 	//uniformPoint.UpdateDescriptor(sizeof(UniformBufferParticle));
 
+	lightBuffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light));
+
+	lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, &light);
+
 	object.GetModel().uniform.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
 
@@ -397,6 +412,10 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	//ubp.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
 	//ubp.view = camera.ViewMatrix();
 	//ubp.proj = perspective;
+
+
+
+	//lightBuffer.CopyMem(&light, sizeof(Light));
 
 	//pSystem.UBuffer().CopyMem(&ubp, sizeof(ubp));
 
@@ -472,25 +491,37 @@ void FindTri(std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSyste
 
 void Scene::LoadAssets()
 {
-	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 10000.0f);;
+	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 10000.0f);
 	perspective[1][1] *= -1;
 
 	camera.Setup(glm::vec3(0, 3.0f, -30.0f), glm::vec3(0, 0.0f, 0.0f));
 
 	pSystem.Create(graphicsQueue, &camera.ViewMatrix(), &perspective);
 
+	light.pos = glm::vec3(0.0f, 0.0f, 0.0f);
+	light.colour = glm::vec4(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f, 100.0f);
+	light.atten = glm::vec3(10.0f, 1.0f, 10.0f);
+
 	nearestTri.resize(pSystem.ParticleCount());
 
 	object.Init("sphere", "spaceBackground3", graphicsQueue);
 
 	Transform transform;
-	transform.pos = { 0.0f, 5.0f, 0.0f };
+	transform.pos = { 0.0f, 2.0f, 0.0f };
 	//transform.scale = { 1.0f, 1.0f, 1.0f };
 
 	object.SetTransform(transform);
 
+	lights.resize(object.GetModel().vertices.size());
 
-	ffModel.Load("bunny", glm::vec3(0.0f, 0.0f, 0.0f));
+	for (size_t i = 0; i < object.GetModel().vertices.size(); i++)
+	{
+		//lights[i].colour = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
+		//lights[i].intensity = 1.0f;
+	}
+
+
+	ffModel.Load("cube", glm::vec3(0.0f, 0.0f, 0.0f));
 
 	GetClosestTri();
 
@@ -713,7 +744,7 @@ void Scene::drawFrame() {
 
 bool Scene::checkDistanceFromLight(glm::vec3 pos, int i)
 {
-	return glm::distance(pos, lights[i].pos) < lights[i].radius;
+	return true;
 }
 
 void Scene::Cleanup()

@@ -27,8 +27,9 @@ struct Vertex {
 
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = { 
 		VkHelper::createVertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)),
-		VkHelper::createVertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, color)),
-		VkHelper::createVertexAttributeDescription(0, 2, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord))
+		VkHelper::createVertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal)),
+		VkHelper::createVertexAttributeDescription(0, 2, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, color)),
+		VkHelper::createVertexAttributeDescription(0, 3, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord))
 		};
 
 		return attributeDescriptions;
@@ -39,23 +40,18 @@ struct Vertex {
 	}
 };
 
-namespace std {
-	template<> struct hash<Vertex> {
-		size_t operator()(Vertex const& vertex) const {
-			return ((hash<glm::vec3>()(vertex.pos) ^ 
-				(hash<glm::vec4>()(vertex.color) << 1)) >> 1) ^
-				(hash<glm::vec2>()(vertex.texCoord) << 1);
-		}
-	};
-}
-
 //namespace std {
 //	template<> struct hash<Vertex> {
 //		size_t operator()(Vertex const& vertex) const {
-//			return ((hash<glm::vec3>()(vertex.pos) ^
-//				(hash<glm::vec3>()(vertex.normal)) ^
-//				(hash<glm::vec4>()(vertex.color) << 1)) >> 1) ^
-//				(hash<glm::vec2>()(vertex.texCoord) << 1);
+//			return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec4>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
 //		}
 //	};
 //}
+
+namespace std {
+	template<> struct hash<Vertex> {
+		size_t operator()(Vertex const& vertex) const {
+			return (((hash<glm::vec3>()(vertex.pos) ^ ((hash<glm::vec3>()(vertex.normal)) << 1)) ^ (hash<glm::vec4>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
+		}
+	};
+}

@@ -92,6 +92,9 @@ void Mesh::LoadAll()
 	{
 		std::string mesh = entry.path().filename().string();
 
+		if (mesh.substr(mesh.size() - 3, 3) != "obj")
+			continue;
+
 		mesh.resize(mesh.size() - 4);
 
 		meshes[mesh] = meshCount;
@@ -154,7 +157,11 @@ void Mesh::LoadMesh(const std::string& mesh, const std::string& filePath)
 				attrib.normals[3 * index.normal_index + 2]
 			};
 
-			vertex.color = { 0.8f, 0.8f, 0.8f, 0.4f };
+			if(!materials.empty())
+				vertex.color = { 0.8f * materials[0].specular[0], 0.8f * materials[0].specular[0], 0.8f * materials[0].specular[0], 0.4f };
+			else
+				vertex.color = { 0.8f, 0.8f, 0.8f, 0.4f };
+
 
 			if (uniqueVertices.count(vertex) == 0) {
 				uniqueVertices[vertex] = static_cast<uint32_t>(vertices[meshes[mesh]].size());
@@ -164,4 +171,5 @@ void Mesh::LoadMesh(const std::string& mesh, const std::string& filePath)
 			indices[meshes[mesh]].push_back(uniqueVertices[vertex]);
 		}
 	}
+	int x = 0;
 }

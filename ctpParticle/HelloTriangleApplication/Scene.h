@@ -9,7 +9,24 @@
 struct Light
 {
 	glm::vec3 pos;
-	float radius;
+	glm::vec4 colour;
+	glm::vec3 atten;
+
+	static VkVertexInputBindingDescription getBindingDescription() {
+		return VkHelper::createVertexBindingDescription(1, sizeof(Light), VK_VERTEX_INPUT_RATE_VERTEX);
+	}
+
+	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
+
+		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
+					VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Light, pos)),
+		VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Light, colour)),
+		VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Light, atten))
+		};
+
+		return attributeDescriptions;
+	}
+
 };
 
 class Scene : public CTPApp
@@ -29,6 +46,7 @@ private:
 
 	GameObject object;
 	VkDescriptorSet objectDescSet;
+	VkDescriptorSet lightDescSet;
 	VkPipeline objectPipeline;
 
 	VkDescriptorSet pSystemDescSet;
@@ -42,6 +60,9 @@ private:
 	FfObject ffModel;
 
 	Light light;
+	//Light lights[100];
+
+	Buffer lightBuffer;
 
 	std::vector<Light> lights;
 	std::vector<float> minDists;

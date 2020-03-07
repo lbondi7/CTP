@@ -157,10 +157,16 @@ void Mesh::LoadMesh(const std::string& mesh, const std::string& filePath)
 				attrib.normals[3 * index.normal_index + 2]
 			};
 
-			if(!materials.empty())
+			if (!materials.empty())
+			{
 				vertex.color = { 0.8f * materials[0].specular[0], 0.8f * materials[0].specular[0], 0.8f * materials[0].specular[0], 0.4f };
+				vertex.constColor = { 0.8f * materials[0].specular[0], 0.8f * materials[0].specular[0], 0.8f * materials[0].specular[0] };
+			}
 			else
+			{
 				vertex.color = { 0.8f, 0.8f, 0.8f, 0.4f };
+				vertex.constColor = { 0.8f, 0.8f, 0.8f};
+			}
 
 
 			if (uniqueVertices.count(vertex) == 0) {

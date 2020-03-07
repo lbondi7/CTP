@@ -2,6 +2,8 @@
 
 #include "vulkan/vulkan.h"
 
+#include <vector>
+
 struct Buffer
 {
 	VkDevice device;
@@ -11,6 +13,7 @@ struct Buffer
 	VkBufferUsageFlags usage;
 	VkMemoryPropertyFlags memProperties;
 	VkDescriptorBufferInfo descriptor;
+	std::vector<VkDescriptorBufferInfo> descriptors;
 	void* data = nullptr;
 
 	VkResult CreateBuffer(VkDevice _device);
@@ -32,6 +35,10 @@ struct Buffer
 	VkResult BindMemory(VkDeviceSize _offset = 0);
 
 	void UpdateDescriptor(VkDeviceSize _range = VK_WHOLE_SIZE, VkDeviceSize _offset = 0);
+
+	void SetupDescriptors(int amount);
+
+	void UpdateDescriptor(int i, VkDeviceSize _range = VK_WHOLE_SIZE, VkDeviceSize _offset = 0);
 
 	void DestoryBuffer();
 };

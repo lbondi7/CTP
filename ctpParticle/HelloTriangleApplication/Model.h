@@ -11,6 +11,8 @@ struct Model
 
 	void Load(const std::string& filepath, VkQueue queue);
 
+	void Update();
+
 	void CreateBuffers(VkQueue queue);
 
 	void Destroy();

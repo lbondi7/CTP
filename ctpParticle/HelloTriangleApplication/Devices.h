@@ -10,8 +10,8 @@ public:
 	Devices(VkPhysicalDevice _physicalDevice, VkDevice _device);
 	~Devices() = default;
 
-	VkDevice& GetDevice();
-	VkPhysicalDevice& GetPhysicalDevice();
+	VkDevice GetDevice();
+	VkPhysicalDevice GetPhysicalDevice();
 
 	void CreateLogicalDevice(const VkSurfaceKHR& surface);
 

@@ -21,6 +21,13 @@ void Model::Load(const std::string& filepath, VkQueue queue)
 	CreateBuffers(queue);
 }
 
+void Model::Update()
+{
+
+	vertex.CopyMem(vertices.data(), vertex.size);
+
+}
+
 void Model::CreateBuffers(VkQueue queue)
 {
 	vertex.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,

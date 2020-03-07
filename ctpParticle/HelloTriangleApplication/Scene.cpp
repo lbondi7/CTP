@@ -78,7 +78,6 @@ void Scene::LocatorSetup()
 	Locator::GetDevices()->CreateCommandPool(commandPool);
 }
 
-
 void Scene::mainLoop() {
 
 	while (!glfwWindowShouldClose(window)) {
@@ -96,13 +95,14 @@ void Scene::mainLoop() {
 
 void Scene::createDescriptorPool() {
 
-	std::array<VkDescriptorPoolSize, 2> poolSizes = {
+	std::vector<VkDescriptorPoolSize> poolSizes = {
 	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2),
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2),
 	};
 
 	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
-		2);
+		3);
 
 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor pool!");
@@ -115,9 +115,9 @@ void Scene::createDescriptorSetLayout() {
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
 	
-	VkDescriptorSetLayoutBinding lightLayoutBinding = VkHelper::createDescriptorLayoutBinding(2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
+	VkDescriptorSetLayoutBinding lightLayoutBinding = VkHelper::createDescriptorLayoutBinding(2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, nullptr, VK_SHADER_STAGE_VERTEX_BIT);
 
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding };
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding, lightLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
 
 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
@@ -162,6 +162,7 @@ void Scene::createDescriptorSets() {
 	descriptorWrites = {
 	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &object.GetModel().uniform.descriptor),
 	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor),
+	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2, &lightBuffer.descriptor),
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -230,17 +231,18 @@ void Scene::createGraphicsPipeline() {
 	
 	std::vector<VkVertexInputBindingDescription> bindingDescriptions = {
 		Vertex::getBindingDescription(),
-		Light::getBindingDescription()
+		//VkHelper::createVertexBindingDescription(1, sizeof(int), VK_VERTEX_INPUT_RATE_VERTEX),
+		//Light::getBindingDescription()
 	};
 
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
 		Vertex::getAttributeDescriptions(),
-
 	};
 
-	attributeDescriptions.emplace_back(Light::getAttributeDescriptions()[0]);
-	attributeDescriptions.emplace_back(Light::getAttributeDescriptions()[1]);
-	attributeDescriptions.emplace_back(Light::getAttributeDescriptions()[2]);
+	//attributeDescriptions.emplace_back(VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32_SINT, sizeof(int)));
+	//attributeDescriptions.emplace_back(Light::getAttributeDescriptions()[0]);
+	//attributeDescriptions.emplace_back(Light::getAttributeDescriptions()[1]);
+	//attributeDescriptions.emplace_back(Light::getAttributeDescriptions()[2]);
 
 	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
@@ -354,11 +356,14 @@ void Scene::createCommandBuffers() {
 
 		VkDeviceSize offsets[] = { 0 };
 
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
-		//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &lightDescSet, 0, nullptr);
+		for (size_t j = 0; j < lightCount; j++)
+		{
+			uint32_t dynamicOffset = j * static_cast<uint32_t>(dynamicAlignment);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 1, &dynamicOffset);
+		}
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
-		vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, &lightBuffer.buffer, offsets);
+		//vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, &lightCountBuffer.buffer, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], object.GetModel().index.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(object.GetModel().indices.size()), 1, 0, 0, 0);
 
@@ -394,11 +399,42 @@ void Scene::createUniformBuffers()
 	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferParticle));
 
 	//uniformPoint.UpdateDescriptor(sizeof(UniformBufferParticle));
+	std::vector<LightShit> lShit;
+	lShit.resize(lightCount);
+	for (size_t i = 0; i < lightCount; i++)
+	{
+		lShit[i].col = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f);
+		lShit[i].intensity = 0.0f;
+		lShit[i].direction = glm::vec3(0.0f, 1.0f, 0.0f);
+		lShit[i].diffuseIntensity = 0.5f;
+		lShit[i].constant = 1.0f;
+		lShit[i].linear = 0.9f;
+		lShit[i].exponent = 0.1f;
+		lShit[i].pos = glm::vec3(1, 1, 0);
+		if(i == 1)
+			lShit[i].pos = glm::vec3(-1, 1, 0);
+		lShit[i].camPos = camera.GetTransform().pos;
+	}
 
-	lightBuffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light));
 
-	lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, &light);
+	dynamicAlignment = sizeof(LightShit);
+
+	VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment;
+
+	lightBuffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, dynamicAlignment * lightCount);
+
+	lightBuffer.UpdateDescriptor(sizeof(LightShit));
+
+	lightBuffer.CopyMem(lShit.data(), sizeof(lShit[0]) * lightCount);
+
+	lightCountBuffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(int));
+
+	lightCountBuffer.StageBuffer(lightCountBuffer.size, graphicsQueue, &lightCount);
+
+
+	//lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, &light);
 
 	object.GetModel().uniform.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferObject));
@@ -407,21 +443,6 @@ void Scene::createUniformBuffers()
 }
 
 void Scene::updateUniformBuffer(uint32_t currentImage) {
-
-	//UniformBufferParticle ubp = {};
-	//ubp.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
-	//ubp.view = camera.ViewMatrix();
-	//ubp.proj = perspective;
-
-
-
-	//lightBuffer.CopyMem(&light, sizeof(Light));
-
-	//pSystem.UBuffer().CopyMem(&ubp, sizeof(ubp));
-
-	/* uniformPoint.CopyMem(&ubp, sizeof(ubp));*/
-
-	//MoveVertex();
 
 	UniformBufferObject ubo = {};
 
@@ -499,27 +520,54 @@ void Scene::LoadAssets()
 	pSystem.Create(graphicsQueue, &camera.ViewMatrix(), &perspective);
 
 	light.pos = glm::vec3(0.0f, 0.0f, 0.0f);
-	light.colour = glm::vec4(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f, 100.0f);
-	light.atten = glm::vec3(10.0f, 1.0f, 10.0f);
+	light.colour = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
+	light.intesity = 10.0f;
+	light.constant = 1.0f;
+	
 
 	nearestTri.resize(pSystem.ParticleCount());
 
-	object.Init("sphere", "spaceBackground3", graphicsQueue);
+	object.Init("sphere", "texture", graphicsQueue);
+
+	for (int i = 0; i < object.GetModel().indices.size(); i += 3)
+	{
+		glm::vec3 v1 = object.GetModel().vertices[object.GetModel().indices[i + 1]].pos - 
+			object.GetModel().vertices[object.GetModel().indices[i]].pos;
+		glm::vec3 v2 = object.GetModel().vertices[object.GetModel().indices[i + 2]].pos -
+			object.GetModel().vertices[object.GetModel().indices[i]].pos;
+		glm::vec3 normal = glm::cross(v1, v2);
+
+		normal = glm::normalize(normal);
+		object.GetModel().vertices[object.GetModel().indices[i]].normal += normal;
+		object.GetModel().vertices[object.GetModel().indices[i + 1]].normal += normal;
+		object.GetModel().vertices[object.GetModel().indices[i + 2]].normal += normal;
+
+
+		object.GetModel().vertices[object.GetModel().indices[i]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
+		object.GetModel().vertices[object.GetModel().indices[i + 1]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
+		object.GetModel().vertices[object.GetModel().indices[i + 2]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
+	}
+
 
 	Transform transform;
-	transform.pos = { 0.0f, 2.0f, 0.0f };
+	transform.pos = { 0.0f, 1.0f, 0.0f };
 	//transform.scale = { 1.0f, 1.0f, 1.0f };
 
 	object.SetTransform(transform);
 
-	lights.resize(object.GetModel().vertices.size());
+	lights.resize(lightCount);
 
-	for (size_t i = 0; i < object.GetModel().vertices.size(); i++)
+	for (auto& l : lights)
 	{
-		//lights[i].colour = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
-		//lights[i].intensity = 1.0f;
+		l.pos = glm::vec3(0.0f, 0.0f, 0.0f);
+		l.colour = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
+		l.direction = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
+		l.dIntensity = 10.0f;
+		l.intesity = 1.0f;
+		l.constant = 1.0f;
+		l.linear = 0.09f;
+		l.exponent = 0.1f;
 	}
-
 
 	ffModel.Load("cube", glm::vec3(0.0f, 0.0f, 0.0f));
 
@@ -578,7 +626,48 @@ void Scene::Update()
 
 	pSystem.Update();
 
+//	DisplayLights();
+
+	object.Update();
+
 	camera.Update();
+}
+
+void Scene::DisplayLights()
+{
+	glm::vec4 pos;
+	glm::mat4 objWorld = glm::translate(glm::mat4(1.0f), object.GetTransform().pos);
+	for (auto l : lights)
+	{
+		glm::vec4 ambientCol = glm::vec4((l.colour * l.intesity), 1.0f);
+
+		for (auto& vert : object.GetModel().vertices)
+		{
+			//glm::vec4 norm = (objWorld * glm::vec4(vert.normal, 0.0f));
+			pos = glm::vec4(vert.pos, 1.0f) * objWorld;
+			glm::vec4 norm = glm::vec4(vert.normal, 1.0f) * objWorld;
+
+			float diffuseFactor = glm::dot(glm::normalize(glm::vec3(norm.x, norm.y, norm.z)), glm::normalize(l.pos - glm::vec3(pos.x, pos.y, pos.z)));
+			//float diffuseFactor = glm::dot(vert.normal, glm::normalize(l.pos - glm::vec3(pos.x, pos.y, pos.z)));
+			//diffuseFactor = std::min(diffuseFactor, 0.0f);
+
+			// v - a / b -a
+
+			//diffuseFactor = (diffuseFactor - -1.0f) / (1.0f - -1.0f);
+
+
+			glm::vec4 diffuseCol;
+			//diffuseCol = glm::vec4(glm::vec3(255, 0, 0) * l.dIntensity * diffuseFactor, 1.0f);
+			if (diffuseFactor > 0.0f) {
+				diffuseCol = glm::vec4(glm::vec3(255, 0, 0) * l.dIntensity * diffuseFactor, 1.0f);
+			}
+			else {
+				diffuseCol = glm::vec4(0, 0, 0, 0);
+			}
+
+			vert.color = glm::vec4(vert.constColor, vert.color.a) * (ambientCol + (diffuseCol / 3.14f));
+		}
+	}
 }
 
 void Scene::CheckParticles()
@@ -742,17 +831,13 @@ void Scene::drawFrame() {
 	endFrame(imageIndex);
 }
 
-bool Scene::checkDistanceFromLight(glm::vec3 pos, int i)
-{
-	return true;
-}
-
 void Scene::Cleanup()
 {
 
 	vkDestroyPipeline(device, objectPipeline, nullptr);
 	vkDestroyPipeline(device, pSystemPipeline, nullptr);
 
+	lightBuffer.DestoryBuffer();
 	object.Destroy();
 	pSystem.Destroy();
 

@@ -6,11 +6,37 @@
 #include "ParticleSystem.h"
 #include "FlowFieldObject.h"
 
+
+//struct LightShit
+//{
+//	glm::vec3 col;
+//	float intensity;
+//	glm::vec3 direction;
+//	float diffuseIntensity;
+//};
+
+struct LightShit {
+	glm::vec3 col;
+	float intensity;
+	glm::vec3 direction;
+	float diffuseIntensity;
+	glm::vec3 pos;
+	float constant;
+	float linear;
+	float exponent;
+	glm::vec3 camPos;
+};
+
 struct Light
 {
 	glm::vec3 pos;
-	glm::vec4 colour;
-	glm::vec3 atten;
+	glm::vec3 colour;
+	float intesity;
+	glm::vec3 direction;
+	float dIntensity;
+	float constant;
+	float linear;
+	float exponent;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
 		return VkHelper::createVertexBindingDescription(1, sizeof(Light), VK_VERTEX_INPUT_RATE_VERTEX);
@@ -19,9 +45,9 @@ struct Light
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
 
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
-					VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Light, pos)),
-		VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Light, colour)),
-		VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Light, atten))
+		VkHelper::createVertexAttributeDescription(1, 4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Light, pos)),
+		VkHelper::createVertexAttributeDescription(1, 5, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Light, colour))
+		//VkHelper::createVertexAttributeDescription(1, 6, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Light, atten))
 		};
 
 		return attributeDescriptions;
@@ -46,7 +72,6 @@ private:
 
 	GameObject object;
 	VkDescriptorSet objectDescSet;
-	VkDescriptorSet lightDescSet;
 	VkPipeline objectPipeline;
 
 	VkDescriptorSet pSystemDescSet;
@@ -63,10 +88,12 @@ private:
 	//Light lights[100];
 
 	Buffer lightBuffer;
+	Buffer lightCountBuffer;
 
 	std::vector<Light> lights;
-	std::vector<float> minDists;
-	float minDist = 0.0f;
+	int lightCount = 2;
+
+	size_t dynamicAlignment;
 
 	void mainLoop();
 
@@ -95,6 +122,8 @@ private:
 	void Update(size_t currentImage);
 
 	void Update();
+
+	void DisplayLights();
 
 	void CheckParticles();
 

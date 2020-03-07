@@ -224,6 +224,7 @@ namespace VkHelper
 		VkWriteDescriptorSet descriptorWrite = {};
 
 		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		
 		descriptorWrite.dstSet = dstSet;
 		descriptorWrite.dstBinding = binding;
 		descriptorWrite.descriptorType = type;

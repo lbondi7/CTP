@@ -10,12 +10,12 @@ Devices::Devices(VkPhysicalDevice _physicalDevice, VkDevice _device)
 
 }
 
-VkDevice& Devices::GetDevice()
+VkDevice Devices::GetDevice()
 {
 	return device;
 }
 
-VkPhysicalDevice& Devices::GetPhysicalDevice()
+VkPhysicalDevice Devices::GetPhysicalDevice()
 {
 	return physicalDevice;
 }
@@ -40,6 +40,7 @@ void Devices::CreateLogicalDevice(const VkSurfaceKHR& surface) {
 	VkPhysicalDeviceFeatures deviceFeatures = {};
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
 	deviceFeatures.geometryShader = VK_TRUE;
+//	VkPhysicalDeviceDescriptorIndexingFeaturesEXT::runtimeDescriptorArray
 
 	VkDeviceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

@@ -30,6 +30,8 @@ public:
 
 	void Init(const char* _model, const char* _texture, VkQueue queue);
 
+	void Update();
+
 	Model& GetModel();
 	Texture& GetTexture();
 

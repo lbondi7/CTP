@@ -8,7 +8,7 @@
 struct Triangle
 {
 	Triangle() = default;
-	Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 _pos = glm::vec3(0.0f, 0.0f, 0.0f));
+	Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, const Transform& transform);
 
 	void Update(const glm::vec3& p);
 

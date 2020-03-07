@@ -41,7 +41,7 @@ using namespace std::chrono_literals;
 
 Scene::~Scene()
 {
-	
+
 }
 
 void Scene::run() {
@@ -98,7 +98,7 @@ void Scene::createDescriptorPool() {
 	std::vector<VkDescriptorPoolSize> poolSizes = {
 	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
 	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2),
-	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2),
+	VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2),
 	};
 
 	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
@@ -115,7 +115,7 @@ void Scene::createDescriptorSetLayout() {
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
 	
-	VkDescriptorSetLayoutBinding lightLayoutBinding = VkHelper::createDescriptorLayoutBinding(2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, nullptr, VK_SHADER_STAGE_VERTEX_BIT);
+	VkDescriptorSetLayoutBinding lightLayoutBinding = VkHelper::createDescriptorLayoutBinding(2, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding, lightLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
@@ -162,7 +162,7 @@ void Scene::createDescriptorSets() {
 	descriptorWrites = {
 	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &object.GetModel().uniform.descriptor),
 	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor),
-	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 2, &lightBuffer.descriptor),
+	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &lightBuffer.descriptor),
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -356,11 +356,11 @@ void Scene::createCommandBuffers() {
 
 		VkDeviceSize offsets[] = { 0 };
 
-		for (size_t j = 0; j < lightCount; j++)
+	/*	for (size_t j = 0; j < lightCount; j++)
 		{
 			uint32_t dynamicOffset = j * static_cast<uint32_t>(dynamicAlignment);
-			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 1, &dynamicOffset);
-		}
+		}*/
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
 		//vkCmdBindVertexBuffers(commandBuffers[i], 1, 1, &lightCountBuffer.buffer, offsets);
@@ -399,39 +399,79 @@ void Scene::createUniformBuffers()
 	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBufferParticle));
 
 	//uniformPoint.UpdateDescriptor(sizeof(UniformBufferParticle));
-	std::vector<LightShit> lShit;
-	lShit.resize(lightCount);
-	for (size_t i = 0; i < lightCount; i++)
+	//LightShit lShit;
+	//lShit.numberOfLights = 10;
+	//lShit.col.resize(lShit.numberOfLights);
+	//lShit.intensity.resize(lShit.numberOfLights);
+	//lShit.direction.resize(lShit.numberOfLights);
+	//lShit.diffuseIntensity.resize(lShit.numberOfLights);
+	//lShit.constant.resize(lShit.numberOfLights);
+	//lShit.linear.resize(lShit.numberOfLights);
+	//lShit.exponent.resize(lShit.numberOfLights);
+	//lShit.pos.resize(lShit.numberOfLights);
+
+	//for (size_t i = 0; i < lShit.numberOfLights; i++)
+	//{
+	//	lShit.col[i] = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f);
+	//	lShit.intensity[i] = 0.0f;
+	//	lShit.direction[i] = glm::vec3(0.0f, 1.0f, 0.0f);
+	//	lShit.diffuseIntensity[i] = 0.5f;
+	//	lShit.constant[i] = 1.0f;
+	//	lShit.linear[i] = 0.9f;
+	//	lShit.exponent[i] = 0.1f;
+	//	lShit.pos[i] = glm::vec3(0, 1.5f, 0);
+	//	if(i == 1)
+	//		lShit.pos[i] = glm::vec3(0, -2, 0);
+	//}
+
+	//lShit.camPos = camera.GetTransform().pos;
+
+	lights.numberOfLights = pSystem.ParticleCount();
+	lights.col.resize(lights.numberOfLights);
+	lights.intensity.resize(lights.numberOfLights);
+	lights.direction.resize(lights.numberOfLights);
+	lights.diffuseIntensity.resize(lights.numberOfLights);
+	lights.constant.resize(lights.numberOfLights);
+	lights.linear.resize(lights.numberOfLights);
+	lights.exponent.resize(lights.numberOfLights);
+	lights.pos.resize(lights.numberOfLights);
+	lights.specIntensity.resize(lights.numberOfLights);
+	lights.specPower.resize(lights.numberOfLights);
+
+	for (size_t i = 0; i < lights.numberOfLights; i++)
 	{
-		lShit[i].col = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f);
-		lShit[i].intensity = 0.0f;
-		lShit[i].direction = glm::vec3(0.0f, 1.0f, 0.0f);
-		lShit[i].diffuseIntensity = 0.5f;
-		lShit[i].constant = 1.0f;
-		lShit[i].linear = 0.9f;
-		lShit[i].exponent = 0.1f;
-		lShit[i].pos = glm::vec3(1, 1, 0);
-		if(i == 1)
-			lShit[i].pos = glm::vec3(-1, 1, 0);
-		lShit[i].camPos = camera.GetTransform().pos;
+		lights.col[i] = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f);
+		//lights.intensity[i] = 0.0f;
+		//lights.direction[i] = glm::vec3(0.0f, 1.0f, 0.0f);
+		lights.diffuseIntensity[i] = 0.01f;
+		lights.constant[i] = 1.0f;
+		lights.linear[i] = 0.9f;
+		lights.exponent[i] = 0.032f;
+		lights.specIntensity[i] = 0.1f;
+		lights.specPower[i] = 32.0f;
+		//lights.pos[i] = glm::vec3(0, 3, 0);
+		//if (i == 1)
+		//	lights.pos[i] = glm::vec3(0, -50, 0);
 	}
 
+	lights.camPos = camera.GetTransform().pos;
 
-	dynamicAlignment = sizeof(LightShit);
 
-	VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment;
+	//dynamicAlignment = sizeof(LightShit);
+
+	//VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment;
 
 	lightBuffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, dynamicAlignment * lightCount);
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, sizeof(LightShit) * lights.numberOfLights);
 
 	lightBuffer.UpdateDescriptor(sizeof(LightShit));
 
-	lightBuffer.CopyMem(lShit.data(), sizeof(lShit[0]) * lightCount);
+	lightBuffer.CopyMem(&lights, sizeof(LightShit));
 
-	lightCountBuffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(int));
+	//lightCountBuffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(int));
 
-	lightCountBuffer.StageBuffer(lightCountBuffer.size, graphicsQueue, &lightCount);
+	//lightCountBuffer.StageBuffer(lightCountBuffer.size, graphicsQueue, &lightCount);
 
 
 	//lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, &light);
@@ -510,6 +550,73 @@ void FindTri(std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSyste
 
 }
 
+glm::vec4 CalInternalLightish(int i, LightShit* lights, const glm::vec3& lightDirection, const glm::vec3& Normal, const glm::vec4& pos)
+{
+	std::mutex mut;
+	//glm::vec4 AmbientColor = glm::vec4(lights.col[i], 1.0f) * lights.intensity[i];
+	glm::vec4 AmbientColor = glm::vec4(0, 0, 0, 0);
+	float DiffuseFactor = glm::dot(Normal, -lightDirection);
+
+	glm::vec4 DiffuseColor = glm::vec4(0, 0, 0, 0);
+	glm::vec4 SpecularColor = glm::vec4(0, 0, 0, 0);
+	if (DiffuseFactor > 0) {
+		DiffuseColor = glm::vec4((*lights).col[i] * (*lights).diffuseIntensity[i] * DiffuseFactor, 1.0f);
+
+		mut.lock();
+		glm::vec3 VertexToEye = glm::normalize((*lights).camPos - glm::vec3(pos));
+		mut.unlock();
+		glm::vec3 LightReflect = glm::normalize(glm::reflect(lightDirection, Normal));
+		float SpecularFactor = glm::dot(VertexToEye, LightReflect);
+		if (SpecularFactor > 0) {
+			SpecularFactor = pow(SpecularFactor, (*lights).specPower[i]);
+			SpecularColor = glm::vec4((*lights).col[i] * (*lights).specIntensity[i] * SpecularFactor, 1.0f);
+		}
+	}
+
+	return (DiffuseColor + SpecularColor);
+}
+
+void CalculateLightsish(GameObject* object, LightShit* lights)
+{
+	std::mutex mut;
+	while (true)
+	{
+		glm::vec4 pos;
+		glm::mat4 objWorld = glm::translate(glm::mat4(1.0f), (*object).GetTransform().pos);
+		glm::vec4 TotalLight;
+		auto vertices = (*object).GetModel().vertices;
+		for (auto& vert : vertices)
+		{
+			//glm::vec4 norm = (objWorld * glm::vec4(vert.normal, 0.0f));
+			pos = glm::vec4(vert.pos, 1.0f) * objWorld;
+			glm::vec4 norm = glm::vec4(vert.normal, 0.0f) * objWorld;
+
+			TotalLight = glm::vec4(0, 0, 0, 0);
+
+			for (int i = 0; i < (*lights).numberOfLights; ++i)
+			{
+				glm::vec3 LightDirection = glm::vec3(pos) - (*lights).pos[i];
+				float Distance = glm::length(LightDirection);
+				LightDirection = glm::normalize(LightDirection);
+
+				glm::vec4 Color = CalInternalLightish(i, lights, LightDirection, glm::vec3(norm), pos);
+				float Attenuation = (*lights).constant[i] +
+					(*lights).linear[i] * Distance +
+					(*lights).exponent[i] * Distance * Distance;
+
+				glm::vec4 pointColour = Color / Attenuation;
+
+				TotalLight += pointColour;
+			}
+			vert.color = glm::vec4(vert.constColor, 0.4f) * TotalLight;
+		}
+		std::lock_guard<std::mutex> lock(mut);
+		(*object).GetModel().vertices = vertices;
+
+		std::this_thread::sleep_for(50ms);
+	}
+}
+
 void Scene::LoadAssets()
 {
 	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 10000.0f);
@@ -527,7 +634,7 @@ void Scene::LoadAssets()
 
 	nearestTri.resize(pSystem.ParticleCount());
 
-	object.Init("sphere", "texture", graphicsQueue);
+	object.Init("bunny", "texture", graphicsQueue);
 
 	for (int i = 0; i < object.GetModel().indices.size(); i += 3)
 	{
@@ -550,31 +657,37 @@ void Scene::LoadAssets()
 
 
 	Transform transform;
-	transform.pos = { 0.0f, 1.0f, 0.0f };
+	transform.pos = { 0.0f, 0.0f, 0.0f };
 	//transform.scale = { 1.0f, 1.0f, 1.0f };
 
 	object.SetTransform(transform);
 
-	lights.resize(lightCount);
+	//lights.resize(lightCount);
 
-	for (auto& l : lights)
-	{
-		l.pos = glm::vec3(0.0f, 0.0f, 0.0f);
-		l.colour = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
-		l.direction = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
-		l.dIntensity = 10.0f;
-		l.intesity = 1.0f;
-		l.constant = 1.0f;
-		l.linear = 0.09f;
-		l.exponent = 0.1f;
-	}
+	//for (auto& l : lights)
+	//{
+	//	l.pos = glm::vec3(0.0f, 0.0f, 0.0f);
+	//	l.colour = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
+	//	l.direction = glm::normalize(glm::vec3(1.0f, 1.0f, 1.0f));
+	//	l.dIntensity = 10.0f;
+	//	l.intesity = 1.0f;
+	//	l.constant = 1.0f;
+	//	l.linear = 0.09f;
+	//	l.exponent = 0.1f;
+	//}
 
-	ffModel.Load("cube", glm::vec3(0.0f, 0.0f, 0.0f));
+	Transform trans;
+	trans.pos = glm::vec3(0, 0, 0);
+	trans.scale = glm::vec3(1, 1, 1);
+	ffModel.Load("bunny", trans);
 
 	GetClosestTri();
 
 	std::thread th(FindTri, &nearestTri, &ffModel, &pSystem);
 	th.detach();
+
+	std::thread th2(CalculateLightsish, &object, &lights);
+	th2.detach();
 }
 
 void Scene::Update()
@@ -626,48 +739,71 @@ void Scene::Update()
 
 	pSystem.Update();
 
-//	DisplayLights();
+	for (size_t i = 0; i < lights.numberOfLights; i++)
+	{
+		lights.pos[i] = pSystem.PsParticle(i).position;
+	}
+	lights.camPos = camera.GetTransform().pos;
+	//DisplayLights();
 
 	object.Update();
 
 	camera.Update();
 }
 
-void Scene::DisplayLights()
+//void Scene::DisplayLights()
+//{
+//	glm::vec4 pos;
+//	glm::mat4 objWorld = glm::translate(glm::mat4(1.0f), object.GetTransform().pos);
+//	glm::vec4 TotalLight;
+//	for (auto& vert : object.GetModel().vertices)
+//	{
+//		//glm::vec4 norm = (objWorld * glm::vec4(vert.normal, 0.0f));
+//		pos = glm::vec4(vert.pos, 1.0f) * objWorld;
+//		glm::vec4 norm = glm::vec4(vert.normal, 0.0f) * objWorld;
+//
+//		TotalLight = glm::vec4(0, 0, 0, 0);
+//
+//		for (int i = 0; i < lights.numberOfLights; ++i)
+//		{
+//			glm::vec3 LightDirection = glm::vec3(pos) - lights.pos[i];
+//			float Distance = glm::length(LightDirection);
+//			LightDirection = glm::normalize(LightDirection);
+//
+//			glm::vec4 Color = CalInternalLight(i, LightDirection, glm::vec3(norm), pos);
+//			float Attenuation = lights.constant[i] +
+//				lights.linear[i] * Distance +
+//				lights.exponent[i] * Distance * Distance;
+//
+//			glm::vec4 pointColour = Color / Attenuation;
+//
+//			TotalLight += pointColour;
+//		}
+//		vert.color = glm::vec4(vert.constColor, 0.4f) * TotalLight;
+//	}
+//}
+
+glm::vec4 Scene::CalInternalLight(int i, const glm::vec3& lightDirection, const glm::vec3& Normal, const glm::vec4& pos)
 {
-	glm::vec4 pos;
-	glm::mat4 objWorld = glm::translate(glm::mat4(1.0f), object.GetTransform().pos);
-	for (auto l : lights)
-	{
-		glm::vec4 ambientCol = glm::vec4((l.colour * l.intesity), 1.0f);
+	//glm::vec4 AmbientColor = glm::vec4(lights.col[i], 1.0f) * lights.intensity[i];
+	glm::vec4 AmbientColor = glm::vec4(0, 0, 0, 0);
+	float DiffuseFactor = glm::dot(Normal, -lightDirection);
 
-		for (auto& vert : object.GetModel().vertices)
-		{
-			//glm::vec4 norm = (objWorld * glm::vec4(vert.normal, 0.0f));
-			pos = glm::vec4(vert.pos, 1.0f) * objWorld;
-			glm::vec4 norm = glm::vec4(vert.normal, 1.0f) * objWorld;
+	glm::vec4 DiffuseColor = glm::vec4(0, 0, 0, 0);
+	glm::vec4 SpecularColor = glm::vec4(0, 0, 0, 0);
+	if (DiffuseFactor > 0) {
+		DiffuseColor = glm::vec4(lights.col[i] * lights.diffuseIntensity[i] * DiffuseFactor, 1.0f);
 
-			float diffuseFactor = glm::dot(glm::normalize(glm::vec3(norm.x, norm.y, norm.z)), glm::normalize(l.pos - glm::vec3(pos.x, pos.y, pos.z)));
-			//float diffuseFactor = glm::dot(vert.normal, glm::normalize(l.pos - glm::vec3(pos.x, pos.y, pos.z)));
-			//diffuseFactor = std::min(diffuseFactor, 0.0f);
-
-			// v - a / b -a
-
-			//diffuseFactor = (diffuseFactor - -1.0f) / (1.0f - -1.0f);
-
-
-			glm::vec4 diffuseCol;
-			//diffuseCol = glm::vec4(glm::vec3(255, 0, 0) * l.dIntensity * diffuseFactor, 1.0f);
-			if (diffuseFactor > 0.0f) {
-				diffuseCol = glm::vec4(glm::vec3(255, 0, 0) * l.dIntensity * diffuseFactor, 1.0f);
-			}
-			else {
-				diffuseCol = glm::vec4(0, 0, 0, 0);
-			}
-
-			vert.color = glm::vec4(vert.constColor, vert.color.a) * (ambientCol + (diffuseCol / 3.14f));
-		}
+		 glm::vec3 VertexToEye = glm::normalize(lights.camPos - glm::vec3(pos));
+		 glm::vec3 LightReflect = glm::normalize(glm::reflect(lightDirection, Normal));
+		 float SpecularFactor = glm::dot(VertexToEye, LightReflect);
+		 if (SpecularFactor > 0) {
+		     SpecularFactor = pow(SpecularFactor, lights.specPower[i]);
+		     SpecularColor = glm::vec4(lights.col[i] * lights.specIntensity[i] * SpecularFactor, 1.0f);
+		 }
 	}
+
+	return (DiffuseColor + SpecularColor);
 }
 
 void Scene::CheckParticles()
@@ -684,7 +820,7 @@ void Scene::CheckParticles()
 			{
 				std::random_device rd;
 				std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
-				std::uniform_real_distribution<float> rand2(0.05f, 0.1f);
+				std::uniform_real_distribution<float> rand2(0.05f, 0.01f);
 				//pSystem.SetNewTarget(i, glm::vec3(rand(rd), rand(rd), rand(rd)));
 				pSystem.PsParticle(i).goToTri = false;
 				pSystem.PsParticle(i).ranDirDuration = rand2(rd);

@@ -11,7 +11,7 @@ struct FfObject : public Object
 	~FfObject();
 
 	void Load(const std::string& filepath);
-	void Load(const std::string& filepath, glm::vec3 pos);
+	void Load(const std::string& filepath, const Transform& _transform);
 	void Destroy();
 
 	void Update();

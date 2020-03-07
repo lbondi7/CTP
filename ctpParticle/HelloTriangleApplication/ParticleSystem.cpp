@@ -24,7 +24,10 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 {
 	std::random_device rd;
 	std::mt19937 mt;
-	std::uniform_real_distribution<float> rand(-150.0f, 150.0f);
+	std::uniform_real_distribution<float> randPos(100.0f, 150.0f);
+	std::uniform_real_distribution<float> randNeg(-150.0f, -100.0f);
+	std::uniform_real_distribution<float> rand(-50.0f, 50.0f);
+	std::uniform_int_distribution<int> randChoose(0, 1);
 	//std::uniform_int_distribution<int> rand(-100, 100);
 	std::uniform_real_distribution<float> rand2(1.0f, 10.0f);
 
@@ -33,6 +36,9 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 	for (size_t i = 0; i < amount; ++i)
 	{
 		//particles[i].position = { 100, 0.0f, 100 };
+		//particles[i].position = { randChoose(mt) == 0 ? randPos(mt) : randNeg(mt),
+		//	randChoose(mt) == 0 ? randPos(mt) : randNeg(mt),
+		//	randChoose(mt) == 0 ? randPos(mt) : randNeg(mt) };
 		particles[i].position = { rand(mt), rand(mt), rand(mt) };
 		//particles[i].position = { 0, -5, 0 };
 		//particles[i].position = { i - 2.0f, i + i + 2.0f, i + i + 2.0f };

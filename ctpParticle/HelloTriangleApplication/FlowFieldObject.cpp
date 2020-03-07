@@ -16,24 +16,24 @@ void FfObject::Load(const std::string& filepath)
 
 	for (size_t i = 0; i < indices.size(); i += 3)
 	{
-		Triangle tri(vertices[indices[i]].pos, vertices[indices[i + 1]].pos, vertices[indices[i + 2]].pos);
+		//Triangle tri(vertices[indices[i]].pos, vertices[indices[i + 1]].pos, vertices[indices[i + 2]].pos);
 
-		triangles.push_back(tri);
+		//triangles.push_back(tri);
 	}
 }
 
-void FfObject::Load(const std::string& filepath, glm::vec3 pos)
+void FfObject::Load(const std::string& filepath, const Transform& _transform)
 {
 	Destroy();
 
 	vertices = Locator::GetMesh()->vertices[Locator::GetMesh()->meshes[filepath]];
 	indices = Locator::GetMesh()->indices[Locator::GetMesh()->meshes[filepath]];
 
-	transform.pos = pos;
+	transform = _transform;
 
 	for (size_t i = 0; i < indices.size(); i += 3)
 	{
-		Triangle tri(vertices[indices[i]].pos, vertices[indices[i + 1]].pos, vertices[indices[i + 2]].pos, pos);
+		Triangle tri(vertices[indices[i]].pos, vertices[indices[i + 1]].pos, vertices[indices[i + 2]].pos, transform);
 
 		triangles.push_back(tri);
 	}

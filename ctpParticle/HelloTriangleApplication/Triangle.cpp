@@ -10,7 +10,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
-Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 _pos)
+Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, const Transform& transform)
 {
 	localVertices[0] = v1;
 	localVertices[1] = v2;
@@ -18,7 +18,9 @@ Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, glm::vec3 _pos)
 
     for (size_t i = 0; i < 3; i++)
     {
-        vertices[i] = _pos + localVertices[i];
+        vertices[i] = glm::vec4(localVertices[i], 1.0f) * 
+            glm::translate(glm::mat4(1.0f), transform.pos) * 
+            glm::scale(glm::mat4(1.0f), transform.scale);
     }
 
     edges[0] = vertices[1] - vertices[0];

@@ -168,6 +168,7 @@
     <ClCompile Include="FlowFieldObject.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="Keyboard.cpp" />
+    <ClCompile Include="LGH.cpp" />
     <ClCompile Include="Locator.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Mesh.cpp" />
@@ -196,6 +197,7 @@
     <ClInclude Include="FlowFieldObject.h" />
     <ClInclude Include="Image.h" />
     <ClInclude Include="Keyboard.h" />
+    <ClInclude Include="LGH.h" />
     <ClInclude Include="Locator.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Model.h" />

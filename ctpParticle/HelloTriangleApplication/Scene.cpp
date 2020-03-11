@@ -457,6 +457,22 @@ void Scene::createUniformBuffers()
 	lights.camPos = camera.GetTransform().pos;
 
 
+	//lights.numberOfLights = pSystem.ParticleCount();
+	light.resize(pSystem.ParticleCount());
+
+	for (size_t i = 0; i < pSystem.ParticleCount(); i++)
+	{
+		light[i].col = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 0.0f / 255.0f);
+		light[i].diffuseIntensity = 1.0f;
+		light[i].constant = 1.0f;
+		light[i].linear = 0.9f;
+		light[i].exponent = 0.032f;
+		light[i].specIntensity = 1.5f;
+		light[i].specPower = 32.0f;
+	}
+
+
+
 	//dynamicAlignment = sizeof(LightShit);
 
 	//VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment;
@@ -550,73 +566,6 @@ void FindTri(std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSyste
 
 }
 
-glm::vec4 CalInternalLightish(int i, LightShit* lights, const glm::vec3& lightDirection, const glm::vec3& Normal, const glm::vec4& pos)
-{
-	std::mutex mut;
-	//glm::vec4 AmbientColor = glm::vec4(lights.col[i], 1.0f) * lights.intensity[i];
-	glm::vec4 AmbientColor = glm::vec4(0, 0, 0, 0);
-	float DiffuseFactor = glm::dot(Normal, -lightDirection);
-
-	glm::vec4 DiffuseColor = glm::vec4(0, 0, 0, 0);
-	glm::vec4 SpecularColor = glm::vec4(0, 0, 0, 0);
-	if (DiffuseFactor > 0) {
-		DiffuseColor = glm::vec4((*lights).col[i] * (*lights).diffuseIntensity[i] * DiffuseFactor, 1.0f);
-
-		mut.lock();
-		glm::vec3 VertexToEye = glm::normalize((*lights).camPos - glm::vec3(pos));
-		mut.unlock();
-		glm::vec3 LightReflect = glm::normalize(glm::reflect(lightDirection, Normal));
-		float SpecularFactor = glm::dot(VertexToEye, LightReflect);
-		if (SpecularFactor > 0) {
-			SpecularFactor = pow(SpecularFactor, (*lights).specPower[i]);
-			SpecularColor = glm::vec4((*lights).col[i] * (*lights).specIntensity[i] * SpecularFactor, 1.0f);
-		}
-	}
-
-	return (DiffuseColor + SpecularColor);
-}
-
-void CalculateLightsish(GameObject* object, LightShit* lights)
-{
-	std::mutex mut;
-	while (true)
-	{
-		glm::vec4 pos;
-		glm::mat4 objWorld = glm::translate(glm::mat4(1.0f), (*object).GetTransform().pos);
-		glm::vec4 TotalLight;
-		auto vertices = (*object).GetModel().vertices;
-		for (auto& vert : vertices)
-		{
-			//glm::vec4 norm = (objWorld * glm::vec4(vert.normal, 0.0f));
-			pos = glm::vec4(vert.pos, 1.0f) * objWorld;
-			glm::vec4 norm = glm::vec4(vert.normal, 0.0f) * objWorld;
-
-			TotalLight = glm::vec4(0, 0, 0, 0);
-
-			for (int i = 0; i < (*lights).numberOfLights; ++i)
-			{
-				glm::vec3 LightDirection = glm::vec3(pos) - (*lights).pos[i];
-				float Distance = glm::length(LightDirection);
-				LightDirection = glm::normalize(LightDirection);
-
-				glm::vec4 Color = CalInternalLightish(i, lights, LightDirection, glm::vec3(norm), pos);
-				float Attenuation = (*lights).constant[i] +
-					(*lights).linear[i] * Distance +
-					(*lights).exponent[i] * Distance * Distance;
-
-				glm::vec4 pointColour = Color / Attenuation;
-
-				TotalLight += pointColour;
-			}
-			vert.color = glm::vec4(vert.constColor, 0.4f) * TotalLight;
-		}
-		std::lock_guard<std::mutex> lock(mut);
-		(*object).GetModel().vertices = vertices;
-
-		std::this_thread::sleep_for(50ms);
-	}
-}
-
 void Scene::LoadAssets()
 {
 	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 10000.0f);
@@ -626,10 +575,10 @@ void Scene::LoadAssets()
 
 	pSystem.Create(graphicsQueue, &camera.ViewMatrix(), &perspective);
 
-	light.pos = glm::vec3(0.0f, 0.0f, 0.0f);
-	light.colour = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
-	light.intesity = 10.0f;
-	light.constant = 1.0f;
+	//light.pos = glm::vec3(0.0f, 0.0f, 0.0f);
+	//light.colour = glm::vec3(255.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f);
+	//light.intesity = 10.0f;
+	//light.constant = 1.0f;
 	
 
 	nearestTri.resize(pSystem.ParticleCount());
@@ -678,16 +627,13 @@ void Scene::LoadAssets()
 
 	Transform trans;
 	trans.pos = glm::vec3(0, 0, 0);
-	trans.scale = glm::vec3(1, 1, 1);
+	trans.scale = glm::vec3(2, 2, 2);
 	ffModel.Load("bunny", trans);
 
 	GetClosestTri();
 
 	std::thread th(FindTri, &nearestTri, &ffModel, &pSystem);
 	th.detach();
-
-	std::thread th2(CalculateLightsish, &object, &lights);
-	th2.detach();
 }
 
 void Scene::Update()
@@ -739,16 +685,78 @@ void Scene::Update()
 
 	pSystem.Update();
 
-	for (size_t i = 0; i < lights.numberOfLights; i++)
+	for (size_t i = 0; i < pSystem.ParticleCount(); i++)
 	{
-		lights.pos[i] = pSystem.PsParticle(i).position;
+		light[i].pos = pSystem.PsParticle(i).position;
 	}
-	lights.camPos = camera.GetTransform().pos;
-	//DisplayLights();
+
+	lgh.Recreate(light);
+
+	DisplayLights();
 
 	object.Update();
 
 	camera.Update();
+}
+
+void Scene::DisplayLights()
+{
+	glm::vec4 pos;
+	glm::mat4 objWorld = glm::translate(glm::mat4(1.0f), object.GetTransform().pos);
+	glm::vec4 TotalLight;
+	auto lGH = lgh.Lights();
+	for (auto& vert : object.GetModel().vertices)
+	{
+		//glm::vec4 norm = (objWorld * glm::vec4(vert.normal, 0.0f));
+		pos = glm::vec4(vert.pos, 1.0f) * objWorld;
+		glm::vec4 norm = glm::vec4(vert.normal, 0.0f) * objWorld;
+
+		TotalLight = glm::vec4(0, 0, 0, 0);
+
+		for (int i = 0; i < lGH.size(); ++i)
+		{
+			glm::vec3 LightDirection = glm::vec3(pos) - lGH[i].pos;
+			float Distance = glm::length(LightDirection);
+			LightDirection = glm::normalize(LightDirection);
+
+			glm::vec4 Color = CalInternalLight(i, LightDirection, glm::vec3(norm), pos);
+			float Attenuation = lGH[i].constant +
+				lGH[i].linear * Distance +
+				lGH[i].exponent * Distance * Distance;
+
+			if (Attenuation <= 0.0f)
+				continue;
+
+			glm::vec4 pointColour = Color / Attenuation;
+
+			TotalLight += pointColour;
+		}
+		//std::cout << TotalLight.r << ", " << TotalLight.g << ", " << TotalLight.b << ", " << TotalLight.a << std::endl;
+		vert.color = glm::vec4(vert.constColor, 0.4f) * TotalLight;
+	}
+}
+
+glm::vec4 Scene::CalInternalLight(int i, const glm::vec3& lightDirection, const glm::vec3& Normal, const glm::vec4& pos)
+{
+	//glm::vec4 AmbientColor = glm::vec4(lights.col[i], 1.0f) * lights.intensity[i];
+	glm::vec4 AmbientColor = glm::vec4(0, 0, 0, 0);
+	float DiffuseFactor = glm::dot(Normal, -lightDirection);
+
+	glm::vec4 DiffuseColor = glm::vec4(0, 0, 0, 0);
+	glm::vec4 SpecularColor = glm::vec4(0, 0, 0, 0);
+	if (DiffuseFactor > 0) {
+		DiffuseColor = glm::vec4(lgh.Light(i).col * lgh.Light(i).diffuseIntensity * DiffuseFactor, 1.0f);
+
+		glm::vec3 VertexToEye = glm::normalize(camera.GetTransform().pos - glm::vec3(pos));
+		glm::vec3 LightReflect = glm::normalize(glm::reflect(lightDirection, Normal));
+		float SpecularFactor = glm::dot(VertexToEye, LightReflect);
+		if (SpecularFactor > 0) {
+			SpecularFactor = pow(SpecularFactor, lgh.Light(i).specPower);
+			SpecularColor = glm::vec4(lgh.Light(i).col * lgh.Light(i).specIntensity * SpecularFactor, 1.0f);
+		}
+	}
+
+	return (DiffuseColor + SpecularColor);
 }
 
 //void Scene::DisplayLights()
@@ -764,16 +772,16 @@ void Scene::Update()
 //
 //		TotalLight = glm::vec4(0, 0, 0, 0);
 //
-//		for (int i = 0; i < lights.numberOfLights; ++i)
+//		for (int i = 0; i < pSystem.ParticleCount(); ++i)
 //		{
-//			glm::vec3 LightDirection = glm::vec3(pos) - lights.pos[i];
+//			glm::vec3 LightDirection = glm::vec3(pos) - light[i].pos;
 //			float Distance = glm::length(LightDirection);
 //			LightDirection = glm::normalize(LightDirection);
 //
 //			glm::vec4 Color = CalInternalLight(i, LightDirection, glm::vec3(norm), pos);
-//			float Attenuation = lights.constant[i] +
-//				lights.linear[i] * Distance +
-//				lights.exponent[i] * Distance * Distance;
+//			float Attenuation = light[i].constant +
+//				light[i].linear * Distance +
+//				light[i].exponent * Distance * Distance;
 //
 //			glm::vec4 pointColour = Color / Attenuation;
 //
@@ -782,29 +790,29 @@ void Scene::Update()
 //		vert.color = glm::vec4(vert.constColor, 0.4f) * TotalLight;
 //	}
 //}
-
-glm::vec4 Scene::CalInternalLight(int i, const glm::vec3& lightDirection, const glm::vec3& Normal, const glm::vec4& pos)
-{
-	//glm::vec4 AmbientColor = glm::vec4(lights.col[i], 1.0f) * lights.intensity[i];
-	glm::vec4 AmbientColor = glm::vec4(0, 0, 0, 0);
-	float DiffuseFactor = glm::dot(Normal, -lightDirection);
-
-	glm::vec4 DiffuseColor = glm::vec4(0, 0, 0, 0);
-	glm::vec4 SpecularColor = glm::vec4(0, 0, 0, 0);
-	if (DiffuseFactor > 0) {
-		DiffuseColor = glm::vec4(lights.col[i] * lights.diffuseIntensity[i] * DiffuseFactor, 1.0f);
-
-		 glm::vec3 VertexToEye = glm::normalize(lights.camPos - glm::vec3(pos));
-		 glm::vec3 LightReflect = glm::normalize(glm::reflect(lightDirection, Normal));
-		 float SpecularFactor = glm::dot(VertexToEye, LightReflect);
-		 if (SpecularFactor > 0) {
-		     SpecularFactor = pow(SpecularFactor, lights.specPower[i]);
-		     SpecularColor = glm::vec4(lights.col[i] * lights.specIntensity[i] * SpecularFactor, 1.0f);
-		 }
-	}
-
-	return (DiffuseColor + SpecularColor);
-}
+//
+//glm::vec4 Scene::CalInternalLight(int i, const glm::vec3& lightDirection, const glm::vec3& Normal, const glm::vec4& pos)
+//{
+//	//glm::vec4 AmbientColor = glm::vec4(lights.col[i], 1.0f) * lights.intensity[i];
+//	glm::vec4 AmbientColor = glm::vec4(0, 0, 0, 0);
+//	float DiffuseFactor = glm::dot(Normal, -lightDirection);
+//
+//	glm::vec4 DiffuseColor = glm::vec4(0, 0, 0, 0);
+//	glm::vec4 SpecularColor = glm::vec4(0, 0, 0, 0);
+//	if (DiffuseFactor > 0) {
+//		DiffuseColor = glm::vec4(light[i].col * light[i].diffuseIntensity * DiffuseFactor, 1.0f);
+//
+//		 glm::vec3 VertexToEye = glm::normalize(camera.GetTransform().pos - glm::vec3(pos));
+//		 glm::vec3 LightReflect = glm::normalize(glm::reflect(lightDirection, Normal));
+//		 float SpecularFactor = glm::dot(VertexToEye, LightReflect);
+//		 if (SpecularFactor > 0) {
+//		     SpecularFactor = pow(SpecularFactor, light[i].specPower);
+//		     SpecularColor = glm::vec4(light[i].col * light[i].specIntensity * SpecularFactor, 1.0f);
+//		 }
+//	}
+//
+//	return (DiffuseColor + SpecularColor);
+//}
 
 void Scene::CheckParticles()
 {

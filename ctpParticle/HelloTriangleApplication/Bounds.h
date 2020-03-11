@@ -8,8 +8,9 @@ struct Bounds
 	glm::vec3 min = { INFINITY, INFINITY, INFINITY };
 	glm::vec3 max = { -INFINITY, -INFINITY, -INFINITY };
 
-	bool IsInside(const glm::vec3& point);
+	glm::vec3 center = { -INFINITY, -INFINITY, -INFINITY };
 
+	bool IsInside(const glm::vec3& point);
 
 	void Load(const std::vector<Vertex>& vertices);
 	void Load(const std::vector<Triangle>& triangles);

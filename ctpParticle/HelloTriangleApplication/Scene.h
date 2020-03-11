@@ -1,31 +1,11 @@
 #pragma once
 
 #include "App.h"
-
+#include "Constants.h"
 #include "Camera.h"
 #include "ParticleSystem.h"
 #include "FlowFieldObject.h"
-
-
-//struct LightShit
-//{
-//	glm::vec3 col;
-//	float intensity;
-//	glm::vec3 direction;
-//	float diffuseIntensity;
-//};
-
-//struct LightShit {
-//	glm::vec3 col;
-//	float intensity;
-//	glm::vec3 direction;
-//	float diffuseIntensity;
-//	glm::vec3 pos;
-//	float constant;
-//	float linear;
-//	float exponent;
-//	glm::vec3 camPos;
-//};
+#include "LGH.h"
 
 struct LightShit {
 	std::vector<glm::vec3> col;
@@ -99,15 +79,16 @@ private:
 
 	FfObject ffModel;
 
-	Light light;
 	LightShit lights;
 	//Light lights[100];
 
 	Buffer lightBuffer;
 	Buffer lightCountBuffer;
 
-	//std::vector<Light> lights;
+	std::vector<LightShits> light;
 	int lightCount = 1;
+
+	LGH lgh;
 
 	size_t dynamicAlignment;
 

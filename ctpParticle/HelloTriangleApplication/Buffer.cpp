@@ -111,10 +111,9 @@ Buffer Buffer::CreateStagingBuffer(VkDeviceSize _size, VkMemoryPropertyFlags _me
 	return staging;
 }
 
-
-void Buffer::StageBuffer(VkDeviceSize _size, VkQueue queue, const void* _data)
+void Buffer::StageBuffer(VkDeviceSize _size, VkQueue queue, const void* _data, VkMemoryPropertyFlags _memProperties)
 {
-	Buffer staging = Buffer::CreateStagingBuffer(size, memProperties);
+	Buffer staging = Buffer::CreateStagingBuffer(size, _memProperties);
 
 	VkCommandBuffer cmdBuffer = Locator::GetDevices()->BeginSingleTimeCommands(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
 

@@ -40,6 +40,7 @@ void Devices::CreateLogicalDevice(const VkSurfaceKHR& surface) {
 	VkPhysicalDeviceFeatures deviceFeatures = {};
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
 	deviceFeatures.geometryShader = VK_TRUE;
+	deviceFeatures.fragmentStoresAndAtomics = VK_TRUE;
 //	VkPhysicalDeviceDescriptorIndexingFeaturesEXT::runtimeDescriptorArray
 
 	VkDeviceCreateInfo createInfo = {};

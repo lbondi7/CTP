@@ -24,7 +24,7 @@ struct Buffer
 
 	static Buffer CreateStagingBuffer(VkDeviceSize _size, VkMemoryPropertyFlags _memProperties);
 
-	void StageBuffer(VkDeviceSize _size, VkQueue queue, const void* _data);
+	void StageBuffer(VkDeviceSize _size, VkQueue queue, const void* _data, VkMemoryPropertyFlags _memProperties);
 
 	void Unmap(bool clearData);
 

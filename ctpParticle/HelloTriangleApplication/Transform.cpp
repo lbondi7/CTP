@@ -7,7 +7,7 @@ bool Transform::operator==(const Transform& other) const
 
 void Transform::operator=(const Transform& other)
 {
-	pos = other.pos;
-	scale = other.scale;
-	rot = other.rot;
+	this->pos = other.pos;
+	this->scale = other.scale;
+	this->rot = other.rot;
 }

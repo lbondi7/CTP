@@ -11,18 +11,18 @@ public:
 	LGH() = default;
 	~LGH();
 
-	void Create(const std::vector<LightShits>& pl);
+	void Create(const std::vector<Light>& pl);
 
-	void Recreate(const std::vector<LightShits>& pl);
+	void Recreate(const std::vector<Light>& pl);
 
 
-	const std::vector<LightShits>& Lights() { return lights; }
+	const std::vector<Light>& Lights() { return lights; }
 
-	const LightShits& Light(int i) { return lights[i]; }
+	const Light& Lights(int i) { return lights[i]; }
 
 private:
 
-	std::vector<LightShits> lights;
+	std::vector<Light> lights;
 	std::vector<Bounds> bounds;
 	Bounds bound;
 

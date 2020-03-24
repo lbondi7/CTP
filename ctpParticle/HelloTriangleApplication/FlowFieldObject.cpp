@@ -33,7 +33,7 @@ void FfObject::Load(const std::string& filepath, const Transform& _transform)
 
 	for (size_t i = 0; i < indices.size(); i += 3)
 	{
-		Triangle tri(vertices[indices[i]].pos, vertices[indices[i + 1]].pos, vertices[indices[i + 2]].pos, transform);
+		Triangle tri(vertices[indices[i]].pos, vertices[indices[i + 1]].pos, vertices[indices[i + 2]].pos, _transform);
 
 		triangles.push_back(tri);
 	}

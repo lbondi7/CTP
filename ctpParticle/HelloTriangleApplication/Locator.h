@@ -3,6 +3,7 @@
 class Timer;
 class Devices;
 class Keyboard;
+class Mouse;
 struct Mesh;
 struct Image;
 struct Shaders;
@@ -18,6 +19,10 @@ public:
 	static void InitKeyboard(Keyboard* _key) { keyboard = _key; }
 
 	static Keyboard* GetKeyboard() { return keyboard; }
+
+	static void InitMouse(Mouse* _mouse) { mouse = _mouse; }
+
+	static Mouse* GetMouse() { return mouse; }
 
 	static void InitDevices(Devices* _devices) { devices = _devices; }
 
@@ -39,6 +44,7 @@ private:
 	static Timer* timer;
 	static Devices* devices;
 	static Keyboard* keyboard;
+	static Mouse* mouse;
 	static Mesh* mesh;
 	static Image* image;
 	static Shaders* shader;

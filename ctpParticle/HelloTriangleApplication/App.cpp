@@ -8,6 +8,7 @@
 #include "Timer.h"
 #include "Devices.h"
 #include "Keyboard.h"
+#include "Mouse.h"
 #include "Mesh.h"
 #include "Image.h"
 
@@ -50,6 +51,7 @@ void CTPApp::initWindow() {
 
 	Locator::InitTimer(new Timer());
 	Locator::InitKeyboard(new Keyboard(window));
+	Locator::InitMouse(new Mouse(window));
 
 }
 

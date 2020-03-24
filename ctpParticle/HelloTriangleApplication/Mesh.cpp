@@ -157,6 +157,7 @@ void Mesh::LoadMesh(const std::string& mesh, const std::string& filePath)
 				attrib.normals[3 * index.normal_index + 2]
 			};
 
+			//materials[0].illum
 			if (!materials.empty())
 			{
 				vertex.color = { 0.8f * materials[0].specular[0], 0.8f * materials[0].specular[0], 0.8f * materials[0].specular[0], 0.4f };

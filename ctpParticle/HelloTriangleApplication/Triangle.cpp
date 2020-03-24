@@ -18,9 +18,8 @@ Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, const Transform& tr
 
     for (size_t i = 0; i < 3; i++)
     {
-        vertices[i] = glm::vec4(localVertices[i], 1.0f) * 
-            glm::translate(glm::mat4(1.0f), transform.pos) * 
-            glm::scale(glm::mat4(1.0f), transform.scale);
+        vertices[i] = glm::vec4(localVertices[i], 0.0f)
+            * glm::translate(glm::mat4(1.0f), transform.pos);
     }
 
     edges[0] = vertices[1] - vertices[0];
@@ -29,19 +28,15 @@ Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, const Transform& tr
 
     center = (vertices[0] + vertices[1] + vertices[2]) / 3.0f;
 
-    normal = glm::normalize(glm::cross(edges[0], edges[1]));
+    normal = glm::normalize(glm::cross(edges[0], edges[2]));
 
-    for (size_t i = 0; i < 3; i++)
-    {
-        max.x = std::max(std::max(vertices[0].x, vertices[1].x), vertices[2].x);
-        max.y = std::max(std::max(vertices[0].y, vertices[1].y), vertices[2].y);
-        max.z = std::max(std::max(vertices[0].z, vertices[1].z), vertices[2].z);
+    max.x = std::max(std::max(vertices[0].x, vertices[1].x), vertices[2].x);
+    max.y = std::max(std::max(vertices[0].y, vertices[1].y), vertices[2].y);
+    max.z = std::max(std::max(vertices[0].z, vertices[1].z), vertices[2].z);
 
-        min.x = std::min(std::min(vertices[0].x, vertices[1].x), vertices[2].x);
-        min.y = std::min(std::min(vertices[0].y, vertices[1].y), vertices[2].y);
-        min.z = std::min(std::min(vertices[0].z, vertices[1].z), vertices[2].z);
-    }
-
+    min.x = std::min(std::min(vertices[0].x, vertices[1].x), vertices[2].x);
+    min.y = std::min(std::min(vertices[0].y, vertices[1].y), vertices[2].y);
+    min.z = std::min(std::min(vertices[0].z, vertices[1].z), vertices[2].z);
 }
 
 void Triangle::Update(const glm::vec3& p)
@@ -57,18 +52,15 @@ void Triangle::Update(const glm::vec3& p)
 
     center = (vertices[0] + vertices[1] + vertices[2]) / 3.0f;
 
-    normal = glm::cross(edges[0], edges[1]);
+    //normal = glm::cross(edges[0], edges[1]);
 
-    for (size_t i = 0; i < 3; i++)
-    {
-        max.x = std::max(std::max(vertices[0].x, vertices[1].x), vertices[2].x);
-        max.y = std::max(std::max(vertices[0].y, vertices[1].y), vertices[2].y);
-        max.z = std::max(std::max(vertices[0].z, vertices[1].z), vertices[2].z);
+    max.x = std::max(std::max(vertices[0].x, vertices[1].x), vertices[2].x);
+    max.y = std::max(std::max(vertices[0].y, vertices[1].y), vertices[2].y);
+    max.z = std::max(std::max(vertices[0].z, vertices[1].z), vertices[2].z);
 
-        min.x = std::min(std::min(vertices[0].x, vertices[1].x), vertices[2].x);
-        min.y = std::min(std::min(vertices[0].y, vertices[1].y), vertices[2].y);
-        min.z = std::min(std::min(vertices[0].z, vertices[1].z), vertices[2].z);
-    }
+    min.x = std::min(std::min(vertices[0].x, vertices[1].x), vertices[2].x);
+    min.y = std::min(std::min(vertices[0].y, vertices[1].y), vertices[2].y);
+    min.z = std::min(std::min(vertices[0].z, vertices[1].z), vertices[2].z);
 }
 
 float Triangle::udTriangle(glm::vec3 p)

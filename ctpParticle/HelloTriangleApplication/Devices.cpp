@@ -74,6 +74,7 @@ void Devices::CreateQueue(VkQueue& queue, Queues queueType)
 		vkGetDeviceQueue(device, queueFamilyIndices.graphicsFamily.value(), 0, &queue);
 		break;
 	case Queues::COMPUTE:
+		vkGetDeviceQueue(device, queueFamilyIndices.computeFamily.value(), 0, &queue);
 		break;
 	case Queues::PRESENT:
 		vkGetDeviceQueue(device, queueFamilyIndices.presentFamily.value(), 0, &queue);
@@ -119,6 +120,9 @@ QueueFamilyIndices Devices::FindQueueFamilies(VkSurfaceKHR surface) {
 	for (const auto& queueFamily : queueFamilies) {
 		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.graphicsFamily = i;
+		}
+		if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+			indices.computeFamily = i;
 		}
 
 		VkBool32 presentSupport = false;

@@ -14,6 +14,8 @@ struct Triangle
 
 	float udTriangle(glm::vec3 p);
 
+	float UdTriangle(glm::vec3 p);
+
 	void operator =(const Triangle& other);
 
 

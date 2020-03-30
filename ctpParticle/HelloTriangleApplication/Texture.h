@@ -5,7 +5,6 @@
 
 struct Texture
 {
-
 	VkDevice device;
 
 	VkImage image;
@@ -18,6 +17,8 @@ struct Texture
 	void* pixels;
 	VkDeviceSize size;
 	int texWidth, texHeight, texChannels;
+
+	Texture() = default;
 
 	~Texture();
 

@@ -203,9 +203,6 @@
     <ClInclude Include="Shaders.h">
       <Filter>Header Files\Backend</Filter>
     </ClInclude>
-    <ClInclude Include="Utilities.h">
-      <Filter>Header Files\Utilities</Filter>
-    </ClInclude>
     <ClInclude Include="Triangle.h">
       <Filter>Header Files\Game</Filter>
     </ClInclude>
@@ -216,6 +213,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Mouse.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Utillities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

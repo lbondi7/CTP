@@ -69,18 +69,18 @@ vec4 CalPointLight(int i, vec3 pointLightDir, vec3 Normal, vec3 pos)
     float DiffuseFactor = dot(Normal, pointLightDir);
 
     float diffCol = 0.0;
-    float specCol = 1.0;
+    float specCol = 0.5;
     vec4 DiffuseColor = vec4(diffCol, diffCol, diffCol, 1.0);
-    vec4 SpecularColor = vec4(lights[i].col, 1.0);
+    vec4 SpecularColor = vec4(specCol, specCol, specCol, 1.0);
     if (DiffuseFactor > 0) {
-        DiffuseColor *= DiffuseFactor;
+        DiffuseColor *= vec4(lights[i].col, 0.0) * DiffuseFactor;
 
         vec3 VertexToEye = normalize(pos - lightConsts.cameraPos);
         vec3 LightReflect = normalize(reflect(pointLightDir, Normal));
         float SpecularFactor = dot(VertexToEye, LightReflect);
         if (SpecularFactor > 0.0) {
             SpecularFactor = pow(SpecularFactor, 128);
-            SpecularColor *= SpecularFactor;
+            SpecularColor *= vec4(lights[i].col, 0.0) * SpecularFactor;
         }
     }
     return (DiffuseColor + SpecularColor);

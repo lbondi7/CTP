@@ -57,7 +57,7 @@ namespace VkHelper
 		return vertexAttributeDescription;
 	}
 
-	VkDescriptorSetLayoutBinding createDescriptorLayoutBinding(uint32_t binding, VkDescriptorType descriptorType, VkSampler* immutableSamplers, VkShaderStageFlags stageFlags, uint32_t descriptorCount)
+	VkDescriptorSetLayoutBinding createDescriptorLayoutBinding(uint32_t binding, VkDescriptorType descriptorType, VkShaderStageFlags stageFlags, uint32_t descriptorCount, VkSampler* immutableSamplers)
 	{
 		VkDescriptorSetLayoutBinding layoutBinding = {};
 		layoutBinding.binding = binding;

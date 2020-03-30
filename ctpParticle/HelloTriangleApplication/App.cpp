@@ -66,6 +66,7 @@ void CTPApp::initVulkan() {
 	Locator::GetDevices()->CreateLogicalDevice(surface);
 	Locator::GetDevices()->CreateQueue(graphicsQueue, Queues::GRAPHICS);
 	Locator::GetDevices()->CreateQueue(presentQueue, Queues::PRESENT);
+	Locator::GetDevices()->CreateQueue(compute.queue, Queues::COMPUTE);
 	device = Locator::GetDevices()->GetDevice();
 	swapchain.Init(instance);
 	swapchain.CreateSurface(window);
@@ -151,6 +152,13 @@ void CTPApp::cleanupSwapChain() {
 	vkDestroySwapchainKHR(device, swapchain.swapChain, nullptr);
 
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+
+
+	vkDestroyPipelineLayout(device, compute.pipelineLayout, nullptr);
+	vkDestroyDescriptorSetLayout(device, compute.descriptorSetLayout, nullptr);
+	vkDestroyPipeline(device, compute.pipeline, nullptr);
+	vkDestroyFence(device, compute.fence, nullptr);
+	vkDestroyCommandPool(device, compute.commandPool, nullptr);
 }
 
 void CTPApp::createRenderPass() {

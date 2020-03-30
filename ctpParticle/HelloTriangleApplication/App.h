@@ -6,6 +6,18 @@
 #include "Object.h"
 #include "SwapChain.h"
 
+struct {
+	VkQueue queue;								// Separate queue for compute commands (queue family may differ from the one used for graphics)
+	VkCommandPool commandPool;					// Use a separate command pool (queue family may differ from the one used for graphics)
+	VkCommandBuffer commandBuffer;				// Command buffer storing the dispatch commands and barriers
+	VkFence fence;								// Synchronization fence to avoid rewriting compute CB if still in use
+	VkDescriptorSetLayout descriptorSetLayout;	// Compute shader binding layout
+	VkDescriptorSet descriptorSet;				// Compute shader bindings
+	VkPipelineLayout pipelineLayout;			// Layout of the compute pipeline
+	VkPipeline pipeline;						// Compute pipeline for updating particle positions
+} compute;
+
+
 class CTPApp {
 public:
 

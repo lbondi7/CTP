@@ -1,0 +1,24 @@
+#version 450
+
+layout(binding = 0) uniform UniformBufferParticle {
+    float deltaTime;
+    int particleCount;
+} ubp;
+
+struct Particle
+{
+	vec3 pos;
+};
+
+layout(std140, binding = 1) buffer Particles
+{
+   Particle particles[ ];
+};
+
+void main() {    
+
+    uint index = gl_GlobalInvocationID.x;
+
+    if(index >= ubp.particleCount)
+    return;
+}

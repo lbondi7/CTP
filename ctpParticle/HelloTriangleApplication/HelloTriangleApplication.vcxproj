@@ -212,7 +212,7 @@
     <ClInclude Include="Timer.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="Triangle.h" />
-    <ClInclude Include="Utilities.h" />
+    <ClInclude Include="Utillities.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="VkConstants.h" />
     <ClInclude Include="VkHelper.h" />

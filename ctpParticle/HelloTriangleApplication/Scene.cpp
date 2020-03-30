@@ -12,6 +12,7 @@
 #include "Image.h"
 #include "Shaders.h"
 #include "Constants.h"
+//#include "Utillities.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -57,6 +58,7 @@ void Scene::run() {
 	createDescriptorPool();
 	createDescriptorSets();
 	createCommandBuffers();
+	createCompute();
 	mainLoop();
 	Cleanup();
 }
@@ -89,7 +91,7 @@ void Scene::mainLoop() {
 		if(updateDelay > 0)
 			updateDelay--;
 
-		std::this_thread::sleep_for(10ms);
+		std::this_thread::sleep_for(1ms);
 	}
 	vkDeviceWaitIdle(device);
 }
@@ -113,13 +115,13 @@ void Scene::createDescriptorPool() {
 
 void Scene::createDescriptorSetLayout() {
 
-	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT);
+	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT);
 
-	VkDescriptorSetLayoutBinding samplerLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
+	VkDescriptorSetLayoutBinding samplerLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
 	
-	VkDescriptorSetLayoutBinding lightLayoutBinding = VkHelper::createDescriptorLayoutBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
+	VkDescriptorSetLayoutBinding lightLayoutBinding = VkHelper::createDescriptorLayoutBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
 	
-	VkDescriptorSetLayoutBinding lightUboLayoutBinding = VkHelper::createDescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, nullptr, VK_SHADER_STAGE_FRAGMENT_BIT);
+	VkDescriptorSetLayoutBinding lightUboLayoutBinding = VkHelper::createDescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding, lightLayoutBinding, lightUboLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
@@ -385,6 +387,60 @@ void Scene::createCommandBuffers() {
 	}
 }
 
+void Scene::createCompute() {
+
+	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+	VkDescriptorSetLayoutBinding storageLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, storageLayoutBinding };
+	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
+
+	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &compute.descriptorSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create compute descriptor set layout!");
+	}
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &compute.descriptorSetLayout;
+
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &compute.pipelineLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create compute pipeline layout!");
+	}
+
+	std::vector<VkDescriptorSetLayout> layouts(1, compute.descriptorSetLayout);
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = descriptorPool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = layouts.data();
+
+	if (vkAllocateDescriptorSets(device, &allocInfo, &compute.descriptorSet) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate descriptor sets!");
+	}
+
+	std::vector<VkWriteDescriptorSet> descriptorWrites = {
+//VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &),
+//VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &)
+	};
+
+	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+
+	VkComputePipelineCreateInfo computePipelineCreateInfo{};
+	computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	computePipelineCreateInfo.layout = compute.pipelineLayout;
+	computePipelineCreateInfo.flags = 0;
+
+	//VkPipelineShaderStageCreateInfo vertShaderStageInfo = Locator::GetShader()->CreateShaderInfo("pointSpriteComp", VK_SHADER_STAGE_COMPUTE_BIT);
+
+	computePipelineCreateInfo.stage = Locator::GetShader()->CreateShaderInfo("pointSpriteComp", VK_SHADER_STAGE_COMPUTE_BIT);
+	if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &compute.pipeline) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create compute pipeline!");
+	}
+	Locator::GetShader()->DestroyShaders();
+}
+
 glm::vec3 Scene::getFlowField(glm::vec3 pos)
 {
 	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
@@ -496,8 +552,7 @@ void FindTri(std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSyste
 			}
 			first = false;
 		}
-
-		std::this_thread::sleep_for(50ms);
+		std::this_thread::sleep_for(1ms);
 	}
 
 }
@@ -547,14 +602,14 @@ void Scene::LoadAssets()
 	object.SetTransform(transform);
 
 	Transform trans;
-	trans.pos = { 10.0f, 0.0f, 0.0f };
-	//trans.scale = { 2.0f, 2.0f, 2.0f };
+	trans.pos = { 0.0f, 0.0f, 0.0f };
+	trans.scale = { 3.0f, 3.0f, 3.0f };
 	ffModel.Load("square", trans);
 
 	GetClosestTri();
 
-	std::thread th(FindTri, &nearestTri, &ffModel, &pSystem);
-	th.detach();
+//	std::thread th(FindTri, &nearestTri, &ffModel, &pSystem);
+//	th.detach();
 }
 
 void Scene::Update()
@@ -606,6 +661,7 @@ void Scene::Update()
 	for (size_t i = 0; i < pSystem.ParticleCount(); i++)
 	{
 		lights[i].pos = pSystem.PsParticle(i).position;
+		//std::cout << lights[i].pos.x << ", " << lights[i].pos.y << ", " << lights[i].pos.z << std::endl;
 	}
 	uboLight.camPos = camera.GetTransform().pos;
 	uboLight.particleCount = pSystem.ParticleCount();
@@ -634,24 +690,27 @@ void Scene::CheckParticles()
 		{
 			length = glm::distance(pSystem.PsParticle(i).position, pSystem.PsParticle(i).target);
 			length2 = glm::distance(pSystem.PsParticle(i).target + (nearestTri[i].normal), pSystem.PsParticle(i).target);
-			//std::cout << i << ", " << length << ", " << length2 << std::endl;
+
+			//std::cout << "Lengths: " <<length << ", " << length2 << std::endl;
 			if (length < length2)
 			{
 				std::random_device rd;
 				std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
-				std::uniform_real_distribution<float> rand2(0.05f, 0.01f);
+				std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
 				pSystem.PsParticle(i).goToTri = false;
 				pSystem.PsParticle(i).ranDirDuration = rand2(rd);
 				pSystem.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
-
+				//std::cout << "Random Position: " << pSystem.PsParticle(i).ranDirDuration << std::endl;
 			}
 		}
 		else
 		{
 			if (pSystem.PsParticle(i).ranDirDuration <= 0.0f)
 			{
-				pSystem.PsParticle(i).target = nearestTri[i].center;
-				pSystem.SetNewTarget(i, nearestTri[i].center);
+				//std::cout << "Go To Tri: " << pSystem.PsParticle(i).ranDirDuration << std::endl;
+				GetClosestTri(i);
+				//pSystem.PsParticle(i).target = nearestTri[i].center;
+				//pSystem.SetParticleVelocityFromTarget(i, nearestTri[i].center);
 				pSystem.PsParticle(i).goToTri = true;
 			}
 			pSystem.PsParticle(i).ranDirDuration -= Locator::GetTimer()->DeltaTime();
@@ -672,6 +731,7 @@ void GetTri(int minVal, int maxVal, std::vector<Triangle>* nearestTri, FfObject*
 			{
 				nearestPoint = (*ffModel).triangles[j].udTriangle((*pSystem).PsParticle(i).position);
 				(*nearestTri)[i] = (*ffModel).triangles[j];
+				(*pSystem).SetParticleVelocityFromTarget(i, (*nearestTri)[i].center);
 			}
 			else
 			{
@@ -680,13 +740,12 @@ void GetTri(int minVal, int maxVal, std::vector<Triangle>* nearestTri, FfObject*
 				{
 					nearestPoint = nP;
 					(*nearestTri)[i] = (*ffModel).triangles[j];
-					(*pSystem).PsParticle(i).target = (*nearestTri)[i].center;
-					(*pSystem).SetNewTarget(i, (*nearestTri)[i].center);
-					(*pSystem).PsParticle(i).goToTri = true;
+					(*pSystem).SetParticleVelocityFromTarget(i, (*nearestTri)[i].center);
 				}
 			}
 		}
-		std::this_thread::sleep_for(5ms);
+		(*pSystem).PsParticle(i).goToTri = true;
+		std::this_thread::sleep_for(1ms);
 	}
 }
 
@@ -695,24 +754,54 @@ void Scene::GetClosestTri()
 
 	//float nearestPoint = INFINITY;
 	//float nP = INFINITY;
-	int interval;
-	if (pSystem.ParticleCount() > 1000)
-		interval = pSystem.ParticleCount() / (pSystem.ParticleCount() / 100);
-	else
-		interval = pSystem.ParticleCount();
 
-	for (size_t i = 0; i < pSystem.ParticleCount(); i += interval)
+	if (pSystem.ParticleCount() < 4)
 	{
-		if (i + interval > pSystem.ParticleCount())
-			interval = pSystem.ParticleCount() - i;
-
-		std::thread th(GetTri, i, i + interval, &nearestTri, &ffModel, &pSystem);
-
-		if (i > pSystem.ParticleCount() - (interval + 10))
-			th.join();
-		else
-			th.detach();
+		GetTri(0, pSystem.ParticleCount(), & nearestTri, & ffModel, & pSystem);
+		return;
 	}
+
+	int interval = pSystem.ParticleCount() / 4;
+
+	std::thread threads[4];
+
+	int start_count = 0;
+	for (size_t i = 0; i < 4; ++i)
+	{
+		threads[i] = std::thread(GetTri, start_count, start_count + interval, &nearestTri, &ffModel, &pSystem);
+
+		if (interval == pSystem.ParticleCount())
+			break;
+
+		if (start_count + interval > pSystem.ParticleCount())
+		{
+			start_count += pSystem.ParticleCount() - start_count;
+		}
+		else
+		{
+			start_count += interval;
+		}
+	}
+
+	for (size_t i = 0; i < 4; ++i)
+	{
+		if(threads[i].joinable())
+			threads[i].join();
+	}
+
+	int x = 789;
+	//for (size_t i = 0; i < pSystem.ParticleCount(); i += interval)
+	//{
+	//	if (i + interval > pSystem.ParticleCount())
+	//		interval = pSystem.ParticleCount() - i;
+
+	//	std::thread th(GetTri, i, i + interval, &nearestTri, &ffModel, &pSystem);
+
+	//	if (i > pSystem.ParticleCount() - (interval + 10))
+	//		th.join();
+	//	else
+	//		th.detach();
+	//}
 
 	//float nearestPoint = INFINITY;
 	//float nP = INFINITY;
@@ -751,6 +840,7 @@ void Scene::GetClosestTri(size_t i)
 		{
 			nearestPoint = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
 			nearestTri[i] = ffModel.triangles[j];
+			pSystem.SetParticleVelocityFromTarget(i, nearestTri[i].center);
 		}
 		else
 		{
@@ -759,12 +849,14 @@ void Scene::GetClosestTri(size_t i)
 			{
 				nearestPoint = nP;
 				nearestTri[i] = ffModel.triangles[j];
-				pSystem.PsParticle(i).target = nearestTri[i].center;
-				pSystem.SetNewTarget(i, nearestTri[i].center);
-				pSystem.PsParticle(i).goToTri = true;
+				glm::vec3 random_point;
+
+				//pSystem.PsParticle(i).target = nearestTri[i].center;
+				pSystem.SetParticleVelocityFromTarget(i, nearestTri[i].center);
 			}
 		}
 	}
+	pSystem.PsParticle(i).goToTri = true;
 }
 
 void Scene::drawFrame() {

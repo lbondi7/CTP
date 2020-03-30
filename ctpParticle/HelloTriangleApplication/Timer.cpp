@@ -26,5 +26,9 @@ void Timer::GetTimePoint()
 void Timer::GetTimePoint(float time)
 {
 	dt = time - oldTime;
+	if (dt > 0.1f)
+	{
+		dt = 0.1f;
+	}
 	oldTime = time;
 }

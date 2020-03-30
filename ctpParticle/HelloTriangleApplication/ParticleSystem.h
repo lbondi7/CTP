@@ -4,7 +4,7 @@
 #include "Buffer.h"
 #include "VkHelper.h"
 
-#include "glm//glm.hpp"
+#include "glm/glm.hpp"
 #include <vector>
 
 struct Particle
@@ -70,12 +70,12 @@ public:
 
 	Particle& PsParticle(int i) { return particles[i]; }
 
-	void SetNewTarget(int i, const glm::vec3& newDest);
+	void SetParticleVelocityFromTarget(int i, const glm::vec3& newDest);
 
 
 private:
 
-	int amount = 1;
+	int amount = 1000;
 
 	std::vector<Particle> particles;
 

@@ -6,7 +6,7 @@
 #include "Keyboard.h"
 
 #include <random>
-
+#include <iostream>
 
 ParticleSystem::ParticleSystem(int _amount, VkQueue graphicsQueue)
 {
@@ -39,8 +39,8 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 		//particles[i].position = { randChoose(mt) == 0 ? randPos(mt) : randNeg(mt),
 		//	randChoose(mt) == 0 ? randPos(mt) : randNeg(mt),
 		//	randChoose(mt) == 0 ? randPos(mt) : randNeg(mt) };
-		particles[i].position = { rand(mt), rand(mt), rand(mt) };
-		//particles[i].position = { 0, -5, 0 };
+		//particles[i].position = { rand(rd), rand(rd), rand(rd) };
+		particles[i].position = { 0, -20, 0 };
 		//particles[i].position = { i - 2.0f, i + i + 2.0f, i + i + 2.0f };
 		particles[i].velocity = { 0.0f, 0.0f, 0.0f };
 		particles[i].maxLife = rand2(rd);
@@ -79,7 +79,11 @@ void ParticleSystem::Update()
 {
 	for (size_t i = 0; i < amount; ++i)
 	{
-		particles[i].position += particles[i].velocity * Locator::GetTimer()->DeltaTime();
+		particles[i].position += particles[i].velocity * Locator::GetTimer()->FixedDeltaTime();
+		
+		//std::cout << particles[i].velocity.x << ", " << particles[i].velocity.y << ", " << particles[i].velocity.z << std::endl;
+
+		//Utillities::Print(particles[i].velocity);
 
 		particles[i].alpha = 0.5f - ((particles[i].life / particles[i].maxLife) * 0.5f);
 
@@ -88,7 +92,7 @@ void ParticleSystem::Update()
 		if (!lifeEnabled)
 			continue;
 
-		particles[i].life += Locator::GetTimer()->DeltaTime();
+		particles[i].life += Locator::GetTimer()->FixedDeltaTime();
 		if (particles[i].life >= particles[i].maxLife)
 		{
 			std::random_device rd;
@@ -126,7 +130,7 @@ void ParticleSystem::Destroy()
 	particles.clear();
 }
 
-void ParticleSystem::SetNewTarget(int i, const glm::vec3& newDest)
+void ParticleSystem::SetParticleVelocityFromTarget(int i, const glm::vec3& newDest)
 {
-	particles[i].velocity = glm::normalize(newDest - particles[i].position) * 10.0f;
+	particles[i].velocity = glm::normalize(newDest - particles[i].position) * 2.0f;
 }

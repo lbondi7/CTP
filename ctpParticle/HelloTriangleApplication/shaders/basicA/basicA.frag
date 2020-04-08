@@ -15,7 +15,7 @@ layout(std140, binding = 2) buffer Lights
 layout(binding = 3) uniform uboLight
 {
    vec3 cameraPos;
-   int particleCount;
+   int lightCount;
 } lightConsts;
 
 layout(location = 0) in vec4 fragColor;
@@ -113,7 +113,7 @@ void main() {
 
    vec4 TotalLight = CalcDirLight(vec3(0, -0.1, 1), fragNormal.xyz, fragPosition.xyz);
 
-   for(int j = 0; j < lightConsts.particleCount; j++)
+   for(int j = 0; j < lightConsts.lightCount; j++)
    {
    vec3 pointLightDir = lights[j].pos - fragPosition.xyz;
    float Distance = length(pointLightDir);

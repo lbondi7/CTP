@@ -66,13 +66,11 @@ void Triangle::Update(const glm::vec3& p)
     //min.z = std::min(std::min(vertices[0].z, vertices[1].z), vertices[2].z);
 }
 
-float Triangle::udTriangle(glm::vec3 p)
-{
-    // prepare data    
+float Triangle::ShorestDistance(glm::vec3 p)
+{  
     glm::vec3 p1 = p - vertices[0];
     glm::vec3 p2 = p - vertices[1];
     glm::vec3 p3 = p - vertices[2];
-
 
     if (std::sin(glm::dot(glm::cross(edges[0], normal), p1)) +
         std::sin(glm::dot(glm::cross(edges[1], normal), p2)) +
@@ -87,7 +85,6 @@ float Triangle::udTriangle(glm::vec3 p)
     {
         return sqrt(glm::dot(normal, p1) * glm::dot(normal, p1) / Utillities::Dot2(normal));
     }
-
     //return sqrt( // inside/outside test    
     //    (std::sin(glm::dot(glm::cross(edges[0], normal), p1)) +
     //        std::sin(glm::dot(glm::cross(edges[1], normal), p2)) +

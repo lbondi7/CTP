@@ -1,4 +1,5 @@
 #version 450
+#extension GL_ARB_separate_shader_objects : enable
 
 layout(binding = 0) uniform UniformBufferParticle {
     float deltaTime;
@@ -8,6 +9,7 @@ layout(binding = 0) uniform UniformBufferParticle {
 struct Particle
 {
 	vec3 pos;
+    vec3 vel;
 };
 
 layout(std140, binding = 1) buffer Particles
@@ -21,4 +23,7 @@ void main() {
 
     if(index >= ubp.particleCount)
     return;
+    vec3 vel = vec3(0, 10, 0);
+    float delt =  (1.0 / 60.0);
+    particles[index].pos += vel * delt;
 }

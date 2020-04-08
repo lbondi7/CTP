@@ -25,7 +25,9 @@ void Devices::CreateLogicalDevice(const VkSurfaceKHR& surface) {
 	queueFamilyIndices = FindQueueFamilies(surface);
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = { queueFamilyIndices.graphicsFamily.value(), queueFamilyIndices.presentFamily.value() };
+	std::set<uint32_t> uniqueQueueFamilies = { queueFamilyIndices.graphicsFamily.value(), 
+		queueFamilyIndices.presentFamily.value(),
+	    queueFamilyIndices.computeFamily.value(), };
 
 	float queuePriority = 1.0f;
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
@@ -41,7 +43,6 @@ void Devices::CreateLogicalDevice(const VkSurfaceKHR& surface) {
 	deviceFeatures.samplerAnisotropy = VK_TRUE;
 	deviceFeatures.geometryShader = VK_TRUE;
 	deviceFeatures.fragmentStoresAndAtomics = VK_TRUE;
-//	VkPhysicalDeviceDescriptorIndexingFeaturesEXT::runtimeDescriptorArray
 
 	VkDeviceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -63,7 +64,7 @@ void Devices::CreateLogicalDevice(const VkSurfaceKHR& surface) {
 		throw std::runtime_error("failed to create logical device!");
 	}
 
-	CreateCommandPool(cmdPool);
+	CreateCommandPool(cmdPool, Queues::GRAPHICS);
 }
 
 void Devices::CreateQueue(VkQueue& queue, Queues queueType)
@@ -74,7 +75,7 @@ void Devices::CreateQueue(VkQueue& queue, Queues queueType)
 		vkGetDeviceQueue(device, queueFamilyIndices.graphicsFamily.value(), 0, &queue);
 		break;
 	case Queues::COMPUTE:
-		vkGetDeviceQueue(device, queueFamilyIndices.computeFamily.value(), 0, &queue);
+		//vkGetDeviceQueue(device, queueFamilyIndices.computeFamily.value(), 0, &queue);
 		break;
 	case Queues::PRESENT:
 		vkGetDeviceQueue(device, queueFamilyIndices.presentFamily.value(), 0, &queue);
@@ -82,14 +83,26 @@ void Devices::CreateQueue(VkQueue& queue, Queues queueType)
 	}
 }
 
-void Devices::CreateCommandPool(VkCommandPool& commandPool)
+void Devices::CreateCommandPool(VkCommandPool& commandPool, Queues queueType)
 {
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+
+	std::string warning = "bobs";
+	if (queueType == Queues::GRAPHICS)
+	{
+		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+		warning = "failed to create graphics command pool!";
+	}
+	else if (queueType == Queues::COMPUTE)
+	{
+		poolInfo.queueFamilyIndex = 2;
+		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+		warning = "failed to create compute command pool!";
+	}
 
 	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create graphics command pool!");
+		throw std::runtime_error(warning);
 	}
 }
 
@@ -121,14 +134,14 @@ QueueFamilyIndices Devices::FindQueueFamilies(VkSurfaceKHR surface) {
 		if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.graphicsFamily = i;
 		}
-		if (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) {
+		if ((queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) && (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) {
 			indices.computeFamily = i;
 		}
 
 		VkBool32 presentSupport = false;
 		vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
 
-		if (presentSupport) {
+		if (presentSupport && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.presentFamily = i;
 		}
 

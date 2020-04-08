@@ -6,16 +6,19 @@
 #include "Object.h"
 #include "SwapChain.h"
 
-struct {
-	VkQueue queue;								// Separate queue for compute commands (queue family may differ from the one used for graphics)
-	VkCommandPool commandPool;					// Use a separate command pool (queue family may differ from the one used for graphics)
-	VkCommandBuffer commandBuffer;				// Command buffer storing the dispatch commands and barriers
-	VkFence fence;								// Synchronization fence to avoid rewriting compute CB if still in use
-	VkDescriptorSetLayout descriptorSetLayout;	// Compute shader binding layout
-	VkDescriptorSet descriptorSet;				// Compute shader bindings
-	VkPipelineLayout pipelineLayout;			// Layout of the compute pipeline
-	VkPipeline pipeline;						// Compute pipeline for updating particle positions
-} compute;
+struct ComputeStuff {
+	VkQueue queue;
+	VkCommandPool commandPool;
+	VkCommandBuffer commandBuffer;
+	VkFence fence;
+	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorSet descriptorSet;
+	VkPipelineLayout pipelineLayout;
+	VkPipeline pipeline;
+	VkSemaphore semaphore;
+	int32_t pipelineIndex = 0;
+	uint32_t queueFamilyIndex;
+};
 
 
 class CTPApp {
@@ -43,6 +46,7 @@ protected:
 
 	VkPipelineLayout pipelineLayout;
 
+	VkSemaphore graphicsSemaphore;
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
@@ -52,6 +56,8 @@ protected:
 	bool framebufferResized = false;
 
 	int updateDelay = 10;
+
+	ComputeStuff compute;
 
 	std::vector<VkViewport> m_Viewports;
 	std::vector<VkRect2D> m_ScissorRects;

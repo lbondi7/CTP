@@ -9,7 +9,12 @@
 
 struct LightUBO {
 	glm::vec3 camPos;
-	int particleCount;
+	int lightCount;
+};
+
+struct ParticleUBO {
+	float delta_time;
+	int particle_count;
 };
 
 class Scene : public CTPApp
@@ -24,7 +29,7 @@ public:
 
 private:
 
-	ParticleSystem pSystem;
+	ParticleSystem particle_system;
 	Camera camera;
 
 	GameObject object;
@@ -41,6 +46,8 @@ private:
 
 	FfObject ffModel;
 
+	Buffer particle_ubo_buffer;
+
 	Buffer lightBuffer;
 	Buffer lightUboBuffer;
 
@@ -55,7 +62,11 @@ private:
 
 	void createCommandBuffers();
 
+	void GetComputeQueue();
+
 	void createCompute();
+
+	void BuildComputeCommandBuffer();
 
 	void createDescriptorPool();
 

@@ -12,7 +12,7 @@ struct Triangle
 
 	void Update(const glm::vec3& p);
 
-	float udTriangle(glm::vec3 p);
+	float ShorestDistance(glm::vec3 p);
 
 	float UdTriangle(glm::vec3 p);
 

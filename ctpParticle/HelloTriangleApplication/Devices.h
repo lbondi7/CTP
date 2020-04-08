@@ -17,7 +17,7 @@ public:
 
 	void CreateQueue(VkQueue& queue, Queues queueType);
 
-	void CreateCommandPool(VkCommandPool& commandPool);
+	void CreateCommandPool(VkCommandPool& commandPool, Queues queue);
 
 	QueueFamilyIndices FindQueueFamilies(VkSurfaceKHR surface);
 
@@ -32,6 +32,8 @@ public:
 	void EndSingleTimeCommands(VkCommandBuffer commandBuffer, VkCommandPool cmdPool, int cmdBufferCount, VkQueue queue);
 
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+
+	QueueFamilyIndices& GetQueueFamiliesIndices() { return queueFamilyIndices; }
 
 private:
 

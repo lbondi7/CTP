@@ -1,6 +1,7 @@
 #include "LGH.h"
 
 #include <algorithm>
+#include <cmath>
 
 LGH::~LGH()
 {
@@ -19,7 +20,7 @@ void LGH::Create(const std::vector<Light>& pl)
 		bound.max.z = std::max(point.pos.z, bound.max.z);
 	}
 
-	glm::vec3 quadSize = glm::vec3(bound.max.x - bound.min.x, bound.max.y - bound.min.y, bound.max.z - bound.min.z) / 4.0f;
+	glm::vec3 boxSize = glm::vec3(bound.max.x - bound.min.x, bound.max.y - bound.min.y, bound.max.z - bound.min.z) / 4.0f;
 
 	lights.resize(4 * 4 * 4);
 	bounds.resize(4 * 4 * 4);
@@ -34,23 +35,23 @@ void LGH::Create(const std::vector<Light>& pl)
 	for (size_t i = 0; i < bounds.size(); ++i)
 	{
 		bounds[i].min = glm::vec3(xVal, yVal, zVal);
-		bounds[i].max = bounds[i].min + quadSize;
+		bounds[i].max = bounds[i].min + boxSize;
 
-		bounds[i].center = bounds[i].min + (quadSize / 2.0f);
+		bounds[i].center = bounds[i].min + (boxSize / 2.0f);
 
-		xVal += quadSize.x;
+		xVal += boxSize.x;
 
 		mod4 = i % 4;
 		if (mod4 == 0 && i != 0)
 		{
 			xVal = bound.min.x;
-			yVal += quadSize.y;
+			yVal += boxSize.y;
 			mod16 = i % 16;
 			if (mod16 == 0 && i != 0)
 			{
 				xVal = bound.min.x;
 				yVal = bound.min.y;
-				zVal += quadSize.z;
+				zVal += boxSize.z;
 			}
 		}
 	}
@@ -114,8 +115,8 @@ void LGH::Recreate(const std::vector<Light>& pl)
 
 	glm::vec3 quadSize = glm::vec3(bound.max.x - bound.min.x, bound.max.y - bound.min.y, bound.max.z - bound.min.z) / 4.0f;
 
-	lights.resize(4 * 4 * 4);
-	bounds.resize(4 * 4 * 4);
+	lights.resize(std::pow(4, 3));
+	bounds.resize(std::pow(4, 3));
 
 	float xVal = bound.min.x;
 	float yVal = bound.min.y;
@@ -148,30 +149,26 @@ void LGH::Recreate(const std::vector<Light>& pl)
 		}
 	}
 
-	std::vector<float> lightsPerVoxel;
+	std::vector<int> lightsPerVoxel;
 	lightsPerVoxel.resize(bounds.size());
 
 	for (size_t i = 0; i < bounds.size(); ++i)
 	{
+		lightsPerVoxel[i] = 0;
 		for (auto point : pl)
 		{
 			if (bounds[i].IsInside(point.pos))
 			{
-				lights[i].col = point.col;
-				lights[i].pos = point.pos;
-				lightsPerVoxel[i] += 1.0f;
-				continue;
+				lights[i].col += point.col;
+				lights[i].pos += point.pos;
+				++lightsPerVoxel[i];
 			}
 		}
-	}
 
-	
-
-	for (size_t i = 0; i < lights.size(); ++i)
-	{
-		if (lightsPerVoxel[i] <= 0.0f)
+		if (lightsPerVoxel[i] <= 0)
 			continue;
 
-		lights[i].pos /= lightsPerVoxel[i];
+		lights[i].pos /= static_cast<float>(lightsPerVoxel[i]);
+		lights[i].col /= static_cast<float>(lightsPerVoxel[i]);
 	}
 }

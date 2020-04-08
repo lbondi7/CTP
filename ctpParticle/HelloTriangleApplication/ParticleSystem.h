@@ -64,6 +64,8 @@ public:
 
 	Buffer& UBuffer() { return uniformBuffer; }
 
+	Buffer& CompPBuffer() { return computeParticleBuffer; }
+
 	std::vector<Particle>& PsParticles() { return particles; }
 	
 	const std::vector<Particle>& ConstPsParticles() { return particles; }
@@ -81,6 +83,7 @@ private:
 
 	Buffer particleBuffer;
 	Buffer uniformBuffer;
+	Buffer computeParticleBuffer;
 	Texture texture;
 
 	glm::vec3 pos;

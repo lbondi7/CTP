@@ -6,7 +6,6 @@
 #include <stdexcept>
 #include <algorithm>
 
-
 void SwapChain::Init(VkInstance _instance)
 {
 	instance = _instance;

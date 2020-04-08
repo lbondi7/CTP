@@ -35,14 +35,10 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 
 	for (size_t i = 0; i < amount; ++i)
 	{
-		//particles[i].position = { 100, 0.0f, 100 };
-		//particles[i].position = { randChoose(mt) == 0 ? randPos(mt) : randNeg(mt),
-		//	randChoose(mt) == 0 ? randPos(mt) : randNeg(mt),
-		//	randChoose(mt) == 0 ? randPos(mt) : randNeg(mt) };
-		//particles[i].position = { rand(rd), rand(rd), rand(rd) };
-		particles[i].position = { 0, -20, 0 };
+		//particles[i].position = { 0, -20, 0 };
 		//particles[i].position = { i - 2.0f, i + i + 2.0f, i + i + 2.0f };
-		particles[i].velocity = { 0.0f, 0.0f, 0.0f };
+		particles[i].position = { rand(rd), rand(rd), rand(rd) };
+		particles[i].velocity = { 0.0f, 2.0f, 0.0f };
 		particles[i].maxLife = rand2(rd);
 	}
 
@@ -58,6 +54,13 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 
 	texture.Load("particle2", graphicsQueue, VK_FORMAT_R8G8B8A8_UNORM,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+
+	computeParticleBuffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Particle) * amount);
+
+	computeParticleBuffer.StageBuffer(computeParticleBuffer.size, graphicsQueue, particles.data(), computeParticleBuffer.memProperties);
+
+	computeParticleBuffer.UpdateDescriptor(sizeof(Particle) * amount);
 
 	view = _view;
 	perspective = _perspective;
@@ -77,34 +80,34 @@ glm::vec3 getFlowField(glm::vec3 pos)
 
 void ParticleSystem::Update()
 {
-	for (size_t i = 0; i < amount; ++i)
-	{
-		particles[i].position += particles[i].velocity * Locator::GetTimer()->FixedDeltaTime();
-		
-		//std::cout << particles[i].velocity.x << ", " << particles[i].velocity.y << ", " << particles[i].velocity.z << std::endl;
+	//for (size_t i = 0; i < amount; ++i)
+	//{
+	//	particles[i].position += particles[i].velocity * Locator::GetTimer()->FixedDeltaTime();
+	//	
+	//	//std::cout << particles[i].velocity.x << ", " << particles[i].velocity.y << ", " << particles[i].velocity.z << std::endl;
 
-		//Utillities::Print(particles[i].velocity);
+	//	//Utillities::Print(particles[i].velocity);
 
-		particles[i].alpha = 0.5f - ((particles[i].life / particles[i].maxLife) * 0.5f);
+	//	particles[i].alpha = 0.5f - ((particles[i].life / particles[i].maxLife) * 0.5f);
 
-		//if (particles[i].life >= (particles[i].maxLife - 0.8f))
-		//	particles[i].alpha = (particles[i].maxLife - particles[i].life);
-		if (!lifeEnabled)
-			continue;
+	//	//if (particles[i].life >= (particles[i].maxLife - 0.8f))
+	//	//	particles[i].alpha = (particles[i].maxLife - particles[i].life);
+	//	if (!lifeEnabled)
+	//		continue;
 
-		particles[i].life += Locator::GetTimer()->FixedDeltaTime();
-		if (particles[i].life >= particles[i].maxLife)
-		{
-			std::random_device rd;
-			std::uniform_real_distribution<float> rand(-5.0f, 5.0f);
-			std::uniform_real_distribution<float> rand2(1.0f, 10.0f);
+	//	particles[i].life += Locator::GetTimer()->FixedDeltaTime();
+	//	if (particles[i].life >= particles[i].maxLife)
+	//	{
+	//		std::random_device rd;
+	//		std::uniform_real_distribution<float> rand(-5.0f, 5.0f);
+	//		std::uniform_real_distribution<float> rand2(1.0f, 10.0f);
 
-			particles[i].position = { rand(rd), rand(rd), rand(rd) };
+	//		particles[i].position = { rand(rd), rand(rd), rand(rd) };
 
-			particles[i].life = 0.0f;
-			particles[i].maxLife = rand2(rd);
-		}
-	}
+	//		particles[i].life = 0.0f;
+	//		particles[i].maxLife = rand2(rd);
+	//	}
+	//}
 
 	ubp.model = glm::translate(glm::mat4(1.0f),  glm::vec3(0, 0, 0));
 	ubp.view = *view;
@@ -118,6 +121,8 @@ void ParticleSystem::UpdateBuffers()
 	particleBuffer.CopyMem(particles.data(), particleBuffer.size);
 
 	uniformBuffer.CopyMem(&ubp, sizeof(ubp));
+
+	computeParticleBuffer.CopyMem(particles.data(), computeParticleBuffer.size);
 }
 
 
@@ -126,11 +131,11 @@ void ParticleSystem::Destroy()
 	particleBuffer.DestoryBuffer();
 	uniformBuffer.DestoryBuffer();
 	texture.Destroy();
-
+	computeParticleBuffer.DestoryBuffer();
 	particles.clear();
 }
 
 void ParticleSystem::SetParticleVelocityFromTarget(int i, const glm::vec3& newDest)
 {
-	particles[i].velocity = glm::normalize(newDest - particles[i].position) * 2.0f;
+	//particles[i].velocity = glm::normalize(newDest - particles[i].position) * 2.0f;
 }

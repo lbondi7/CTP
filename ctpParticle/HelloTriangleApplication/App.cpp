@@ -66,7 +66,7 @@ void CTPApp::initVulkan() {
 	Locator::GetDevices()->CreateLogicalDevice(surface);
 	Locator::GetDevices()->CreateQueue(graphicsQueue, Queues::GRAPHICS);
 	Locator::GetDevices()->CreateQueue(presentQueue, Queues::PRESENT);
-	Locator::GetDevices()->CreateQueue(compute.queue, Queues::COMPUTE);
+	//Locator::GetDevices()->CreateQueue(compute.queue, Queues::COMPUTE);
 	device = Locator::GetDevices()->GetDevice();
 	swapchain.Init(instance);
 	swapchain.CreateSurface(window);
@@ -375,6 +375,7 @@ void CTPApp::createSyncObjects() {
 
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreInfo.flags = 0;
 
 	VkFenceCreateInfo fenceInfo = {};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -414,17 +415,18 @@ void CTPApp::endFrame(uint32_t& imageIndex)
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.waitSemaphoreCount = 1;
+	VkSemaphore waitSemaphores[] = { compute.semaphore, imageAvailableSemaphores[currentFrame] };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submitInfo.waitSemaphoreCount = 2;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
-	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
-	submitInfo.signalSemaphoreCount = 1;
+	VkSemaphore signalSemaphores[] = { graphicsSemaphore, renderFinishedSemaphores[currentFrame] };
+	submitInfo.signalSemaphoreCount = 2;
 	submitInfo.pSignalSemaphores = signalSemaphores;
+	submitInfo.pNext = nullptr;
 
 	vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
@@ -435,7 +437,7 @@ void CTPApp::endFrame(uint32_t& imageIndex)
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.waitSemaphoreCount = 2;
 	presentInfo.pWaitSemaphores = signalSemaphores;
 
 	VkSwapchainKHR swapChains[] = { swapchain.swapChain };

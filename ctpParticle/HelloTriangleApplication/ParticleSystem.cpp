@@ -39,8 +39,8 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 		//particles[i].position = { randChoose(mt) == 0 ? randPos(mt) : randNeg(mt),
 		//	randChoose(mt) == 0 ? randPos(mt) : randNeg(mt),
 		//	randChoose(mt) == 0 ? randPos(mt) : randNeg(mt) };
-		//particles[i].position = { rand(rd), rand(rd), rand(rd) };
-		particles[i].position = { 0, -20, 0 };
+		particles[i].position = { rand(rd), rand(rd), rand(rd) };
+		//particles[i].position = { 0, -20, 0 };
 		//particles[i].position = { i - 2.0f, i + i + 2.0f, i + i + 2.0f };
 		particles[i].velocity = { 0.0f, 0.0f, 0.0f };
 		particles[i].maxLife = rand2(rd);
@@ -132,5 +132,6 @@ void ParticleSystem::Destroy()
 
 void ParticleSystem::SetParticleVelocityFromTarget(int i, const glm::vec3& newDest)
 {
+	particles[i].target = newDest;
 	particles[i].velocity = glm::normalize(newDest - particles[i].position) * 2.0f;
 }

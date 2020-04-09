@@ -58,7 +58,6 @@ void Scene::run() {
 	createDescriptorPool();
 	createDescriptorSets();
 	createCommandBuffers();
-	createCompute();
 	mainLoop();
 	Cleanup();
 }
@@ -421,8 +420,8 @@ void Scene::createCompute() {
 	}
 
 	std::vector<VkWriteDescriptorSet> descriptorWrites = {
-//VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &),
-//VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &)
+       //VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &),
+       //VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &)
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -562,13 +561,13 @@ void Scene::LoadAssets()
 	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	perspective[1][1] *= -1;
 
-	camera.Setup(glm::vec3(-10, 3.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+	camera.Setup(glm::vec3(-10, 3.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), false);
 
 	pSystem.Create(graphicsQueue, &camera.ViewMatrix(), &perspective);
 
 	nearestTri.resize(pSystem.ParticleCount());
 
-	object.Init("square", "blank", graphicsQueue);
+	object.Init("bunny", "blank", graphicsQueue);
 
 	for (int i = 0; i < object.GetModel().indices.size(); i += 3)
 	{
@@ -596,15 +595,16 @@ void Scene::LoadAssets()
 	}
 
 	Transform transform;
-	transform.pos = { 0.0f, -0.5f, 0.0f };
-	transform.scale = { 4.0f, 4.0f, 4.0f };
+	transform.pos = { 0.0f, 0.0f, 0.0f };
+	transform.scale = { 1.0f, 1.0f, 1.0f };
+	//transform.scale = { 4.0f, 4.0f, 4.0f };
 
 	object.SetTransform(transform);
 
 	Transform trans;
 	trans.pos = { 0.0f, 0.0f, 0.0f };
-	trans.scale = { 3.0f, 3.0f, 3.0f };
-	ffModel.Load("square", trans);
+	trans.scale = { 1.0f, 1.0f, 1.0f };
+	ffModel.Load("bunny", trans);
 
 	GetClosestTri();
 
@@ -695,11 +695,12 @@ void Scene::CheckParticles()
 			if (length < length2)
 			{
 				std::random_device rd;
-				std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
+				//std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
 				std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
 				pSystem.PsParticle(i).goToTri = false;
 				pSystem.PsParticle(i).ranDirDuration = rand2(rd);
-				pSystem.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
+				pSystem.PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
+				//pSystem.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
 				//std::cout << "Random Position: " << pSystem.PsParticle(i).ranDirDuration << std::endl;
 			}
 		}
@@ -745,7 +746,6 @@ void GetTri(int minVal, int maxVal, std::vector<Triangle>* nearestTri, FfObject*
 			}
 		}
 		(*pSystem).PsParticle(i).goToTri = true;
-		std::this_thread::sleep_for(1ms);
 	}
 }
 
@@ -789,7 +789,9 @@ void Scene::GetClosestTri()
 			threads[i].join();
 	}
 
-	int x = 789;
+
+	int x = 0;
+
 	//for (size_t i = 0; i < pSystem.ParticleCount(); i += interval)
 	//{
 	//	if (i + interval > pSystem.ParticleCount())
@@ -840,7 +842,7 @@ void Scene::GetClosestTri(size_t i)
 		{
 			nearestPoint = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
 			nearestTri[i] = ffModel.triangles[j];
-			pSystem.SetParticleVelocityFromTarget(i, nearestTri[i].center);
+			pSystem.SetParticleVelocityFromTarget(i, FindRandomPoint(ffModel.triangles[j]));
 		}
 		else
 		{
@@ -849,14 +851,68 @@ void Scene::GetClosestTri(size_t i)
 			{
 				nearestPoint = nP;
 				nearestTri[i] = ffModel.triangles[j];
-				glm::vec3 random_point;
-
-				//pSystem.PsParticle(i).target = nearestTri[i].center;
-				pSystem.SetParticleVelocityFromTarget(i, nearestTri[i].center);
+				pSystem.SetParticleVelocityFromTarget(i, FindRandomPoint(ffModel.triangles[j]));
 			}
 		}
 	}
 	pSystem.PsParticle(i).goToTri = true;
+}
+
+glm::vec3 Scene::FindRandomPoint(const Triangle& tri)
+{
+	bool gotPoint = false;
+	std::random_device rd;
+	std::uniform_real_distribution<float> x_rand(tri.min.x, tri.max.x);
+	std::uniform_real_distribution<float> y_rand(tri.min.y, tri.max.y);
+	std::uniform_real_distribution<float> z_rand(tri.min.z, tri.max.z);
+	glm::vec3 P;
+	glm::vec3 C; // vector perpendicular to triangle's plane 
+	float denom = glm::dot(tri.normal, tri.normal);
+	while (!gotPoint)
+	{
+		P = glm::vec3(x_rand(rd), y_rand(rd), z_rand(rd));
+		// no need to normalize
+
+		glm::vec3 vp0 = P - tri.vertices[0];
+		C = glm::cross(tri.edges[0], vp0);
+		if (glm::dot(tri.normal, C) < 0) continue; // P is on the right side 
+
+		glm::vec3 vp1 = P - tri.vertices[1];
+		C = glm::cross(tri.edges[1], vp1);
+		if ((glm::dot(tri.normal, C)) < 0) continue; // P is on the right side 
+
+		glm::vec3 vp2 = P - tri.vertices[2];
+		C = glm::cross(tri.edges[2], vp2);
+		if ((glm::dot(tri.normal, C)) < 0) continue; // P is on the right side;
+
+		gotPoint = true;
+
+	}
+
+	return P;
+
+	//// no need to normalize
+	//float denom = Vec3::Dot(normal, normal);
+
+	//// compute the intersection point using equation 1
+	//Vec3 P = ray.origin + t * ray.direction;
+
+	//Vec3 C; // vector perpendicular to triangle's plane 
+
+	//Vec3 vp0 = P - vertices[0].pos;
+	//C = Vec3::Cross(edges[0], vp0);
+	//if (Vec3::Dot(normal, C) < 0) return false; // P is on the right side 
+
+	//Vec3 vp1 = P - vertices[1].pos;
+	//C = Vec3::Cross(edges[1], vp1);
+	//if ((u = Vec3::Dot(normal, C)) < 0)  return false; // P is on the right side 
+
+	//Vec3 vp2 = P - vertices[2].pos;
+	//C = Vec3::Cross(edges[2], vp2);
+	//if ((v = Vec3::Dot(normal, C)) < 0) return false; // P is on the right side; 
+
+	//u /= denom;
+	//v /= denom;
 }
 
 void Scene::drawFrame() {

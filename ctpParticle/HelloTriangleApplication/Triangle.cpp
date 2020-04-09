@@ -54,7 +54,6 @@ void Triangle::Update(const glm::vec3& p)
     //edges[2] = vertices[0] - vertices[2];
 
     //center = (vertices[0] + vertices[1] + vertices[2]) / 3.0f;
-
     //normal = glm::cross(edges[0], edges[1]);
 
     //max.x = std::max(std::max(vertices[0].x, vertices[1].x), vertices[2].x);

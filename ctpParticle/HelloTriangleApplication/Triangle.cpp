@@ -18,11 +18,11 @@ Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, const Transform& tr
 
     glm::mat4 modelMatrix = glm::mat4(1.0f);
 
-    //modelMatrix = glm::scale(modelMatrix, transform.scale);
+    modelMatrix = glm::scale(modelMatrix, transform.scale);
     modelMatrix = glm::translate(modelMatrix, transform.pos);
     for (size_t i = 0; i < 3; i++)
     {
-        vertices[i] = glm::vec4(localVertices[i], 1.0f) * modelMatrix;
+        vertices[i] = glm::vec3(modelMatrix * glm::vec4( localVertices[i], 1.0f));
     }
 
     edges[0] = vertices[1] - vertices[0];

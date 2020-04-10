@@ -8,8 +8,8 @@
 #include "LGH.h"
 
 struct LightUBO {
-	glm::vec3 camPos;
-	int particleCount;
+	alignas(16) glm::vec3 camPos;
+	alignas(4) uint16_t particleCount;
 };
 
 class Scene : public CTPApp

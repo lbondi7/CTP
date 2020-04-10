@@ -14,12 +14,12 @@ Mouse::~Mouse()
 
 void Mouse::Update()
 {
-	if (!first_update)
-	{
-		last_mouse_pos = mouse_pos;
-	}
+	//if (!first_update)
+	//{
+	//	last_mouse_pos = mouse_pos;
+	//}
 
-	first_update = false;
+	//first_update = false;
 
 	last_mouse_pos = mouse_pos;
 	double x_pos, y_pos;

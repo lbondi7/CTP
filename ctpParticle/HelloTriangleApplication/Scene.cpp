@@ -596,15 +596,15 @@ void Scene::LoadAssets()
 	//}
 
 	Transform transform;
-	transform.pos = { 0.0f, -1.0f, 0.0f };
-	transform.scale = { 3.0f, 3.0f, 3.0f };
+	transform.pos = { 0.0f, -0.1f, 0.0f };
+	transform.scale = glm::vec3(3.0f);
 	//transform.scale = { 4.0f, 4.0f, 4.0f };
 
 	object.SetTransform(transform);
 
 	Transform trans;
 	trans.pos = { 0.0f, 0.0f, 0.0f };
-	trans.scale = { 1.0f, 1.0f, 1.0f };
+	trans.scale = glm::vec3(3.0f);
 	ffModel.Load("square", trans);
 
 	GetClosestTri();

@@ -75,7 +75,7 @@ public:
 
 private:
 
-	int amount = 2;
+	int amount = 10;
 
 	std::vector<Particle> particles;
 

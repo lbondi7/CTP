@@ -38,6 +38,7 @@
 #include <random>
 #include <thread>
 #include <mutex>
+#include <limits>
 
 using namespace std::chrono_literals;
 
@@ -561,42 +562,42 @@ void Scene::LoadAssets()
 	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	perspective[1][1] *= -1;
 
-	camera.Setup(glm::vec3(-10, 3.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), false);
+	camera.Setup(glm::vec3(-10, 3.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), true);
 
 	pSystem.Create(graphicsQueue, &camera.ViewMatrix(), &perspective);
 
 	nearestTri.resize(pSystem.ParticleCount());
 
-	object.Init("bunny", "blank", graphicsQueue);
+	object.Init("square", "blank", graphicsQueue);
 
-	for (int i = 0; i < object.GetModel().indices.size(); i += 3)
-	{
-		glm::vec3 v1 = object.GetModel().vertices[object.GetModel().indices[i + 1]].pos - 
-			object.GetModel().vertices[object.GetModel().indices[i]].pos;
-		glm::vec3 v2 = object.GetModel().vertices[object.GetModel().indices[i + 2]].pos -
-			object.GetModel().vertices[object.GetModel().indices[i]].pos;
-		glm::vec3 normal = glm::cross(v1, v2);
+	//for (int i = 0; i < object.GetModel().indices.size(); i += 3)
+	//{
+	//	glm::vec3 v1 = object.GetModel().vertices[object.GetModel().indices[i + 1]].pos - 
+	//		object.GetModel().vertices[object.GetModel().indices[i]].pos;
+	//	glm::vec3 v2 = object.GetModel().vertices[object.GetModel().indices[i + 2]].pos -
+	//		object.GetModel().vertices[object.GetModel().indices[i]].pos;
+	//	glm::vec3 normal = glm::cross(v1, v2);
 
-		normal = glm::normalize(normal);
-		object.GetModel().vertices[object.GetModel().indices[i]].normal += normal;
-		object.GetModel().vertices[object.GetModel().indices[i + 1]].normal += normal;
-		object.GetModel().vertices[object.GetModel().indices[i + 2]].normal += normal;
-
-
-		//object.GetModel().vertices[object.GetModel().indices[i]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
-		//object.GetModel().vertices[object.GetModel().indices[i + 1]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
-		//object.GetModel().vertices[object.GetModel().indices[i + 2]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
-
-		//object.GetModel().vertices[object.GetModel().indices[i]].normal = normal;
-		//object.GetModel().vertices[object.GetModel().indices[i + 1]].normal = normal;
-		//object.GetModel().vertices[object.GetModel().indices[i + 2]].normal = normal;
+	//	normal = glm::normalize(normal);
+	//	object.GetModel().vertices[object.GetModel().indices[i]].normal += normal;
+	//	object.GetModel().vertices[object.GetModel().indices[i + 1]].normal += normal;
+	//	object.GetModel().vertices[object.GetModel().indices[i + 2]].normal += normal;
 
 
-	}
+	//	//object.GetModel().vertices[object.GetModel().indices[i]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
+	//	//object.GetModel().vertices[object.GetModel().indices[i + 1]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
+	//	//object.GetModel().vertices[object.GetModel().indices[i + 2]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
+
+	//	//object.GetModel().vertices[object.GetModel().indices[i]].normal = normal;
+	//	//object.GetModel().vertices[object.GetModel().indices[i + 1]].normal = normal;
+	//	//object.GetModel().vertices[object.GetModel().indices[i + 2]].normal = normal;
+
+
+	//}
 
 	Transform transform;
-	transform.pos = { 0.0f, 0.0f, 0.0f };
-	transform.scale = { 1.0f, 1.0f, 1.0f };
+	transform.pos = { 0.0f, -1.0f, 0.0f };
+	transform.scale = { 3.0f, 3.0f, 3.0f };
 	//transform.scale = { 4.0f, 4.0f, 4.0f };
 
 	object.SetTransform(transform);
@@ -604,7 +605,7 @@ void Scene::LoadAssets()
 	Transform trans;
 	trans.pos = { 0.0f, 0.0f, 0.0f };
 	trans.scale = { 1.0f, 1.0f, 1.0f };
-	ffModel.Load("bunny", trans);
+	ffModel.Load("square", trans);
 
 	GetClosestTri();
 
@@ -654,7 +655,9 @@ void Scene::Update()
 		}
 	}
 
-	CheckParticles();
+	//CheckParticles();
+
+	DoShit();
 
 	pSystem.Update();
 
@@ -696,9 +699,9 @@ void Scene::CheckParticles()
 			{
 				std::random_device rd;
 				//std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
-				std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
+				//std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
 				pSystem.PsParticle(i).goToTri = false;
-				pSystem.PsParticle(i).ranDirDuration = rand2(rd);
+				pSystem.PsParticle(i).ranDirDuration = 10000.0f;
 				pSystem.PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
 				//pSystem.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
 				//std::cout << "Random Position: " << pSystem.PsParticle(i).ranDirDuration << std::endl;
@@ -719,6 +722,26 @@ void Scene::CheckParticles()
 	}
 }
 
+glm::vec3 FindPoint(const Triangle& tri)
+{
+	std::random_device rd;
+	std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
+
+	float u;
+	float v;
+
+	u = uniform(rd);
+	v = uniform(rd);
+
+	if (u + v >= 1.0f)
+	{
+		u = 1.0f - u;
+		v = 1.0f - v;
+	}
+
+	return tri.vertices[0] + (u * tri.edges[0]) + (v * tri.other_edge);
+}
+
 void GetTri(int minVal, int maxVal, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
 {
 	float nearestPoint = INFINITY;
@@ -726,47 +749,48 @@ void GetTri(int minVal, int maxVal, std::vector<Triangle>* nearestTri, FfObject*
 
 	for (size_t i = minVal; i < maxVal; ++i)
 	{
-		for (size_t j = 0; j < (*ffModel).triangles.size(); ++j)
+		for (size_t j = 0; j < ffModel->triangles.size(); ++j)
 		{
 			if (j == 0)
 			{
-				nearestPoint = (*ffModel).triangles[j].udTriangle((*pSystem).PsParticle(i).position);
-				(*nearestTri)[i] = (*ffModel).triangles[j];
-				(*pSystem).SetParticleVelocityFromTarget(i, (*nearestTri)[i].center);
+				nearestPoint = ffModel->triangles[j].udTriangle(pSystem->PsParticle(i).position);
+				(*nearestTri)[i] = ffModel->triangles[j];
+				pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
 			}
 			else
 			{
-				nP = (*ffModel).triangles[j].udTriangle((*pSystem).PsParticle(i).position);
+				nP = ffModel->triangles[j].udTriangle(pSystem->PsParticle(i).position);
 				if (nearestPoint > nP)
 				{
 					nearestPoint = nP;
-					(*nearestTri)[i] = (*ffModel).triangles[j];
-					(*pSystem).SetParticleVelocityFromTarget(i, (*nearestTri)[i].center);
+					(*nearestTri)[i] = ffModel->triangles[j];
+					pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
 				}
 			}
 		}
-		(*pSystem).PsParticle(i).goToTri = true;
+		pSystem->PsParticle(i).goToTri = true;
 	}
 }
 
 void Scene::GetClosestTri()
 {
-
 	//float nearestPoint = INFINITY;
 	//float nP = INFINITY;
 
-	if (pSystem.ParticleCount() < 4)
+	const int thread_count = 4;
+
+	if (pSystem.ParticleCount() < thread_count)
 	{
 		GetTri(0, pSystem.ParticleCount(), & nearestTri, & ffModel, & pSystem);
 		return;
 	}
 
-	int interval = pSystem.ParticleCount() / 4;
+	int interval = pSystem.ParticleCount() / thread_count;
 
-	std::thread threads[4];
+	std::thread threads[thread_count];
 
 	int start_count = 0;
-	for (size_t i = 0; i < 4; ++i)
+	for (size_t i = 0; i < thread_count; ++i)
 	{
 		threads[i] = std::thread(GetTri, start_count, start_count + interval, &nearestTri, &ffModel, &pSystem);
 
@@ -783,53 +807,106 @@ void Scene::GetClosestTri()
 		}
 	}
 
-	for (size_t i = 0; i < 4; ++i)
+	for (size_t i = 0; i < thread_count; ++i)
 	{
 		if(threads[i].joinable())
+			threads[i].join();
+	}
+}
+
+void GetNearTri(size_t i, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+{
+	float nearestPoint = INFINITY;
+	float nP = INFINITY;
+	for (size_t j = 0; j < ffModel->triangles.size(); ++j)
+	{
+		if (j == 0)
+		{
+			nearestPoint = ffModel->triangles[j].udTriangle(pSystem->PsParticle(i).position);
+			(*nearestTri)[i] = ffModel->triangles[j];
+			pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
+		}
+		else
+		{
+			nP = ffModel->triangles[j].udTriangle(pSystem->PsParticle(i).position);
+			if (nearestPoint > nP)
+			{
+				nearestPoint = nP;
+				(*nearestTri)[i] = ffModel->triangles[j];
+				pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
+			}
+		}
+	}
+	pSystem->PsParticle(i).goToTri = true;
+}
+
+void CheckParts(int start_val, int max_count, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+{
+	float length, length2;
+	for (size_t i = start_val; i < max_count; i++)
+	{
+		if (pSystem->PsParticle(i).goToTri)
+		{
+			length = glm::distance(pSystem->PsParticle(i).position, pSystem->PsParticle(i).target);
+			length2 = glm::distance(pSystem->PsParticle(i).target + ((*nearestTri)[i].normal) * 0.1f, pSystem->PsParticle(i).target);
+
+			if (length < length2)
+			{
+				std::random_device rd;
+				std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
+				std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
+				pSystem->PsParticle(i).goToTri = false;
+				pSystem->PsParticle(i).ranDirDuration = rand2(rd);
+				//pSystem->PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
+				pSystem->PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
+			}
+		}
+		else
+		{
+			if (pSystem->PsParticle(i).ranDirDuration <= 0.0f)
+			{
+				GetNearTri(i, nearestTri, ffModel, pSystem);
+			}
+			pSystem->PsParticle(i).ranDirDuration -= Locator::GetTimer()->DeltaTime();
+		}
+	}
+}
+
+void Scene::DoShit()
+{
+	const int thread_count = 6;
+
+	if (pSystem.ParticleCount() < thread_count)
+	{
+		CheckParts(0, pSystem.ParticleCount(), &nearestTri, &ffModel, &pSystem);
+		return;
+	}
+
+	int interval = (pSystem.ParticleCount() / thread_count) + 1;
+
+	std::thread threads[thread_count];
+
+	int start_count = 0;
+	for (size_t i = 0; i < thread_count; ++i)
+	{
+		threads[i] = std::thread(CheckParts, start_count, start_count + interval, &nearestTri, &ffModel, &pSystem);
+
+		start_count += interval;
+
+		if (start_count + interval > pSystem.ParticleCount())
+		{
+			interval = pSystem.ParticleCount() - start_count;
+		}
+	}
+
+	for (size_t i = 0; i < thread_count; ++i)
+	{
+		if (threads[i].joinable())
 			threads[i].join();
 	}
 
 
 	int x = 0;
-
-	//for (size_t i = 0; i < pSystem.ParticleCount(); i += interval)
-	//{
-	//	if (i + interval > pSystem.ParticleCount())
-	//		interval = pSystem.ParticleCount() - i;
-
-	//	std::thread th(GetTri, i, i + interval, &nearestTri, &ffModel, &pSystem);
-
-	//	if (i > pSystem.ParticleCount() - (interval + 10))
-	//		th.join();
-	//	else
-	//		th.detach();
-	//}
-
-	//float nearestPoint = INFINITY;
-	//float nP = INFINITY;
-	//for (size_t i = 0; i < pSystem.ParticleCount(); ++i)
-	//{
-	//	for (size_t j = 0; j < ffModel.triangles.size(); ++j)
-	//	{
-	//		if (j == 0)
-	//		{
-	//			nearestPoint = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
-	//			nearestTri[i] = ffModel.triangles[j];
-	//		}
-	//		else
-	//		{
-	//			nP = ffModel.triangles[j].udTriangle(pSystem.PsParticle(i).position);
-	//			if (nearestPoint > nP)
-	//			{
-	//				nearestPoint = nP;
-	//				nearestTri[i] = ffModel.triangles[j];
-	//				pSystem.PsParticle(i).target = nearestTri[i].center;
-	//				pSystem.SetNewTarget(i, nearestTri[i].center);
-	//				pSystem.PsParticle(i).goToTri = true;
-	//			}
-	//		}
-	//	}
-	//}
 }
 
 void Scene::GetClosestTri(size_t i)

@@ -14,26 +14,27 @@ Mouse::~Mouse()
 
 void Mouse::Update()
 {
-	if (!firstUpdate)
+	if (!first_update)
 	{
-		lastMousePos = mousePos;
+		last_mouse_pos = mouse_pos;
 	}
 
-	firstUpdate = false;
+	first_update = false;
 
-	double xPos, yPos;
-	glfwGetCursorPos(window, &xPos, &yPos);
+	last_mouse_pos = mouse_pos;
+	double x_pos, y_pos;
+	glfwGetCursorPos(window, &x_pos, &y_pos);
 
-	mousePos.x = xPos;
-	mousePos.y = yPos;
+	mouse_pos.x = x_pos;
+	mouse_pos.y = y_pos;
 }
 
 glm::vec2 Mouse::Difference()
 {
-	return glm::vec2(mousePos.x - lastMousePos.x, lastMousePos.y - mousePos.y) * sensitivity;
+	return glm::vec2(mouse_pos.x - last_mouse_pos.x, last_mouse_pos.y - mouse_pos.y) * sensitivity;
 }
 
 bool Mouse::MousePosChanged()
 {
-	return (lastMousePos.x != mousePos.x) || (lastMousePos.y != mousePos.y);
+	return (last_mouse_pos.x != mouse_pos.x) || (last_mouse_pos.y != mouse_pos.y);
 }

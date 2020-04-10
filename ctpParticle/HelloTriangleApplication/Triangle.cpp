@@ -28,6 +28,7 @@ Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, const Transform& tr
     edges[0] = vertices[1] - vertices[0];
     edges[1] = vertices[2] - vertices[1];
     edges[2] = vertices[0] - vertices[2];
+    other_edge = vertices[2] - vertices[0];
 
     center = (vertices[0] + vertices[1] + vertices[2]) / 3.0f;
 

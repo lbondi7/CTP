@@ -20,8 +20,8 @@ layout(binding = 3) uniform uboLight
 
 layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec2 fragTexCoord;
-layout(location = 2) in vec4 fragPosition;
-layout(location = 3) in vec4 fragNormal;
+layout(location = 2) in vec3 fragPosition;
+layout(location = 3) in vec3 fragNormal;
 
 layout(location = 0) out vec4 outColor;
 layout(binding = 1) uniform sampler2D texSampler;
@@ -41,7 +41,30 @@ layout(binding = 1) uniform sampler2D texSampler;
 //     return (ambient + diffuse + specular);
 // }  
 
-vec4 CalcDirLight(vec3 dirLightDirection, vec3 normal, vec3 pos)
+// vec4 CalcDirLight(vec3 dirLightDirection, vec3 normal, vec3 pos)
+// {
+//    vec3 lightDir = normalize(-dirLightDirection);
+
+//    float diff = max(dot(normal, lightDir), 0.0);
+
+//    vec3 reflectDir = reflect(-lightDir, normal);
+
+//    vec3 viewDir = normalize(pos - lightConsts.cameraPos);
+
+//    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+
+//    float diffCol = 0.1;
+//    float specCol = 0.5;
+
+//    vec4 ambient = vec4(0.05, 0.05, 0.05, 0.0);
+//    vec4 diffuse = vec4(diffCol, diffCol, diffCol, 0.0) * diff;
+//    vec4 specular = vec4(specCol, specCol, specCol, 0.0) * spec;
+
+//    return ambient + diffuse + specular;
+// }
+
+
+vec3 CalcDirLight(vec3 dirLightDirection, vec3 normal, vec3 pos)
 {
    vec3 lightDir = normalize(-dirLightDirection);
 
@@ -51,40 +74,68 @@ vec4 CalcDirLight(vec3 dirLightDirection, vec3 normal, vec3 pos)
 
    vec3 viewDir = normalize(pos - lightConsts.cameraPos);
 
-   float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+   float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64.0);
 
-   float diffCol = 0.2;
+   float ambCol = 0.05;
+   float diffCol = 0.1;
    float specCol = 0.5;
 
-   vec4 ambient = vec4(0.5, 0.5, 0.5, 0.0) * 0.0;
-   vec4 diffuse = vec4(diffCol, diffCol, diffCol, 0.0) * diff;
-   vec4 specular = vec4(specCol, specCol, specCol, 0.0) * spec;
+   vec3 ambient = vec3(ambCol) * vec3(texture(texSampler, fragTexCoord));
+   vec3 diffuse = vec3(diffCol) * vec3(texture(texSampler, fragTexCoord)) * diff;
+   vec3 specular = vec3(specCol) * vec3(texture(texSampler, fragTexCoord)) * spec;
 
    return ambient + diffuse + specular;
 }
 
-vec4 CalPointLight(int i, vec3 pointLightDir, vec3 Normal, vec3 pos)
+vec3 CalPointLight(int i, vec3 pointLightDir, vec3 normal, vec3 pos)
 {
+   vec3 viewDir = normalize(pos - lightConsts.cameraPos);
+   vec3 refLightDir = reflect(-pointLightDir, normal);
+   float diffFactor = max(dot(normal, pointLightDir), 0.0);
+   float specFactor = pow(max(dot(viewDir, refLightDir), 0.0), 64.0);
 
-    float DiffuseFactor = dot(Normal, pointLightDir);
+   float distance    = length(lights[i].pos - pos);
+   float attenuation = 1.0 / 
+      (1.0 + 0.09 * distance + 
+  			     0.032 * (distance * distance));  
 
-    float diffCol = 0.0;
-    float specCol = 0.5;
-    vec4 DiffuseColor = vec4(diffCol, diffCol, diffCol, 1.0);
-    vec4 SpecularColor = vec4(specCol, specCol, specCol, 1.0);
-    if (DiffuseFactor > 0) {
-        DiffuseColor *= vec4(lights[i].col, 0.0) * DiffuseFactor;
+   float ambCol = 0.05;
+   float diffCol = 0.4;
+   float specCol = 0.5;
+   vec3 ambient = vec3(ambCol)* vec3(texture(texSampler, fragTexCoord));
+   vec3 diffuse = vec3(diffCol) * vec3(texture(texSampler, fragTexCoord)) * diffFactor;
+   vec3 specular = vec3(specCol) * vec3(texture(texSampler, fragTexCoord)) * specFactor;
 
-        vec3 VertexToEye = normalize(pos - lightConsts.cameraPos);
-        vec3 LightReflect = normalize(reflect(pointLightDir, Normal));
-        float SpecularFactor = dot(VertexToEye, LightReflect);
-        if (SpecularFactor > 0.0) {
-            SpecularFactor = pow(SpecularFactor, 128);
-            SpecularColor *= vec4(lights[i].col, 0.0) * SpecularFactor;
-        }
-    }
-    return (DiffuseColor + SpecularColor);
+   ambient  *= attenuation;
+   diffuse  *= attenuation;
+   specular *= attenuation;
+
+   return (ambient + diffuse + specular);
 }
+
+// vec4 CalPointLight(int i, vec3 pointLightDir, vec3 normal, vec3 pos)
+// {
+
+//     float diffFactor = dot(normal, pointLightDir);
+
+//     float diffCol = 0.0;
+//     float specCol = 0.5;
+//     vec4 ambient = vec4(diffCol, diffCol, diffCol, 1.0);
+//     vec4 diffuse = vec4(diffCol, diffCol, diffCol, 1.0);
+//     vec4 specular = vec4(specCol, specCol, specCol, 1.0);
+//     if (diffFactor > 0) {
+//         diffuse *= vec4(lights[i].col, 0.0) * diffFactor;
+
+//         vec3 viewDir = normalize(pos - lightConsts.cameraPos);
+//         vec3 refLightDir = normalize(reflect(pointLightDir, normal));
+//         float specFactor = dot(viewDir, refLightDir);
+//         if (specFactor > 0.0) {
+//             specFactor = pow(specFactor, 128);
+//             specular *= vec4(lights[i].col, 0.0) * specFactor;
+//         }
+//     }
+//     return (ambient + diffuse + specular);
+// }
 
 
 // vec3 CalPointLight(int i, vec3 normal, vec3 fragPos, vec3 viewDir)
@@ -111,25 +162,30 @@ vec4 CalPointLight(int i, vec3 pointLightDir, vec3 Normal, vec3 pos)
 
 void main() {
 
-   vec4 TotalLight = CalcDirLight(vec3(0, -0.1, 1), fragNormal.xyz, fragPosition.xyz);
+   vec3 norm = normalize(fragNormal);
+
+   vec3 TotalLight = CalcDirLight(vec3(-0.2, -1.0, -0.3), norm, fragPosition);
 
    for(int j = 0; j < lightConsts.particleCount; j++)
    {
-   vec3 pointLightDir = lights[j].pos - fragPosition.xyz;
+   vec3 pointLightDir = lights[j].pos - fragPosition;
    float Distance = length(pointLightDir);
    pointLightDir = normalize(-pointLightDir);
 
+   TotalLight += CalPointLight(j, pointLightDir, norm, fragPosition);
+
    //vec3 Color = CalPointLight(j,fragNormal.xyz, fragPosition.xyz, lightConsts.cameraPos);
    
-   vec4 Color = CalPointLight(j, pointLightDir, fragNormal.xyz, fragPosition.xyz);
+   // vec4 Color = CalPointLight(j, pointLightDir, fragNormal.xyz, fragPosition.xyz);
    
-   float Attenuation = (1.0 +
-                       (0.9 * Distance) +
-                       (0.032 * (Distance * Distance)));
+   // float Attenuation = (1.0 +
+   //                     (0.9 * Distance) +
+   //                     (0.032 * (Distance * Distance)));
 
-   TotalLight += Color / Attenuation;
+   // TotalLight += Color / Attenuation;
 //   TotalLight += vec4(Color, 0.0f);
    }
   
-  outColor = fragColor * texture(texSampler, fragTexCoord) * TotalLight;
+  outColor = fragColor * vec4(TotalLight, 1.0);
+  //outColor = fragColor * texture(texSampler, fragTexCoord) * vec4(TotalLight, 1.0);
 }

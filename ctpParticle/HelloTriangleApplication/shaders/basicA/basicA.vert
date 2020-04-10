@@ -18,8 +18,8 @@ layout(location = 3) in vec2 inTexCoord;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
-layout(location = 2) out vec4 fragPosition;
-layout(location = 3) out vec4 fragNormal;
+layout(location = 2) out vec3 fragPosition;
+layout(location = 3) out vec3 fragNormal;
 
 void main() {
 
@@ -29,6 +29,6 @@ void main() {
 
     fragColor = inColor;
     fragTexCoord = inTexCoord;
-    fragPosition = vec4(inPosition, 1.0) * ubo.model;
-    fragNormal = vec4(inNormal, 1.0) * mat4(transpose(inverse(ubo.model)));
+    fragPosition = vec3(vec4(inPosition, 1.0) * ubo.model);
+    fragNormal = inNormal * mat3(transpose(inverse(ubo.model)));
 }

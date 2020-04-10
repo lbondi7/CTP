@@ -83,6 +83,8 @@ private:
 
 	void GetClosestTri();
 
+	void DoShit();
+
 	void GetClosestTri(size_t i);
 
 	glm::vec3 FindRandomPoint(const Triangle& tri);

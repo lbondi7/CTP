@@ -23,9 +23,7 @@ void Model::Load(const std::string& filepath, VkQueue queue)
 
 void Model::Update()
 {
-
 	vertex.CopyMem(vertices.data(), vertex.size);
-
 }
 
 void Model::CreateBuffers(VkQueue queue)

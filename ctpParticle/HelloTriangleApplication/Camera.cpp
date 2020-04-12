@@ -39,7 +39,6 @@ void Camera::Update()
 
 void Camera::Orbit() 
 {
-
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_KP_4))
 	{
 		x_angle -= orbit_speed * Locator::GetTimer()->DeltaTime();
@@ -115,7 +114,7 @@ void Camera::FreeCam()
 		}
 		else
 		{
-			transform.pos -= glm::normalize(glm::cross(cam_forward, world_up)) * Locator::GetTimer()->DeltaTime() * 2.0f;
+			transform.pos -= glm::normalize(glm::cross(cam_forward, world_up)) * Locator::GetTimer()->DeltaTime() * zoom_speed;
 		}
 	}
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_D))
@@ -127,7 +126,7 @@ void Camera::FreeCam()
 		}
 		else
 		{
-			transform.pos += glm::normalize(glm::cross(cam_forward, world_up)) * Locator::GetTimer()->DeltaTime() * 2.0f;
+			transform.pos += glm::normalize(glm::cross(cam_forward, world_up)) * Locator::GetTimer()->DeltaTime() * zoom_speed;
 		}
 	}
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_W))
@@ -135,25 +134,25 @@ void Camera::FreeCam()
 		if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_LEFT_SHIFT) ||
 			Locator::GetKeyboard()->IsKeyRepeat(GLFW_KEY_LEFT_SHIFT))
 		{
-			transform.pos += glm::normalize(glm::cross(cam_right, world_up)) * Locator::GetTimer()->DeltaTime() * 2.0f;
+			transform.pos += glm::normalize(glm::cross(cam_right, world_up)) * Locator::GetTimer()->DeltaTime() * zoom_speed;
 		}
 		else
 		{
-			transform.pos += cam_forward * Locator::GetTimer()->DeltaTime() * 2.0f;
+			transform.pos += cam_forward * Locator::GetTimer()->DeltaTime() * zoom_speed;
 		}
 	}
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_S))
 	{
-		transform.pos -= cam_forward * Locator::GetTimer()->DeltaTime() * 2.0f;
+		transform.pos -= cam_forward * Locator::GetTimer()->DeltaTime() * zoom_speed;
 	}
 
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_Q))
 	{
-		transform.pos -= world_up * Locator::GetTimer()->DeltaTime();
+		transform.pos -= world_up * Locator::GetTimer()->DeltaTime() * zoom_speed;
 	}
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_E))
 	{
-		transform.pos += world_up * Locator::GetTimer()->DeltaTime();
+		transform.pos += world_up * Locator::GetTimer()->DeltaTime() * zoom_speed;
 	}
 
 	viewMatrix = glm::lookAt(transform.pos, transform.pos + cam_forward, world_up);

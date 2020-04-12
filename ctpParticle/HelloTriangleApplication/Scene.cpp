@@ -256,10 +256,10 @@ void Scene::createGraphicsPipeline() {
 	vertexInputInfo.pVertexBindingDescriptions = bindingDescriptions.data();
 	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	VkPipelineShaderStageCreateInfo vertShaderStageInfo = Locator::GetShader()->CreateShaderInfo("basicAVert", VK_SHADER_STAGE_VERTEX_BIT);
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo = Locator::GetShader()->CreateShaderInfo("ggxShaderVert", VK_SHADER_STAGE_VERTEX_BIT);
 		//VkHelper::createShaderStageInfo("shaders/basicA/basicAVert.spv", VK_SHADER_STAGE_VERTEX_BIT, device);
 
-	VkPipelineShaderStageCreateInfo fragShaderStageInfo = Locator::GetShader()->CreateShaderInfo("basicAFrag", VK_SHADER_STAGE_FRAGMENT_BIT);
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo = Locator::GetShader()->CreateShaderInfo("ggxShaderFrag", VK_SHADER_STAGE_FRAGMENT_BIT);
 	//VkHelper::createShaderStageInfo("shaders/basicA/basicAFrag.spv", VK_SHADER_STAGE_FRAGMENT_BIT, device);
 
 	std::vector<VkPipelineShaderStageCreateInfo> shaderStages = { vertShaderStageInfo, fragShaderStageInfo };
@@ -464,14 +464,24 @@ void Scene::createUniformBuffers()
 		lights[i].pos = pSystem.PsParticle(i).position;
 	}
 
+	uboLight.camPos = camera.GetTransform().pos;
+	uboLight.particleCount = pSystem.ParticleCount();
+
 	lightBuffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lights.size());
 	lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, lights.data(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	lightBuffer.UpdateDescriptor(sizeof(Light) * lights.size());
 
-	uboLight.camPos = camera.GetTransform().pos;
-	uboLight.particleCount = pSystem.ParticleCount();
+	//lgh.Create(lights);
+
+	//lightBuffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lgh.Lights().size());
+	//lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, lgh.Lights().data(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	//lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
+	//uboLight.particleCount = lgh.Lights().size();
+
 
 	lightUboBuffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(LightUBO));
@@ -497,6 +507,7 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 	ubo.model =	glm::translate(glm::mat4(1.0f), object.GetTransform().pos);
 	ubo.model = glm::scale(ubo.model, object.GetTransform().scale);
+	ubo.model = glm::rotate(ubo.model, glm::radians(-110.0f), glm::vec3(0, 0, 1));
 	ubo.view = camera.ViewMatrix();
 	ubo.proj = perspective;
 
@@ -579,25 +590,21 @@ void Scene::LoadAssets()
 	//	glm::vec3 normal = glm::cross(v1, v2);
 
 	//	normal = glm::normalize(normal);
-	//	object.GetModel().vertices[object.GetModel().indices[i]].normal += normal;
-	//	object.GetModel().vertices[object.GetModel().indices[i + 1]].normal += normal;
-	//	object.GetModel().vertices[object.GetModel().indices[i + 2]].normal += normal;
-
+	//	object.GetModel().vertices[object.GetModel().indices[i]].normal = normal;
+	//	object.GetModel().vertices[object.GetModel().indices[i + 1]].normal = normal;
+	//	object.GetModel().vertices[object.GetModel().indices[i + 2]].normal = normal;
 
 	//	//object.GetModel().vertices[object.GetModel().indices[i]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
 	//	//object.GetModel().vertices[object.GetModel().indices[i + 1]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
 	//	//object.GetModel().vertices[object.GetModel().indices[i + 2]].normal = glm::normalize(object.GetModel().vertices[object.GetModel().indices[i]].normal);
-
 	//	//object.GetModel().vertices[object.GetModel().indices[i]].normal = normal;
 	//	//object.GetModel().vertices[object.GetModel().indices[i + 1]].normal = normal;
 	//	//object.GetModel().vertices[object.GetModel().indices[i + 2]].normal = normal;
-
-
 	//}
 
 	Transform transform;
-	transform.pos = { 0.0f, -0.1f, 0.0f };
-	transform.scale = glm::vec3(3.0f);
+	transform.pos = { -40.0f, 30.0f, 0.0f };
+	transform.scale = glm::vec3(50.0f);
 	//transform.scale = { 4.0f, 4.0f, 4.0f };
 
 	object.SetTransform(transform);
@@ -605,12 +612,9 @@ void Scene::LoadAssets()
 	Transform trans;
 	trans.pos = { 0.0f, 0.0f, 0.0f };
 	trans.scale = glm::vec3(3.0f);
-	ffModel.Load("square", trans);
+	ffModel.Load("bunny", trans);
 
-	GetClosestTri();
-
-//	std::thread th(FindTri, &nearestTri, &ffModel, &pSystem);
-//	th.detach();
+	DoShit();
 }
 
 void Scene::Update()
@@ -666,21 +670,23 @@ void Scene::Update()
 		lights[i].pos = pSystem.PsParticle(i).position;
 		//std::cout << lights[i].pos.x << ", " << lights[i].pos.y << ", " << lights[i].pos.z << std::endl;
 	}
-	uboLight.camPos = camera.GetTransform().pos;
-	uboLight.particleCount = pSystem.ParticleCount();
-
-	lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
 
 	//lgh.Recreate(lights);
 
 	//lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
 	//lightBuffer.CopyMem(lgh.Lights().data(), sizeof(Light) * lgh.Lights().size());
+	//uboLight.particleCount = lgh.Lights().size();
+
+	uboLight.camPos = camera.GetTransform().pos;
+	uboLight.particleCount = pSystem.ParticleCount();
+
+	lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
 	lightBuffer.CopyMem(lights.data(), sizeof(Light) * lights.size());
 
 	//DisplayLights();
 
 	object.Update();
-
+	//camera.LookAtPos(pSystem.PsParticle(0).position);
 	camera.Update();
 }
 
@@ -820,21 +826,17 @@ void GetNearTri(size_t i, std::vector<Triangle>* nearestTri, FfObject* ffModel, 
 	float nP = INFINITY;
 	for (size_t j = 0; j < ffModel->triangles.size(); ++j)
 	{
-		if (j == 0)
+		nP = ffModel->triangles[j].udTriangle(pSystem->PsParticle(i).position);
+		if (nearestPoint > nP)
 		{
-			nearestPoint = ffModel->triangles[j].udTriangle(pSystem->PsParticle(i).position);
+			nearestPoint = nP;
 			(*nearestTri)[i] = ffModel->triangles[j];
-			pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
-		}
-		else
-		{
-			nP = ffModel->triangles[j].udTriangle(pSystem->PsParticle(i).position);
-			if (nearestPoint > nP)
-			{
-				nearestPoint = nP;
-				(*nearestTri)[i] = ffModel->triangles[j];
-				pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
-			}
+
+			if(i == 0)
+				std::cout << j << std::endl;
+
+			pSystem->SetParticleVelocityFromTarget(i, ffModel->triangles[j].center);
+			//pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
 		}
 	}
 	pSystem->PsParticle(i).goToTri = true;
@@ -848,17 +850,18 @@ void CheckParts(int start_val, int max_count, std::vector<Triangle>* nearestTri,
 		if (pSystem->PsParticle(i).goToTri)
 		{
 			length = glm::distance(pSystem->PsParticle(i).position, pSystem->PsParticle(i).target);
-			length2 = glm::distance(pSystem->PsParticle(i).target + ((*nearestTri)[i].normal) * 0.1f, pSystem->PsParticle(i).target);
+			length2 = glm::distance(pSystem->PsParticle(i).target + ((*nearestTri)[i].normal) * 0.25f, pSystem->PsParticle(i).target);
 
 			if (length < length2)
 			{
 				std::random_device rd;
-				std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
+				std::uniform_real_distribution<float> rand(-0.00001f, 0.00001f);
 				std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
 				pSystem->PsParticle(i).goToTri = false;
 				pSystem->PsParticle(i).ranDirDuration = rand2(rd);
-				//pSystem->PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
-				pSystem->PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
+				//pSystem->PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
+				//pSystem->PsParticle(i).ranDirDuration = 10.0f;
+				pSystem->PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
 			}
 		}
 		else
@@ -867,7 +870,7 @@ void CheckParts(int start_val, int max_count, std::vector<Triangle>* nearestTri,
 			{
 				GetNearTri(i, nearestTri, ffModel, pSystem);
 			}
-			pSystem->PsParticle(i).ranDirDuration -= Locator::GetTimer()->DeltaTime();
+			pSystem->PsParticle(i).ranDirDuration -= Locator::GetTimer()->FixedDeltaTime();
 		}
 	}
 }

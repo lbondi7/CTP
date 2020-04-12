@@ -137,5 +137,6 @@ void ParticleSystem::Destroy()
 
 void ParticleSystem::SetParticleVelocityFromTarget(int i, const glm::vec3& newDest)
 {
-	//particles[i].velocity = glm::normalize(newDest - particles[i].position) * 2.0f;
+	particles[i].target = newDest;
+	particles[i].velocity = glm::normalize(newDest - particles[i].position) * 1.0f;
 }

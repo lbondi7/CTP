@@ -28,5 +28,8 @@ private:
 
 	//std::vector<std::vector<std::vector<LightShits>>> lights;
 
+	int cube_per_axis = 10;
+	int cube_per_axis_squared = 0;
+	int cube_per_axis_cubed = 0;
 };
 

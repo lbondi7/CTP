@@ -8,8 +8,8 @@
 #include "LGH.h"
 
 struct LightUBO {
-	glm::vec3 camPos;
-	int lightCount;
+	alignas(16) glm::vec3 camPos;
+	alignas(4) uint16_t particleCount;
 };
 
 struct ParticleUBO {
@@ -94,7 +94,11 @@ private:
 
 	void GetClosestTri();
 
+	void DoShit();
+
 	void GetClosestTri(size_t i);
+
+	glm::vec3 FindRandomPoint(const Triangle& tri);
 
 	void Cleanup();
 };

@@ -9,7 +9,7 @@
 
 struct LightUBO {
 	alignas(16) glm::vec3 camPos;
-	alignas(4) uint16_t particleCount;
+	alignas(4) uint16_t lightCount;
 };
 
 struct ParticleUBO {

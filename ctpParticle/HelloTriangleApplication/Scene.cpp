@@ -843,10 +843,9 @@ void Scene::Update()
 
 	//CheckParticles();
 
-	particle_system.Update();
+	
 	DoShit();
-
-	pSystem.Update();
+	particle_system.Update();
 
 	for (size_t i = 0; i < particle_system.ParticleCount(); i++)
 	{
@@ -861,9 +860,6 @@ void Scene::Update()
 	//lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
 	//lightBuffer.CopyMem(lgh.Lights().data(), sizeof(Light) * lgh.Lights().size());
 	//uboLight.particleCount = lgh.Lights().size();
-
-	uboLight.camPos = camera.GetTransform().pos;
-	uboLight.particleCount = pSystem.ParticleCount();
 
 	lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
 	lightBuffer.CopyMem(lights.data(), sizeof(Light) * lights.size());
@@ -891,9 +887,9 @@ void Scene::CheckParticles()
 				std::random_device rd;
 				//std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
 				//std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
-				pSystem.PsParticle(i).goToTri = false;
-				pSystem.PsParticle(i).ranDirDuration = 10000.0f;
-				pSystem.PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
+				particle_system.PsParticle(i).goToTri = false;
+				particle_system.PsParticle(i).ranDirDuration = 10000.0f;
+				particle_system.PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
 				//pSystem.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
 				//std::cout << "Random Position: " << pSystem.PsParticle(i).ranDirDuration << std::endl;
 			}
@@ -970,13 +966,13 @@ void Scene::GetClosestTri()
 
 	const int thread_count = 4;
 
-	if (pSystem.ParticleCount() < thread_count)
+	if (particle_system.ParticleCount() < thread_count)
 	{
 		GetTri(0, particle_system.ParticleCount(), & nearestTri, & ffModel, & particle_system);
 		return;
 	}
 
-	int interval = pSystem.ParticleCount() / thread_count;
+	int interval = particle_system.ParticleCount() / thread_count;
 
 	std::thread threads[thread_count];
 
@@ -1011,7 +1007,7 @@ void GetNearTri(size_t i, std::vector<Triangle>* nearestTri, FfObject* ffModel, 
 	float nP = INFINITY;
 	for (size_t j = 0; j < ffModel->triangles.size(); ++j)
 	{
-		nP = ffModel->triangles[j].udTriangle(pSystem->PsParticle(i).position);
+		nP = ffModel->triangles[j].ShorestDistance(pSystem->PsParticle(i).position);
 		if (nearestPoint > nP)
 		{
 			nearestPoint = nP;
@@ -1064,26 +1060,26 @@ void Scene::DoShit()
 {
 	const int thread_count = 6;
 
-	if (pSystem.ParticleCount() < thread_count)
+	if (particle_system.ParticleCount() < thread_count)
 	{
-		CheckParts(0, pSystem.ParticleCount(), &nearestTri, &ffModel, &pSystem);
+		CheckParts(0, particle_system.ParticleCount(), &nearestTri, &ffModel, &particle_system);
 		return;
 	}
 
-	int interval = (pSystem.ParticleCount() / thread_count) + 1;
+	int interval = (particle_system.ParticleCount() / thread_count) + 1;
 
 	std::thread threads[thread_count];
 
 	int start_count = 0;
 	for (size_t i = 0; i < thread_count; ++i)
 	{
-		threads[i] = std::thread(CheckParts, start_count, start_count + interval, &nearestTri, &ffModel, &pSystem);
+		threads[i] = std::thread(CheckParts, start_count, start_count + interval, &nearestTri, &ffModel, &particle_system);
 
 		start_count += interval;
 
-		if (start_count + interval > pSystem.ParticleCount())
+		if (start_count + interval > particle_system.ParticleCount())
 		{
-			interval = pSystem.ParticleCount() - start_count;
+			interval = particle_system.ParticleCount() - start_count;
 		}
 	}
 

@@ -13,8 +13,8 @@ struct LightUBO {
 };
 
 struct ParticleUBO {
-	float delta_time;
-	int particle_count;
+	float delta_time = 0.0f;
+	int particle_count = 0;
 };
 
 class Scene : public CTPApp

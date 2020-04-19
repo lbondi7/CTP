@@ -658,7 +658,7 @@ void Scene::BuildComputeCommandBuffer()
 	vkCmdBindPipeline(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipeline);
 	vkCmdBindDescriptorSets(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipelineLayout, 0, 1, &compute.descriptorSet, 0, 0);
 
-	vkCmdDispatch(compute.commandBuffer, particle_system.ParticleCount(), 1, 1);
+	vkCmdDispatch(compute.commandBuffer, particle_system.ParticleCount() / 256, 1, 1);
 
 	//VkBufferMemoryBarrier buffer_barrier2{};
 
@@ -764,7 +764,7 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 	ParticleUBO particle_ubo;
 
-	particle_ubo.delta_time = Locator::GetTimer()->FixedDeltaTime();
+	particle_ubo.delta_time = Locator::GetTimer()->DeltaTime();
 	particle_ubo.particle_count = particle_system.ParticleCount();
 
 	particle_ubo_buffer.CopyMem(&particle_ubo, sizeof(particle_ubo));
@@ -922,13 +922,13 @@ void Scene::Update()
 	//DoShit();
 	particle_system.Update();
 
-	for (size_t i = 0; i < particle_system.ParticleCount(); i++)
-	{
-		lights[i].pos = particle_system.PsParticle(i).position;
-		//std::cout << lights[i].pos.x << ", " << lights[i].pos.y << ", " << lights[i].pos.z << std::endl;
-	}
-	uboLight.camPos = camera.GetTransform().pos;
-	uboLight.lightCount = particle_system.ParticleCount();
+	//for (size_t i = 0; i < particle_system.ParticleCount(); i++)
+	//{
+	//	lights[i].pos = particle_system.PsParticle(i).position;
+	//	//std::cout << lights[i].pos.x << ", " << lights[i].pos.y << ", " << lights[i].pos.z << std::endl;
+	//}
+	//uboLight.camPos = camera.GetTransform().pos;
+	//uboLight.lightCount = particle_system.ParticleCount();
 
 	//lgh.Recreate(lights);
 
@@ -936,8 +936,8 @@ void Scene::Update()
 	//lightBuffer.CopyMem(lgh.Lights().data(), sizeof(Light) * lgh.Lights().size());
 	//uboLight.particleCount = lgh.Lights().size();
 
-	lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
-	lightBuffer.CopyMem(lights.data(), sizeof(Light) * lights.size());
+	//lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
+	//lightBuffer.CopyMem(lights.data(), sizeof(Light) * lights.size());
 
 	//DisplayLights();
 
@@ -1167,7 +1167,7 @@ void Scene::Update()
 //
 //	int x = 0;
 //}
-
+//
 //void Scene::GetClosestTri(size_t i)
 //{
 //	float nearestPoint = INFINITY;
@@ -1275,7 +1275,7 @@ void Scene::drawFrame() {
 
 	vkWaitForFences(device, 1, &compute.fence, VK_TRUE, UINT64_MAX);
 	vkResetFences(device, 1, &compute.fence);
-	
+	//vkQueueWaitIdle(graphicsQueue);
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT };
 
 	VkSubmitInfo computeSubmitInfo{};

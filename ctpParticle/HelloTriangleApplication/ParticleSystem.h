@@ -11,7 +11,7 @@ struct Particle
 {
 	alignas(16) glm::vec4 position;
 	alignas(16) glm::vec4 velocity;
-	float alpha = 0.25f;
+	alignas(4) float alpha = 0.25f;
 	
 	//float life = 0.0f;
 	//float maxLife = 10.0f;
@@ -28,7 +28,7 @@ struct Particle
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
 		VkHelper::createVertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, position)),
 		VkHelper::createVertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, velocity)),
-		VkHelper::createVertexAttributeDescription(0, 2, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, alpha))
+		VkHelper::createVertexAttributeDescription(0, 2, VK_FORMAT_R32_SFLOAT, offsetof(Particle, alpha))
 		};
 
 		return attributeDescriptions;
@@ -77,7 +77,7 @@ public:
 
 private:
 
-	int amount = 10;
+	int amount = 256 * 512;
 
 	std::vector<Particle> particles;
 

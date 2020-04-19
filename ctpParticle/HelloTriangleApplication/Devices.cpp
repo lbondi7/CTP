@@ -239,7 +239,12 @@ void Devices::EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBuffer
 	submitInfo.commandBufferCount = cmdBufferCount;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	VkFence fence;
+	vkCreateFence(device, &fenceInfo, nullptr, &fence);
+
+	vkQueueSubmit(queue, 1, &submitInfo, fence);
 	vkQueueWaitIdle(queue);
 
 	vkFreeCommandBuffers(device, cmdPool, cmdBufferCount, &commandBuffer);

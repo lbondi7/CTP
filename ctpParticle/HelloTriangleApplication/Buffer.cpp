@@ -130,6 +130,26 @@ void Buffer::StageBuffer(VkDeviceSize _size, VkQueue queue, const void* _data, V
 	staging.DestoryBuffer();
 }
 
+void Buffer::StageBuffer(VkDeviceSize _size, VkQueue queue, const void* _data, VkMemoryPropertyFlags _memProperties, VkCommandPool _cmdPool)
+{
+	Buffer staging = Buffer::CreateStagingBuffer(size, _memProperties);
+
+	VkCommandBuffer cmdBuffer = Locator::GetDevices()->BeginSingleTimeCommands(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1, _cmdPool);
+
+	//CreateStagingBuffer(staging, device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+	vkMapMemory(device, staging.memory, 0, size, 0, &staging.data);
+	memcpy(staging.data, _data, (size_t)size);
+	vkUnmapMemory(device, staging.memory);
+	VkBufferCopy copyRegion = {};
+	copyRegion.size = size;
+
+	vkCmdCopyBuffer(cmdBuffer, staging.buffer, buffer, 1, &copyRegion);
+
+	Locator::GetDevices()->EndSingleTimeCommands(cmdBuffer, 1, _cmdPool, queue);
+
+	staging.DestoryBuffer();
+}
+
 void Buffer::Unmap(bool clearData = false)
 {
 	vkUnmapMemory(Locator::GetDevices()->GetDevice(), memory);

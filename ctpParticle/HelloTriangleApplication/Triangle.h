@@ -19,13 +19,13 @@ struct Triangle
 	void operator =(const Triangle& other);
 
 
-	glm::vec3 center;
-	glm::vec3 normal;
-	std::array<glm::vec3, 3> localVertices;
-	std::array<glm::vec3, 3> vertices;
-	std::array<glm::vec3, 3> edges;
-	glm::vec3 other_edge;
-	glm::vec3 min;
-	glm::vec3 max;
+	glm::vec4 center;
+	glm::vec4 normal;
+	std::array<glm::vec4, 3> localVertices;
+	std::array<glm::vec4, 3> vertices;
+	std::array<glm::vec4, 3> edges;
+	glm::vec4 other_edge;
+	glm::vec4 min;
+	glm::vec4 max;
 };
 

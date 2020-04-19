@@ -100,13 +100,13 @@ void Scene::mainLoop() {
 void Scene::createDescriptorPool() {
 
 	std::vector<VkDescriptorPoolSize> poolSizes = {
-		VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 5),
+		VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 8),
 		VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2),
-		VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3),
+		VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 6),
 	};
 
 	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
-		4);
+		8);
 
 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor pool!");
@@ -464,11 +464,41 @@ void Scene::createCompute() {
 
 	GetComputeQueue();
 
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value();
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	if (vkCreateCommandPool(device, &poolInfo, nullptr, &compute.commandPool) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create compute command pool!");
+	}
+
+	ffmodel_buffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Triangle) * ffModel.triangles.size());
+	ffmodel_buffer.StageBuffer(ffmodel_buffer.size, compute.queue, ffModel.triangles.data(), ffmodel_buffer.memProperties, compute.commandPool);
+	ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+
+	TriangleUBO triUBO{};
+
+	triUBO.triangle_count = ffModel.triangles.size();
+	triUBO.vertex_per_triangle = 3;
+
+	triangle_ubo_buffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(TriangleUBO));
+
+	triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+
+	triangle_ubo_buffer.UpdateDescriptor(sizeof(triUBO));
+
 	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
 	VkDescriptorSetLayoutBinding storageLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, storageLayoutBinding };
+	VkDescriptorSetLayoutBinding ubo2LayoutBinding = VkHelper::createDescriptorLayoutBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+	VkDescriptorSetLayoutBinding storage2LayoutBinding = VkHelper::createDescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, storageLayoutBinding,  ubo2LayoutBinding, storage2LayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
 
 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &compute.descriptorSetLayout) != VK_SUCCESS) {
@@ -497,7 +527,9 @@ void Scene::createCompute() {
 
 	std::vector<VkWriteDescriptorSet> descriptorWrites = {
 		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &particle_ubo_buffer.descriptor),
-		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &particle_system.PBuffer().descriptor)
+		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &particle_system.PBuffer().descriptor),
+		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &triangle_ubo_buffer.descriptor),
+		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3, &ffmodel_buffer.descriptor)
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -513,14 +545,6 @@ void Scene::createCompute() {
 	}
 
 
-	VkCommandPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value();
-	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-	if (vkCreateCommandPool(device, &poolInfo, nullptr, &compute.commandPool) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create compute command pool!");
-	}
 
 	VkCommandBufferAllocateInfo cmdAllocInfo = {};
 	cmdAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -593,6 +617,7 @@ void Scene::createCompute() {
 			0, nullptr,
 			1, &acquire_buffer_barrier,
 			0, nullptr);
+
 		VkBufferMemoryBarrier release_buffer_barrier =
 		{
 			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -658,7 +683,9 @@ void Scene::BuildComputeCommandBuffer()
 	vkCmdBindPipeline(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipeline);
 	vkCmdBindDescriptorSets(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipelineLayout, 0, 1, &compute.descriptorSet, 0, 0);
 
+	//vkCmdDispatch(compute.commandBuffer, (int)ffModel.triangles.size(), 1, 1);
 	vkCmdDispatch(compute.commandBuffer, particle_system.ParticleCount() / 256, 1, 1);
+	
 
 	//VkBufferMemoryBarrier buffer_barrier2{};
 
@@ -726,10 +753,42 @@ void Scene::createUniformBuffers()
 	//uboLight.particleCount = lgh.Lights().size();
 
 
+	//ffmodel_buffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Triangle) * ffModel.triangles.size());
+	//ffmodel_buffer.StageBuffer(ffmodel_buffer.size, compute.queue, ffModel.triangles.data(), ffmodel_buffer.memProperties);
+	//Buffer stagingBuffer;
+	//stagingBuffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Triangle) * ffModel.triangles.size(), ffModel.triangles.data());
+
+	//VkCommandBuffer copyCmd = Locator::GetDevices()->BeginSingleTimeCommands(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1);
+	//VkBufferCopy copyRegion = {};
+	//copyRegion.size = ffmodel_buffer.size;
+	//vkCmdCopyBuffer(copyCmd, stagingBuffer.buffer, ffmodel_buffer.buffer, 1, &copyRegion);
+
+	//Locator::GetDevices()->EndSingleTimeCommands(copyCmd, 1, graphicsQueue);
+
+	//ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+
 	particle_ubo_buffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(ParticleUBO));
 
 	particle_ubo_buffer.UpdateDescriptor(sizeof(ParticleUBO));
+
+
+
+	//TriangleUBO triUBO{};
+
+	//triUBO.triangle_count = ffModel.triangles.size();
+	//triUBO.vertex_per_triangle = 3;
+
+	//triangle_ubo_buffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(TriangleUBO));
+
+	//triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+
+	//triangle_ubo_buffer.UpdateDescriptor(sizeof(triUBO));
+
+
 
 	lightUboBuffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(LightUBO));
@@ -747,8 +806,6 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	UniformBufferObject ubo = {};
 
 	//object.GetModel().transform.pos += getFlowField(object.GetModel().transform.pos) * Locator::GetTimer()->DeltaTime();
-
-	//rotTime *= Locator::GetTimer()->DeltaTime();
 
 	//ubo.model = glm::scale(glm::mat4(1.0f), object.GetTransform().scale) *
 	//	glm::rotate(glm::mat4(1.0f), rotTime, glm::vec3(12, 12, 1)) *

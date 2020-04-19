@@ -26,6 +26,8 @@ struct Buffer
 
 	void StageBuffer(VkDeviceSize _size, VkQueue queue, const void* _data, VkMemoryPropertyFlags _memProperties);
 
+	void StageBuffer(VkDeviceSize _size, VkQueue queue, const void* _data, VkMemoryPropertyFlags _memProperties, VkCommandPool _cmdPool);
+
 	void Unmap(bool clearData);
 
 	VkResult Map(VkDeviceSize _size = VK_WHOLE_SIZE, VkDeviceSize _offset = 0);

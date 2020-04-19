@@ -17,6 +17,11 @@ struct ParticleUBO {
 	int particle_count = 0;
 };
 
+struct TriangleUBO {
+	int triangle_count = 0;
+	int vertex_per_triangle = 0;
+};
+
 class Scene : public CTPApp
 {
 public:
@@ -47,6 +52,10 @@ private:
 	FfObject ffModel;
 
 	Buffer particle_ubo_buffer;
+
+	Buffer triangle_ubo_buffer;
+
+	Buffer ffmodel_buffer;
 
 	Buffer lightBuffer;
 	Buffer lightUboBuffer;

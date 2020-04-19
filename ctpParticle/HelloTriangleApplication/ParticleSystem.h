@@ -9,15 +9,15 @@
 
 struct Particle
 {
-	glm::vec3 position;
-	glm::vec3 velocity;
+	alignas(16) glm::vec4 position;
+	alignas(16) glm::vec4 velocity;
 	float alpha = 0.25f;
-
-	float life = 0.0f;
-	float maxLife = 10.0f;
-	glm::vec3 target;
-	bool goToTri = false;
-	float ranDirDuration = 0.0f;
+	
+	//float life = 0.0f;
+	//float maxLife = 10.0f;
+	//glm::vec3 target;
+	//bool goToTri = false;
+	//float ranDirDuration = 0.0f;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
 		return VkHelper::createVertexBindingDescription(0, sizeof(Particle), VK_VERTEX_INPUT_RATE_VERTEX);
@@ -26,9 +26,9 @@ struct Particle
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
 
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
-		VkHelper::createVertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Particle, position)),
-		VkHelper::createVertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Particle, velocity)),
-		VkHelper::createVertexAttributeDescription(0, 2, VK_FORMAT_R32_SFLOAT, offsetof(Particle, alpha))
+		VkHelper::createVertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, position)),
+		VkHelper::createVertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, velocity)),
+		VkHelper::createVertexAttributeDescription(0, 2, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, alpha))
 		};
 
 		return attributeDescriptions;
@@ -64,7 +64,7 @@ public:
 
 	Buffer& UBuffer() { return uniformBuffer; }
 
-	Buffer& CompPBuffer() { return computeParticleBuffer; }
+	//Buffer& CompPBuffer() { return computeParticleBuffer; }
 
 	std::vector<Particle>& PsParticles() { return particles; }
 	
@@ -77,7 +77,7 @@ public:
 
 private:
 
-	int amount = 1;
+	int amount = 10;
 
 	std::vector<Particle> particles;
 

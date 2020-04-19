@@ -11,6 +11,7 @@
 #include "Mouse.h"
 #include "Mesh.h"
 #include "Image.h"
+#include "Constants.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -34,11 +35,6 @@
 #include <set>
 #include <unordered_map>
 #include <random>
-
-const int WIDTH = 800;
-const int HEIGHT = 600;
-
-const int MAX_FRAMES_IN_FLIGHT = 2;
 
 void CTPApp::initWindow() {
 	glfwInit();
@@ -375,7 +371,6 @@ void CTPApp::createSyncObjects() {
 
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	semaphoreInfo.flags = 0;
 
 	VkFenceCreateInfo fenceInfo = {};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -415,18 +410,17 @@ void CTPApp::endFrame(uint32_t& imageIndex)
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = { compute.semaphore, imageAvailableSemaphores[currentFrame] };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.waitSemaphoreCount = 2;
+	VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
-	VkSemaphore signalSemaphores[] = { graphicsSemaphore, renderFinishedSemaphores[currentFrame] };
-	submitInfo.signalSemaphoreCount = 2;
+	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
-	submitInfo.pNext = nullptr;
 
 	vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
@@ -437,7 +431,7 @@ void CTPApp::endFrame(uint32_t& imageIndex)
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-	presentInfo.waitSemaphoreCount = 2;
+	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
 
 	VkSwapchainKHR swapChains[] = { swapchain.swapChain };
@@ -455,6 +449,4 @@ void CTPApp::endFrame(uint32_t& imageIndex)
 	else if (result != VK_SUCCESS) {
 		throw std::runtime_error("failed to present swap chain image!");
 	}
-
-	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

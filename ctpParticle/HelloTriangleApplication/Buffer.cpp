@@ -59,7 +59,7 @@ void Buffer::CreateStagingBuffer(Buffer& stagingBuffer, VkDevice _device, VkBuff
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = size;
 	bufferInfo.usage = _usage;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	//bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	if (vkCreateBuffer(Locator::GetDevices()->GetDevice(), &bufferInfo, nullptr, &stagingBuffer.buffer) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create buffer!");
@@ -88,7 +88,6 @@ Buffer Buffer::CreateStagingBuffer(VkDeviceSize _size, VkMemoryPropertyFlags _me
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = _size;
 	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 	if (vkCreateBuffer(Locator::GetDevices()->GetDevice(), &bufferInfo, nullptr, &staging.buffer) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create buffer!");

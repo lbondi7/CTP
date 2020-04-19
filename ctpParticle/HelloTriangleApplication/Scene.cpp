@@ -336,6 +336,7 @@ void Scene::createCommandBuffers() {
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -359,6 +360,25 @@ void Scene::createCommandBuffers() {
 			throw std::runtime_error("failed to begin recording command buffer!");
 		}
 
+		VkBufferMemoryBarrier buffer_barrier = {};
+		
+		buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		buffer_barrier.srcAccessMask = 0;
+		buffer_barrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+		buffer_barrier.srcQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value();
+		buffer_barrier.dstQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value();
+		buffer_barrier.buffer = particle_system.PBuffer().buffer;
+		buffer_barrier.size = particle_system.PBuffer().size;
+
+		vkCmdPipelineBarrier(
+			commandBuffers[i],
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+			0,
+			0, nullptr,
+			1, &buffer_barrier,
+			0, nullptr);
+
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		VkDeviceSize offsets[] = { 0 };
@@ -375,6 +395,22 @@ void Scene::createCommandBuffers() {
 		vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(particle_system.ParticleCount()), 1, 0, 0);
 
 		vkCmdEndRenderPass(commandBuffers[i]);
+
+		buffer_barrier.srcAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+		buffer_barrier.dstAccessMask = 0;
+		buffer_barrier.srcQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value();
+		buffer_barrier.dstQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value();
+		buffer_barrier.buffer = particle_system.PBuffer().buffer;
+		buffer_barrier.size = particle_system.PBuffer().size;
+
+		vkCmdPipelineBarrier(
+			commandBuffers[i],
+			VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			0,
+			0, nullptr,
+			1, &buffer_barrier,
+			0, nullptr);
 
 		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to record command buffer!");
@@ -461,7 +497,7 @@ void Scene::createCompute() {
 
 	std::vector<VkWriteDescriptorSet> descriptorWrites = {
 		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &particle_ubo_buffer.descriptor),
-		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &particle_system.CompPBuffer().descriptor)
+		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &particle_system.PBuffer().descriptor)
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -475,7 +511,6 @@ void Scene::createCompute() {
 	if (vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &compute.pipeline) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create compute pipeline!");
 	}
-	Locator::GetShader()->DestroyShaders();
 
 
 	VkCommandPoolCreateInfo poolInfo = {};
@@ -498,62 +533,47 @@ void Scene::createCompute() {
 	}
 
 	// Fence for compute CB sync
-	VkFenceCreateInfo fenceCreateInfo;
+	VkFenceCreateInfo fenceCreateInfo{};
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-	fenceCreateInfo.pNext = nullptr;
 	if (vkCreateFence(device, &fenceCreateInfo, nullptr, &compute.fence) != VK_SUCCESS)
 	{
 		throw std::runtime_error("failed to create compute fences!");
 	}
 
-	VkSemaphoreCreateInfo computeSemaphoreCreateInfo;
+	VkSemaphoreCreateInfo computeSemaphoreCreateInfo{};
 	computeSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	computeSemaphoreCreateInfo.pNext = nullptr;
-	computeSemaphoreCreateInfo.flags = 0;
 	if (vkCreateSemaphore(device, &computeSemaphoreCreateInfo, nullptr, &compute.semaphore) != VK_SUCCESS)
 	{
 		throw std::runtime_error("failed to create compute semaphore!");
 	}
 
-	VkSemaphoreCreateInfo graphicsSemaphoreCreateInfo;
+	VkSemaphoreCreateInfo graphicsSemaphoreCreateInfo{};
 	graphicsSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	graphicsSemaphoreCreateInfo.pNext = nullptr;
-	graphicsSemaphoreCreateInfo.flags = 0;
 	if (vkCreateSemaphore(device, &graphicsSemaphoreCreateInfo, nullptr, &graphicsSemaphore) != VK_SUCCESS)
 	{
 		throw std::runtime_error("failed to create compute semaphore!");
 	}
 
-	VkSubmitInfo submitInfo;
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &compute.semaphore;
-	submitInfo.pNext = nullptr;
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, nullptr) != VK_SUCCESS) {
-		throw std::runtime_error("failed to sync compute semaphore!");
-	}
-	vkQueueWaitIdle(graphicsQueue);
+	//VkSubmitInfo submitInfo{};
+	//submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	//submitInfo.signalSemaphoreCount = 1;
+	//submitInfo.pSignalSemaphores = &compute.semaphore;
+	//if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, nullptr) != VK_SUCCESS) {
+	//	throw std::runtime_error("failed to sync compute semaphore!");
+	//}
+	//vkQueueWaitIdle(graphicsQueue);
 
 
 	BuildComputeCommandBuffer();
-}
-
-void Scene::BuildComputeCommandBuffer()
-{
-	vkQueueWaitIdle(compute.queue);
-
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-
-	if (vkBeginCommandBuffer(compute.commandBuffer, &beginInfo) != VK_SUCCESS) {
-		throw std::runtime_error("failed to begin recording command buffer!");
-	}
-
-	if (Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily != 
-		Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily)
+	
+	// If graphics and compute queue family indices differ, acquire and immediately release the storage buffer, so that the initial acquire from the graphics command buffers are matched up properly
+	if (Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value() !=
+		Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value())
 	{
-		VkBufferMemoryBarrier buffer_barrier =
+		// Create a transient command buffer for setting up the initial buffer transfer state
+		VkCommandBuffer transferCmd = Locator::GetDevices()->BeginSingleTimeCommands(VK_COMMAND_BUFFER_LEVEL_PRIMARY, 1,  compute.commandPool);
+		VkBufferMemoryBarrier acquire_buffer_barrier =
 		{
 			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
 			nullptr,
@@ -561,51 +581,106 @@ void Scene::BuildComputeCommandBuffer()
 			VK_ACCESS_SHADER_WRITE_BIT,
 			Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value(),
 			Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value(),
-			particle_system.CompPBuffer().buffer,
+			particle_system.PBuffer().buffer,
 			0,
-			particle_system.CompPBuffer().size
+			particle_system.PBuffer().size
 		};
-
 		vkCmdPipelineBarrier(
-			compute.commandBuffer,
+			transferCmd,
 			VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			0,
 			0, nullptr,
-			1, &buffer_barrier,
+			1, &acquire_buffer_barrier,
 			0, nullptr);
+		VkBufferMemoryBarrier release_buffer_barrier =
+		{
+			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			nullptr,
+			VK_ACCESS_SHADER_WRITE_BIT,
+			0,
+			Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value(),
+			Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value(),
+			particle_system.PBuffer().buffer,
+			0,
+			particle_system.PBuffer().size
+		};
+		vkCmdPipelineBarrier(
+			transferCmd,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+			0,
+			0, nullptr,
+			1, &release_buffer_barrier,
+			0, nullptr);
+
+		Locator::GetDevices()->EndSingleTimeCommands(transferCmd, 1, compute.commandPool, compute.queue);
 	}
+
+
+	Locator::GetShader()->DestroyShaders();
+}
+
+void Scene::BuildComputeCommandBuffer()
+{
+	//vkQueueWaitIdle(compute.queue);
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+	if (vkBeginCommandBuffer(compute.commandBuffer, &beginInfo) != VK_SUCCESS) {
+		throw std::runtime_error("failed to begin recording command buffer!");
+	}
+
+	VkBufferMemoryBarrier buffer_barrier{};
+
+	buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+	buffer_barrier.srcAccessMask = 0;
+	buffer_barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+	buffer_barrier.srcQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value();
+	buffer_barrier.dstQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value();
+	buffer_barrier.buffer = particle_system.PBuffer().buffer;
+	buffer_barrier.size = particle_system.PBuffer().size;
+
+	vkCmdPipelineBarrier(
+		compute.commandBuffer,
+		VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		0,
+		0, nullptr,
+		1, &buffer_barrier,
+		0, nullptr);
 
 	vkCmdBindPipeline(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipeline);
 	vkCmdBindDescriptorSets(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipelineLayout, 0, 1, &compute.descriptorSet, 0, 0);
 
 	vkCmdDispatch(compute.commandBuffer, particle_system.ParticleCount(), 1, 1);
 
-	if (Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily !=
-		Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily)
-	{
-		VkBufferMemoryBarrier buffer_barrier =
-		{
-			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-			nullptr,
-			VK_ACCESS_SHADER_WRITE_BIT,
-			0,
-			Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value(),
-			Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value(),
-			particle_system.CompPBuffer().buffer,
-			0,
-			particle_system.CompPBuffer().size
-		};
+	//VkBufferMemoryBarrier buffer_barrier2{};
 
-		vkCmdPipelineBarrier(
-			compute.commandBuffer,
-			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-			VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-			0,
-			0, nullptr,
-			1, &buffer_barrier,
-			0, nullptr);
-	}
+	//buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	//buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	//buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				  
+	buffer_barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; 
+	buffer_barrier.dstAccessMask = 0;
+	buffer_barrier.srcQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value(); 
+	buffer_barrier.dstQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value();
+	buffer_barrier.buffer = particle_system.PBuffer().buffer;
+	buffer_barrier.size = particle_system.PBuffer().size;
+
+	vkCmdPipelineBarrier(
+		compute.commandBuffer,
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+		0,
+		0, nullptr,
+		1, &buffer_barrier,
+		0, nullptr);
 
 	vkEndCommandBuffer(compute.commandBuffer);
 }
@@ -696,66 +771,66 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 }
 
-void GetNearestTri(size_t i, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
-{
-	if ((*pSystem).PsParticle(i).goToTri)
-		return;
-
-	std::mutex mut;
-	float nearestPoint = INFINITY;
-	float nP = INFINITY;
-	for (size_t j = 0; j < (*ffModel).triangles.size(); ++j)
-	{
-		if (j == 0)
-		{
-			nearestPoint = ffModel->triangles[j].ShorestDistance((*pSystem).PsParticle(i).position);
-			std::lock_guard<std::mutex> lock(mut);
-			(*nearestTri)[i] = (*ffModel).triangles[j];
-		}
-		else
-		{
-			nP = (*ffModel).triangles[j].ShorestDistance((*pSystem).PsParticle(i).position);
-			if (nearestPoint > nP)
-			{
-				nearestPoint = nP;
-				std::lock_guard<std::mutex> lock(mut);
-				(*nearestTri)[i] = (*ffModel).triangles[j];
-			}
-		}
-	}
-}
-
-void FindTri(std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
-{
-	std::mutex mut;
-	bool first = true;
-
-	while (true)
-	{
-		for (size_t i = 0; i < pSystem->ParticleCount(); ++i)
-		{
-			GetNearestTri(i, nearestTri, ffModel, pSystem);
-		}
-		if (first)
-		{
-			for (size_t i = 0; i < pSystem->ParticleCount(); ++i)
-			{
-				std::lock_guard<std::mutex> lock(mut);
-				(*pSystem).PsParticle(i).goToTri = true;
-			}
-			first = false;
-		}
-		std::this_thread::sleep_for(1ms);
-	}
-
-}
+//void GetNearestTri(size_t i, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+//{
+//	if ((*pSystem).PsParticle(i).goToTri)
+//		return;
+//
+//	std::mutex mut;
+//	float nearestPoint = INFINITY;
+//	float nP = INFINITY;
+//	for (size_t j = 0; j < (*ffModel).triangles.size(); ++j)
+//	{
+//		if (j == 0)
+//		{
+//			nearestPoint = ffModel->triangles[j].ShorestDistance((*pSystem).PsParticle(i).position);
+//			std::lock_guard<std::mutex> lock(mut);
+//			(*nearestTri)[i] = (*ffModel).triangles[j];
+//		}
+//		else
+//		{
+//			nP = (*ffModel).triangles[j].ShorestDistance((*pSystem).PsParticle(i).position);
+//			if (nearestPoint > nP)
+//			{
+//				nearestPoint = nP;
+//				std::lock_guard<std::mutex> lock(mut);
+//				(*nearestTri)[i] = (*ffModel).triangles[j];
+//			}
+//		}
+//	}
+//}
+//
+//void FindTri(std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+//{
+//	std::mutex mut;
+//	bool first = true;
+//
+//	while (true)
+//	{
+//		for (size_t i = 0; i < pSystem->ParticleCount(); ++i)
+//		{
+//			GetNearestTri(i, nearestTri, ffModel, pSystem);
+//		}
+//		if (first)
+//		{
+//			for (size_t i = 0; i < pSystem->ParticleCount(); ++i)
+//			{
+//				std::lock_guard<std::mutex> lock(mut);
+//				(*pSystem).PsParticle(i).goToTri = true;
+//			}
+//			first = false;
+//		}
+//		std::this_thread::sleep_for(1ms);
+//	}
+//
+//}
 
 void Scene::LoadAssets()
 {
 	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	perspective[1][1] *= -1;
 
-	camera.Setup(glm::vec3(-10, 3.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), true);
+	camera.Setup(glm::vec3(-10, 3.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), false);
 
 	particle_system.Create(graphicsQueue, &camera.ViewMatrix(), &perspective);
 
@@ -796,7 +871,7 @@ void Scene::LoadAssets()
 	trans.scale = glm::vec3(3.0f);
 	ffModel.Load("bunny", trans);
 
-	DoShit();
+	//DoShit();
 }
 
 void Scene::Update()
@@ -806,45 +881,45 @@ void Scene::Update()
 	{
 		for (size_t i = 0; i < particle_system.ParticleCount(); i++)
 		{
-			particle_system.PsParticle(i).goToTri = false;
-			particle_system.PsParticle(i).ranDirDuration = 4.0f;
+			//particle_system.PsParticle(i).goToTri = false;
+			//particle_system.PsParticle(i).ranDirDuration = 4.0f;
 
 			std::random_device rd;
 			std::uniform_real_distribution<float> rand(-5.0f, 5.0f);
-			particle_system.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
+			//particle_system.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
 		}
 	}
 	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_H))
 	{
 		for (size_t i = 0; i < particle_system.ParticleCount(); i++)
 		{
-			particle_system.PsParticle(i).goToTri = false;
-			particle_system.PsParticle(i).ranDirDuration = 4.0f;
+			//particle_system.PsParticle(i).goToTri = false;
+			//particle_system.PsParticle(i).ranDirDuration = 4.0f;
 
 			std::random_device rd;
 			std::uniform_real_distribution<float> rand(0.0f, 5.0f);
 
-			particle_system.PsParticle(i).velocity = glm::normalize(particle_system.PsParticle(i).position - ffModel.GetTransform().pos) * rand(rd);
+			//particle_system.PsParticle(i).velocity = glm::normalize(particle_system.PsParticle(i).position - ffModel.GetTransform().pos) * rand(rd);
 		}
 	}
 	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_J))
 	{
 		for (size_t i = 0; i < particle_system.ParticleCount(); i++)
 		{
-			particle_system.PsParticle(i).goToTri = false;
-			particle_system.PsParticle(i).ranDirDuration = 4.0f;
+			//particle_system.PsParticle(i).goToTri = false;
+			//particle_system.PsParticle(i).ranDirDuration = 4.0f;
 
 			std::random_device rd;
 			std::uniform_real_distribution<float> rand(0.0f, 5.0f);
 
-			particle_system.PsParticle(i).velocity = glm::normalize(ffModel.GetTransform().pos - particle_system.PsParticle(i).position) * rand(rd);
+			//particle_system.PsParticle(i).velocity = glm::normalize(ffModel.GetTransform().pos - particle_system.PsParticle(i).position) * rand(rd);
 		}
 	}
 
 	//CheckParticles();
 
 	
-	DoShit();
+	//DoShit();
 	particle_system.Update();
 
 	for (size_t i = 0; i < particle_system.ParticleCount(); i++)
@@ -871,319 +946,321 @@ void Scene::Update()
 	camera.Update();
 }
 
-void Scene::CheckParticles()
-{
-	float length, length2;
-	for (size_t i = 0; i < particle_system.ParticleCount(); i++)
-	{
-		if (particle_system.PsParticle(i).goToTri)
-		{
-			length = glm::distance(particle_system.PsParticle(i).position, particle_system.PsParticle(i).target);
-			length2 = glm::distance(particle_system.PsParticle(i).target + (nearestTri[i].normal), particle_system.PsParticle(i).target);
+//void Scene::CheckParticles()
+//{
+//	float length, length2;
+//	for (size_t i = 0; i < particle_system.ParticleCount(); i++)
+//	{
+//		if (particle_system.PsParticle(i).goToTri)
+//		{
+//			//length = glm::distance(particle_system.PsParticle(i).position, particle_system.PsParticle(i).target);
+//			//length2 = glm::distance(particle_system.PsParticle(i).target + (nearestTri[i].normal), particle_system.PsParticle(i).target);
+//
+//			//std::cout << "Lengths: " <<length << ", " << length2 << std::endl;
+//			if (length < length2)
+//			{
+//				std::random_device rd;
+//				//std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
+//				//std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
+//				particle_system.PsParticle(i).goToTri = false;
+//				particle_system.PsParticle(i).ranDirDuration = 10000.0f;
+//				//particle_system.PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
+//				//pSystem.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
+//				//std::cout << "Random Position: " << pSystem.PsParticle(i).ranDirDuration << std::endl;
+//			}
+//		}
+//		else
+//		{
+//			if (particle_system.PsParticle(i).ranDirDuration <= 0.0f)
+//			{
+//				//std::cout << "Go To Tri: " << pSystem.PsParticle(i).ranDirDuration << std::endl;
+//				GetClosestTri(i);
+//				//pSystem.PsParticle(i).target = nearestTri[i].center;
+//				//pSystem.SetParticleVelocityFromTarget(i, nearestTri[i].center);
+//				particle_system.PsParticle(i).goToTri = true;
+//			}
+//			particle_system.PsParticle(i).ranDirDuration -= Locator::GetTimer()->DeltaTime();
+//		}
+//	}
+//}
+//
+//glm::vec3 FindPoint(const Triangle& tri)
+//{
+//	std::random_device rd;
+//	std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
+//
+//	float u;
+//	float v;
+//
+//	u = uniform(rd);
+//	v = uniform(rd);
+//
+//	if (u + v >= 1.0f)
+//	{
+//		u = 1.0f - u;
+//		v = 1.0f - v;
+//	}
+//
+//	return tri.vertices[0] + (u * tri.edges[0]) + (v * tri.other_edge);
+//}
+//
+//void GetTri(int minVal, int maxVal, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+//{
+//	float nearestPoint = INFINITY;
+//	float nP = INFINITY;
+//
+//	for (size_t i = minVal; i < maxVal; ++i)
+//	{
+//		for (size_t j = 0; j < ffModel->triangles.size(); ++j)
+//		{
+//			if (j == 0)
+//			{
+//				nearestPoint = (*ffModel).triangles[j].ShorestDistance((*pSystem).PsParticle(i).position);
+//				(*nearestTri)[i] = (*ffModel).triangles[j];
+//				(*pSystem).SetParticleVelocityFromTarget(i, (*nearestTri)[i].center);
+//			}
+//			else
+//			{
+//				nP = (*ffModel).triangles[j].ShorestDistance((*pSystem).PsParticle(i).position);
+//				if (nearestPoint > nP)
+//				{
+//					nearestPoint = nP;
+//					(*nearestTri)[i] = ffModel->triangles[j];
+//					pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
+//				}
+//			}
+//		}
+//		pSystem->PsParticle(i).goToTri = true;
+//	}
+//}
+//
+//void Scene::GetClosestTri()
+//{
+//	//float nearestPoint = INFINITY;
+//	//float nP = INFINITY;
+//
+//	const int thread_count = 4;
+//
+//	if (particle_system.ParticleCount() < thread_count)
+//	{
+//		GetTri(0, particle_system.ParticleCount(), & nearestTri, & ffModel, & particle_system);
+//		return;
+//	}
+//
+//	int interval = particle_system.ParticleCount() / thread_count;
+//
+//	std::thread threads[thread_count];
+//
+//	int start_count = 0;
+//	for (size_t i = 0; i < thread_count; ++i)
+//	{
+//		threads[i] = std::thread(GetTri, start_count, start_count + interval, &nearestTri, &ffModel, &particle_system);
+//
+//		if (interval == particle_system.ParticleCount())
+//			break;
+//
+//		if (start_count + interval > particle_system.ParticleCount())
+//		{
+//			start_count += particle_system.ParticleCount() - start_count;
+//		}
+//		else
+//		{
+//			start_count += interval;
+//		}
+//	}
+//
+//	for (size_t i = 0; i < thread_count; ++i)
+//	{
+//		if(threads[i].joinable())
+//			threads[i].join();
+//	}
+//}
+//
+//void GetNearTri(size_t i, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+//{
+//	float nearestPoint = INFINITY;
+//	float nP = INFINITY;
+//	for (size_t j = 0; j < ffModel->triangles.size(); ++j)
+//	{
+//		nP = ffModel->triangles[j].ShorestDistance(pSystem->PsParticle(i).position);
+//		if (nearestPoint > nP)
+//		{
+//			nearestPoint = nP;
+//			(*nearestTri)[i] = ffModel->triangles[j];
+//
+//			//if(i == 0)
+//			//	std::cout << j << std::endl;
+//
+//			pSystem->SetParticleVelocityFromTarget(i, ffModel->triangles[j].center);
+//			//pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
+//		}
+//	}
+//	pSystem->PsParticle(i).goToTri = true;
+//}
+//
+//void CheckParts(int start_val, int max_count, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
+//{
+//	float length, length2;
+//	for (size_t i = start_val; i < max_count; i++)
+//	{
+//		if (pSystem->PsParticle(i).goToTri)
+//		{
+//			//length = glm::distance(pSystem->PsParticle(i).position, pSystem->PsParticle(i).target);
+//			//length2 = glm::distance(pSystem->PsParticle(i).target + ((*nearestTri)[i].normal) * 0.25f, pSystem->PsParticle(i).target);
+//
+//			//if (length < length2)
+//			//{
+//			//	std::random_device rd;
+//			//	std::uniform_real_distribution<float> rand(-0.00001f, 0.00001f);
+//			//	std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
+//			//	pSystem->PsParticle(i).goToTri = false;
+//			//	pSystem->PsParticle(i).ranDirDuration = rand2(rd);
+//			//	//pSystem->PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
+//			//	//pSystem->PsParticle(i).ranDirDuration = 10.0f;
+//			//	//pSystem->PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
+//			//}
+//		}
+//		else
+//		{
+//			if (pSystem->PsParticle(i).ranDirDuration <= 0.0f)
+//			{
+//				GetNearTri(i, nearestTri, ffModel, pSystem);
+//			}
+//			pSystem->PsParticle(i).ranDirDuration -= Locator::GetTimer()->FixedDeltaTime();
+//		}
+//	}
+//}
+//
+//void Scene::DoShit()
+//{
+//	const int thread_count = 6;
+//
+//	if (particle_system.ParticleCount() < thread_count)
+//	{
+//		CheckParts(0, particle_system.ParticleCount(), &nearestTri, &ffModel, &particle_system);
+//		return;
+//	}
+//
+//	int interval = (particle_system.ParticleCount() / thread_count) + 1;
+//
+//	std::thread threads[thread_count];
+//
+//	int start_count = 0;
+//	for (size_t i = 0; i < thread_count; ++i)
+//	{
+//		threads[i] = std::thread(CheckParts, start_count, start_count + interval, &nearestTri, &ffModel, &particle_system);
+//
+//		start_count += interval;
+//
+//		if (start_count + interval > particle_system.ParticleCount())
+//		{
+//			interval = particle_system.ParticleCount() - start_count;
+//		}
+//	}
+//
+//	for (size_t i = 0; i < thread_count; ++i)
+//	{
+//		if (threads[i].joinable())
+//			threads[i].join();
+//	}
+//
+//
+//	int x = 0;
+//}
 
-			//std::cout << "Lengths: " <<length << ", " << length2 << std::endl;
-			if (length < length2)
-			{
-				std::random_device rd;
-				//std::uniform_real_distribution<float> rand(-1.0f, 1.0f);
-				//std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
-				particle_system.PsParticle(i).goToTri = false;
-				particle_system.PsParticle(i).ranDirDuration = 10000.0f;
-				particle_system.PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
-				//pSystem.PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
-				//std::cout << "Random Position: " << pSystem.PsParticle(i).ranDirDuration << std::endl;
-			}
-		}
-		else
-		{
-			if (particle_system.PsParticle(i).ranDirDuration <= 0.0f)
-			{
-				//std::cout << "Go To Tri: " << pSystem.PsParticle(i).ranDirDuration << std::endl;
-				GetClosestTri(i);
-				//pSystem.PsParticle(i).target = nearestTri[i].center;
-				//pSystem.SetParticleVelocityFromTarget(i, nearestTri[i].center);
-				particle_system.PsParticle(i).goToTri = true;
-			}
-			particle_system.PsParticle(i).ranDirDuration -= Locator::GetTimer()->DeltaTime();
-		}
-	}
-}
-
-glm::vec3 FindPoint(const Triangle& tri)
-{
-	std::random_device rd;
-	std::uniform_real_distribution<float> uniform(0.0f, 1.0f);
-
-	float u;
-	float v;
-
-	u = uniform(rd);
-	v = uniform(rd);
-
-	if (u + v >= 1.0f)
-	{
-		u = 1.0f - u;
-		v = 1.0f - v;
-	}
-
-	return tri.vertices[0] + (u * tri.edges[0]) + (v * tri.other_edge);
-}
-
-void GetTri(int minVal, int maxVal, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
-{
-	float nearestPoint = INFINITY;
-	float nP = INFINITY;
-
-	for (size_t i = minVal; i < maxVal; ++i)
-	{
-		for (size_t j = 0; j < ffModel->triangles.size(); ++j)
-		{
-			if (j == 0)
-			{
-				nearestPoint = (*ffModel).triangles[j].ShorestDistance((*pSystem).PsParticle(i).position);
-				(*nearestTri)[i] = (*ffModel).triangles[j];
-				(*pSystem).SetParticleVelocityFromTarget(i, (*nearestTri)[i].center);
-			}
-			else
-			{
-				nP = (*ffModel).triangles[j].ShorestDistance((*pSystem).PsParticle(i).position);
-				if (nearestPoint > nP)
-				{
-					nearestPoint = nP;
-					(*nearestTri)[i] = ffModel->triangles[j];
-					pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
-				}
-			}
-		}
-		pSystem->PsParticle(i).goToTri = true;
-	}
-}
-
-void Scene::GetClosestTri()
-{
-	//float nearestPoint = INFINITY;
-	//float nP = INFINITY;
-
-	const int thread_count = 4;
-
-	if (particle_system.ParticleCount() < thread_count)
-	{
-		GetTri(0, particle_system.ParticleCount(), & nearestTri, & ffModel, & particle_system);
-		return;
-	}
-
-	int interval = particle_system.ParticleCount() / thread_count;
-
-	std::thread threads[thread_count];
-
-	int start_count = 0;
-	for (size_t i = 0; i < thread_count; ++i)
-	{
-		threads[i] = std::thread(GetTri, start_count, start_count + interval, &nearestTri, &ffModel, &particle_system);
-
-		if (interval == particle_system.ParticleCount())
-			break;
-
-		if (start_count + interval > particle_system.ParticleCount())
-		{
-			start_count += particle_system.ParticleCount() - start_count;
-		}
-		else
-		{
-			start_count += interval;
-		}
-	}
-
-	for (size_t i = 0; i < thread_count; ++i)
-	{
-		if(threads[i].joinable())
-			threads[i].join();
-	}
-}
-
-void GetNearTri(size_t i, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
-{
-	float nearestPoint = INFINITY;
-	float nP = INFINITY;
-	for (size_t j = 0; j < ffModel->triangles.size(); ++j)
-	{
-		nP = ffModel->triangles[j].ShorestDistance(pSystem->PsParticle(i).position);
-		if (nearestPoint > nP)
-		{
-			nearestPoint = nP;
-			(*nearestTri)[i] = ffModel->triangles[j];
-
-			if(i == 0)
-				std::cout << j << std::endl;
-
-			pSystem->SetParticleVelocityFromTarget(i, ffModel->triangles[j].center);
-			//pSystem->SetParticleVelocityFromTarget(i, FindPoint(ffModel->triangles[j]));
-		}
-	}
-	pSystem->PsParticle(i).goToTri = true;
-}
-
-void CheckParts(int start_val, int max_count, std::vector<Triangle>* nearestTri, FfObject* ffModel, ParticleSystem* pSystem)
-{
-	float length, length2;
-	for (size_t i = start_val; i < max_count; i++)
-	{
-		if (pSystem->PsParticle(i).goToTri)
-		{
-			length = glm::distance(pSystem->PsParticle(i).position, pSystem->PsParticle(i).target);
-			length2 = glm::distance(pSystem->PsParticle(i).target + ((*nearestTri)[i].normal) * 0.25f, pSystem->PsParticle(i).target);
-
-			if (length < length2)
-			{
-				std::random_device rd;
-				std::uniform_real_distribution<float> rand(-0.00001f, 0.00001f);
-				std::uniform_real_distribution<float> rand2(0.005f, 0.01f);
-				pSystem->PsParticle(i).goToTri = false;
-				pSystem->PsParticle(i).ranDirDuration = rand2(rd);
-				//pSystem->PsParticle(i).velocity = { rand(rd), rand(rd), rand(rd) };
-				//pSystem->PsParticle(i).ranDirDuration = 10.0f;
-				pSystem->PsParticle(i).velocity = { 0.0f, 0.0f, 0.0f };
-			}
-		}
-		else
-		{
-			if (pSystem->PsParticle(i).ranDirDuration <= 0.0f)
-			{
-				GetNearTri(i, nearestTri, ffModel, pSystem);
-			}
-			pSystem->PsParticle(i).ranDirDuration -= Locator::GetTimer()->FixedDeltaTime();
-		}
-	}
-}
-
-void Scene::DoShit()
-{
-	const int thread_count = 6;
-
-	if (particle_system.ParticleCount() < thread_count)
-	{
-		CheckParts(0, particle_system.ParticleCount(), &nearestTri, &ffModel, &particle_system);
-		return;
-	}
-
-	int interval = (particle_system.ParticleCount() / thread_count) + 1;
-
-	std::thread threads[thread_count];
-
-	int start_count = 0;
-	for (size_t i = 0; i < thread_count; ++i)
-	{
-		threads[i] = std::thread(CheckParts, start_count, start_count + interval, &nearestTri, &ffModel, &particle_system);
-
-		start_count += interval;
-
-		if (start_count + interval > particle_system.ParticleCount())
-		{
-			interval = particle_system.ParticleCount() - start_count;
-		}
-	}
-
-	for (size_t i = 0; i < thread_count; ++i)
-	{
-		if (threads[i].joinable())
-			threads[i].join();
-	}
-
-
-	int x = 0;
-}
-
-void Scene::GetClosestTri(size_t i)
-{
-	float nearestPoint = INFINITY;
-	float nP = INFINITY;
-	for (size_t j = 0; j < ffModel.triangles.size(); ++j)
-	{
-		if (j == 0)
-		{
-			nearestPoint = ffModel.triangles[j].ShorestDistance(particle_system.PsParticle(i).position);
-			nearestTri[i] = ffModel.triangles[j];
-			particle_system.SetParticleVelocityFromTarget(i, nearestTri[i].center);
-		}
-		else
-		{
-			nP = ffModel.triangles[j].ShorestDistance(particle_system.PsParticle(i).position);
-			if (nearestPoint > nP)
-			{
-				nearestPoint = nP;
-				nearestTri[i] = ffModel.triangles[j];
-				glm::vec3 random_point;
-
-				//pSystem.PsParticle(i).target = nearestTri[i].center;
-				particle_system.SetParticleVelocityFromTarget(i, nearestTri[i].center);
-			}
-		}
-	}
-	particle_system.PsParticle(i).goToTri = true;
-}
-
-glm::vec3 Scene::FindRandomPoint(const Triangle& tri)
-{
-	bool gotPoint = false;
-	std::random_device rd;
-	std::uniform_real_distribution<float> x_rand(tri.min.x, tri.max.x);
-	std::uniform_real_distribution<float> y_rand(tri.min.y, tri.max.y);
-	std::uniform_real_distribution<float> z_rand(tri.min.z, tri.max.z);
-	glm::vec3 P;
-	glm::vec3 C; // vector perpendicular to triangle's plane 
-	float denom = glm::dot(tri.normal, tri.normal);
-	while (!gotPoint)
-	{
-		P = glm::vec3(x_rand(rd), y_rand(rd), z_rand(rd));
-		// no need to normalize
-
-		glm::vec3 vp0 = P - tri.vertices[0];
-		C = glm::cross(tri.edges[0], vp0);
-		if (glm::dot(tri.normal, C) < 0) continue; // P is on the right side 
-
-		glm::vec3 vp1 = P - tri.vertices[1];
-		C = glm::cross(tri.edges[1], vp1);
-		if ((glm::dot(tri.normal, C)) < 0) continue; // P is on the right side 
-
-		glm::vec3 vp2 = P - tri.vertices[2];
-		C = glm::cross(tri.edges[2], vp2);
-		if ((glm::dot(tri.normal, C)) < 0) continue; // P is on the right side;
-
-		gotPoint = true;
-
-	}
-
-	return P;
-
-	//// no need to normalize
-	//float denom = Vec3::Dot(normal, normal);
-
-	//// compute the intersection point using equation 1
-	//Vec3 P = ray.origin + t * ray.direction;
-
-	//Vec3 C; // vector perpendicular to triangle's plane 
-
-	//Vec3 vp0 = P - vertices[0].pos;
-	//C = Vec3::Cross(edges[0], vp0);
-	//if (Vec3::Dot(normal, C) < 0) return false; // P is on the right side 
-
-	//Vec3 vp1 = P - vertices[1].pos;
-	//C = Vec3::Cross(edges[1], vp1);
-	//if ((u = Vec3::Dot(normal, C)) < 0)  return false; // P is on the right side 
-
-	//Vec3 vp2 = P - vertices[2].pos;
-	//C = Vec3::Cross(edges[2], vp2);
-	//if ((v = Vec3::Dot(normal, C)) < 0) return false; // P is on the right side; 
-
-	//u /= denom;
-	//v /= denom;
-}
+//void Scene::GetClosestTri(size_t i)
+//{
+//	float nearestPoint = INFINITY;
+//	float nP = INFINITY;
+//	for (size_t j = 0; j < ffModel.triangles.size(); ++j)
+//	{
+//		if (j == 0)
+//		{
+//			nearestPoint = ffModel.triangles[j].ShorestDistance(particle_system.PsParticle(i).position);
+//			nearestTri[i] = ffModel.triangles[j];
+//			particle_system.SetParticleVelocityFromTarget(i, nearestTri[i].center);
+//		}
+//		else
+//		{
+//			nP = ffModel.triangles[j].ShorestDistance(particle_system.PsParticle(i).position);
+//			if (nearestPoint > nP)
+//			{
+//				nearestPoint = nP;
+//				nearestTri[i] = ffModel.triangles[j];
+//				glm::vec3 random_point;
+//
+//				//pSystem.PsParticle(i).target = nearestTri[i].center;
+//				particle_system.SetParticleVelocityFromTarget(i, nearestTri[i].center);
+//			}
+//		}
+//	}
+//	//particle_system.PsParticle(i).goToTri = true;
+//}
+//
+//glm::vec3 Scene::FindRandomPoint(const Triangle& tri)
+//{
+//	bool gotPoint = false;
+//	std::random_device rd;
+//	std::uniform_real_distribution<float> x_rand(tri.min.x, tri.max.x);
+//	std::uniform_real_distribution<float> y_rand(tri.min.y, tri.max.y);
+//	std::uniform_real_distribution<float> z_rand(tri.min.z, tri.max.z);
+//	glm::vec3 P;
+//	glm::vec3 C; // vector perpendicular to triangle's plane 
+//	float denom = glm::dot(tri.normal, tri.normal);
+//	while (!gotPoint)
+//	{
+//		P = glm::vec3(x_rand(rd), y_rand(rd), z_rand(rd));
+//		// no need to normalize
+//
+//		glm::vec3 vp0 = P - tri.vertices[0];
+//		C = glm::cross(tri.edges[0], vp0);
+//		if (glm::dot(tri.normal, C) < 0) continue; // P is on the right side 
+//
+//		glm::vec3 vp1 = P - tri.vertices[1];
+//		C = glm::cross(tri.edges[1], vp1);
+//		if ((glm::dot(tri.normal, C)) < 0) continue; // P is on the right side 
+//
+//		glm::vec3 vp2 = P - tri.vertices[2];
+//		C = glm::cross(tri.edges[2], vp2);
+//		if ((glm::dot(tri.normal, C)) < 0) continue; // P is on the right side;
+//
+//		gotPoint = true;
+//
+//	}
+//
+//	return P;
+//
+//	//// no need to normalize
+//	//float denom = Vec3::Dot(normal, normal);
+//
+//	//// compute the intersection point using equation 1
+//	//Vec3 P = ray.origin + t * ray.direction;
+//
+//	//Vec3 C; // vector perpendicular to triangle's plane 
+//
+//	//Vec3 vp0 = P - vertices[0].pos;
+//	//C = Vec3::Cross(edges[0], vp0);
+//	//if (Vec3::Dot(normal, C) < 0) return false; // P is on the right side 
+//
+//	//Vec3 vp1 = P - vertices[1].pos;
+//	//C = Vec3::Cross(edges[1], vp1);
+//	//if ((u = Vec3::Dot(normal, C)) < 0)  return false; // P is on the right side 
+//
+//	//Vec3 vp2 = P - vertices[2].pos;
+//	//C = Vec3::Cross(edges[2], vp2);
+//	//if ((v = Vec3::Dot(normal, C)) < 0) return false; // P is on the right side; 
+//
+//	//u /= denom;
+//	//v /= denom;
+//}
 
 void Scene::drawFrame() {
 
 	Locator::GetMouse()->Update();
 	uint32_t imageIndex;
 	prepareFrame(imageIndex);
+
+
 	/* Updating obejcts */
 	//////////////////////
 
@@ -1196,27 +1273,27 @@ void Scene::drawFrame() {
 
 	endFrame(imageIndex);
 
-	//vkQueueWaitIdle(graphicsQueue);
+	vkWaitForFences(device, 1, &compute.fence, VK_TRUE, UINT64_MAX);
+	vkResetFences(device, 1, &compute.fence);
+	
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT };
 
-	//vkWaitForFences(device, 1, &compute.fence, VK_TRUE, UINT64_MAX);
-	//vkResetFences(device, 1, &compute.fence);
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT };
-
-	VkSubmitInfo computeSubmitInfo;
+	VkSubmitInfo computeSubmitInfo{};
 	computeSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	computeSubmitInfo.commandBufferCount = 1;
 	computeSubmitInfo.pCommandBuffers = &compute.commandBuffer;
-	computeSubmitInfo.pWaitDstStageMask = waitStages;
-	computeSubmitInfo.pWaitSemaphores = &graphicsSemaphore;
-	computeSubmitInfo.pSignalSemaphores = &compute.semaphore;
-	computeSubmitInfo.waitSemaphoreCount = 1;
-	computeSubmitInfo.signalSemaphoreCount = 1;
-	computeSubmitInfo.pNext = nullptr;
+	//computeSubmitInfo.pWaitDstStageMask = waitStages;
+	//computeSubmitInfo.waitSemaphoreCount = 1;
+	//computeSubmitInfo.pWaitSemaphores = &graphicsSemaphore;
 
-	if (vkQueueSubmit(compute.queue, 1, &computeSubmitInfo, nullptr) != VK_SUCCESS) {
+	//computeSubmitInfo.pSignalSemaphores = &compute.semaphore;
+	//computeSubmitInfo.signalSemaphoreCount = 1;
+
+	if (vkQueueSubmit(compute.queue, 1, &computeSubmitInfo, compute.fence) != VK_SUCCESS) {
 		throw std::runtime_error("failed to submit compute command buffer!");
 	}
-
+	//vkQueueWaitIdle(graphicsQueue);
+	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void Scene::Cleanup()

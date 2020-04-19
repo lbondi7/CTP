@@ -8,8 +8,8 @@ layout(binding = 0) uniform UniformBufferParticle {
     mat4 proj;
 } ubo;
 
-layout(location = 0) in vec3 inPosition;
-layout(location = 1) in vec3 inVelocity;
+layout(location = 0) in vec4 inPosition;
+layout(location = 1) in vec4 inVelocity;
 layout(location = 2) in float inAlpha;
 
 layout(location = 0) out float outAlpha;
@@ -17,6 +17,8 @@ layout(location = 0) out float outAlpha;
 
 void main() {    
 
-	gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1);
+    vec4 pos = inPosition;
+    pos.w = 1.0;
+	gl_Position = ubo.proj * ubo.view * ubo.model * pos;
     outAlpha = inAlpha;
 }

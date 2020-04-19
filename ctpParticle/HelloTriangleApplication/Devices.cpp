@@ -210,6 +210,26 @@ VkCommandBuffer Devices::BeginSingleTimeCommands(VkCommandBufferLevel cmdBufferL
 	return commandBuffer;
 }
 
+VkCommandBuffer Devices::BeginSingleTimeCommands(VkCommandBufferLevel cmdBufferLevel, int cmdBufferCount, VkCommandPool _cmdPool) {
+
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = cmdBufferLevel;
+	allocInfo.commandPool = _cmdPool;
+	allocInfo.commandBufferCount = cmdBufferCount;
+
+	VkCommandBuffer commandBuffer;
+	vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+	return commandBuffer;
+}
+
 void Devices::EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBufferCount, VkQueue queue) {
 
 	vkEndCommandBuffer(commandBuffer);
@@ -223,6 +243,26 @@ void Devices::EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBuffer
 	vkQueueWaitIdle(queue);
 
 	vkFreeCommandBuffers(device, cmdPool, cmdBufferCount, &commandBuffer);
+}
+
+void Devices::EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBufferCount, VkCommandPool _cmdPool, VkQueue queue) {
+
+	vkEndCommandBuffer(commandBuffer);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = cmdBufferCount;
+	submitInfo.pCommandBuffers = &commandBuffer;
+
+	VkFenceCreateInfo fenceInfo{};
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	VkFence fence;
+	vkCreateFence(device, &fenceInfo, nullptr, &fence);
+
+	vkQueueSubmit(queue, 1, &submitInfo, fence);
+	vkQueueWaitIdle(queue);
+
+	vkFreeCommandBuffers(device, _cmdPool, cmdBufferCount, &commandBuffer);
 }
 
 void Devices::DestroyCommandPool() {

@@ -9,7 +9,7 @@
 
 struct LightUBO {
 	alignas(16) glm::vec3 camPos;
-	alignas(4) uint16_t lightCount;
+	alignas(2) uint16_t lightCount;
 };
 
 struct ParticleUBO {
@@ -90,15 +90,15 @@ private:
 
 	void Update();
 
-	void CheckParticles();
+	//void CheckParticles();
 
-	void GetClosestTri();
+	//void GetClosestTri();
 
-	void DoShit();
+	//void DoShit();
 
-	void GetClosestTri(size_t i);
+	//void GetClosestTri(size_t i);
 
-	glm::vec3 FindRandomPoint(const Triangle& tri);
+	//glm::vec3 FindRandomPoint(const Triangle& tri);
 
 	void Cleanup();
 };

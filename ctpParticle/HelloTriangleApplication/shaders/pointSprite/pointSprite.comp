@@ -8,8 +8,9 @@ layout(binding = 0) uniform UniformBufferParticle {
 
 struct Particle
 {
-	vec3 pos;
-    vec3 vel;
+	vec4 pos;
+    vec4 vel;
+    float alpha;
 };
 
 layout(std140, binding = 1) buffer Particles
@@ -22,8 +23,15 @@ void main() {
     uint index = gl_GlobalInvocationID.x;
 
     if(index >= ubp.particleCount)
-    return;
-    vec3 vel = vec3(0, 10, 0);
+        return;
+
+    vec3 vel = vec3(0, 1, 0);
     float delt =  (1.0 / 60.0);
-    particles[index].pos += vel * delt;
+
+    vec3 vVel = particles[index].vel.xyz;
+    vec3 vPos = particles[index].pos.xyz;
+
+    vPos += vel; 
+
+    particles[index].pos = vec4(vPos, 0.0);
 }

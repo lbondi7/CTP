@@ -25,7 +25,11 @@ public:
 
 	VkCommandBuffer BeginSingleTimeCommands(VkCommandBufferLevel cmdBufferLevel, int cmdBufferCount);
 
+	VkCommandBuffer BeginSingleTimeCommands(VkCommandBufferLevel cmdBufferLevel, int cmdBufferCount, VkCommandPool _cmdPool);
+
 	void EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBufferCount, VkQueue queue);
+
+	void EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBufferCount, VkCommandPool _cmdPool, VkQueue queue);
 
 	void DestroyCommandPool();
 

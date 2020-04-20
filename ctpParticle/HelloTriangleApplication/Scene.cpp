@@ -819,10 +819,15 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	object.GetModel().uniform.CopyMem(&ubo, sizeof(ubo));
 
 
+	std::random_device rd;
+	std::uniform_real_distribution<float> rand(0.0f, 1.0f);
+	 
 	ParticleUBO particle_ubo;
 
 	particle_ubo.delta_time = Locator::GetTimer()->DeltaTime();
 	particle_ubo.particle_count = particle_system.ParticleCount();
+	particle_ubo.randomVec = glm::vec2(rand(rd), rand(rd));
+	particle_ubo.resolution = glm::vec2(WIDTH, HEIGHT);
 
 	particle_ubo_buffer.CopyMem(&particle_ubo, sizeof(particle_ubo));
 
@@ -925,7 +930,7 @@ void Scene::LoadAssets()
 
 	Transform trans;
 	trans.pos = { 0.0f, 0.0f, 0.0f };
-	trans.scale = glm::vec3(3.0f);
+	trans.scale = glm::vec3(30.0f);
 	ffModel.Load("bunny", trans);
 
 	//DoShit();
@@ -978,6 +983,9 @@ void Scene::Update()
 	
 	//DoShit();
 	particle_system.Update();
+
+
+
 
 	//for (size_t i = 0; i < particle_system.ParticleCount(); i++)
 	//{

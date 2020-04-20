@@ -159,6 +159,9 @@ void ParticleSystem::UpdateBuffers()
 {
 	//particleBuffer.CopyMem(particles.data(), particleBuffer.size);
 
+
+	
+
 	uniformBuffer.CopyMem(&ubp, sizeof(ubp));
 
 	//computeParticleBuffer.CopyMem(particles.data(), computeParticleBuffer.size);

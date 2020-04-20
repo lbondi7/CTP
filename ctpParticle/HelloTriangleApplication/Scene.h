@@ -15,6 +15,8 @@ struct LightUBO {
 struct ParticleUBO {
 	float delta_time = 0.0f;
 	int particle_count = 0;
+	glm::vec2 resolution = {WIDTH, HEIGHT};
+	glm::vec2 randomVec = { 1.0, 1.0 };
 };
 
 struct TriangleUBO {

@@ -11,6 +11,10 @@ layout(binding = 0) uniform UniformBufferParticle {
 layout(location = 0) in vec4 inPosition;
 layout(location = 1) in vec4 inVelocity;
 layout(location = 2) in float inAlpha;
+layout(location = 3) in int inGoToTri;
+layout(location = 4) in float inRanDirDur;
+layout(location = 5) in int inNearestTri;
+layout(location = 6) in vec4 inTargetPoint;
 
 layout(location = 0) out float outAlpha;
 //layout(location = 0) out vec4 fragColor;

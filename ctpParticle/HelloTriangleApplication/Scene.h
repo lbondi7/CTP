@@ -6,6 +6,7 @@
 #include "ParticleSystem.h"
 #include "FlowFieldObject.h"
 #include "LGH.h"
+#include "KdTree.h"
 
 struct LightUBO {
 	alignas(16) glm::vec3 camPos;
@@ -22,6 +23,8 @@ struct ParticleUBO {
 struct TriangleUBO {
 	int triangle_count = 0;
 	int vertex_per_triangle = 0;
+	glm::vec4 min = { 0, 0, 0, 0 };
+	glm::vec4 max = { 0, 0, 0, 0 };
 };
 
 class Scene : public CTPApp
@@ -67,7 +70,10 @@ private:
 
 	LGH lgh;
 
-	float rotTime = 0.0f;
+	KdTree kdTree;
+
+	int frameSkipCount = 0;
+	int frameCount = 0;
 
 	void mainLoop();
 
@@ -97,19 +103,9 @@ private:
 
 	void drawFrame();
 
-	void Update(size_t currentImage);
-
 	void Update();
 
-	//void CheckParticles();
-
-	//void GetClosestTri();
-
-	//void DoShit();
-
-	//void GetClosestTri(size_t i);
-
-	//glm::vec3 FindRandomPoint(const Triangle& tri);
+	//void UpdateParticleBehaviour();
 
 	void Cleanup();
 };

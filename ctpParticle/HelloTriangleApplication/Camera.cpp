@@ -12,7 +12,7 @@
 
 void Camera::Setup(const glm::vec3& pos, const glm::vec3& lookAt, bool _freeCam)
 {
-	transform.pos = pos;
+	transform.position = pos;
 	freeCam = _freeCam;
 
 	look_at_pos = lookAt;
@@ -22,7 +22,7 @@ void Camera::Setup(const glm::vec3& pos, const glm::vec3& lookAt, bool _freeCam)
 
 	diff = glm::normalize(diff);
 	//transform.pos =  diff * distFromLookAtPos;
-	viewMatrix = glm::lookAt(transform.pos, lookAt, world_up);
+	viewMatrix = glm::lookAt(transform.position, lookAt, world_up);
 }
 
 void Camera::Update()
@@ -71,9 +71,9 @@ void Camera::Orbit()
 
 	diff = glm::normalize(diff);
 
-	transform.pos = diff * look_at_pos_distance;
+	transform.position = diff * look_at_pos_distance;
 
-	viewMatrix = glm::lookAt(transform.pos, look_at_pos, world_up);
+	viewMatrix = glm::lookAt(transform.position, look_at_pos, world_up);
 }
 
 void Camera::FreeCam()
@@ -114,7 +114,7 @@ void Camera::FreeCam()
 		}
 		else
 		{
-			transform.pos -= glm::normalize(glm::cross(cam_forward, world_up)) * Locator::GetTimer()->DeltaTime() * zoom_speed;
+			transform.position -= glm::normalize(glm::cross(cam_forward, world_up)) * Locator::GetTimer()->DeltaTime() * zoom_speed;
 		}
 	}
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_D))
@@ -126,7 +126,7 @@ void Camera::FreeCam()
 		}
 		else
 		{
-			transform.pos += glm::normalize(glm::cross(cam_forward, world_up)) * Locator::GetTimer()->DeltaTime() * zoom_speed;
+			transform.position += glm::normalize(glm::cross(cam_forward, world_up)) * Locator::GetTimer()->DeltaTime() * zoom_speed;
 		}
 	}
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_W))
@@ -134,27 +134,27 @@ void Camera::FreeCam()
 		if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_LEFT_SHIFT) ||
 			Locator::GetKeyboard()->IsKeyRepeat(GLFW_KEY_LEFT_SHIFT))
 		{
-			transform.pos += glm::normalize(glm::cross(cam_right, world_up)) * Locator::GetTimer()->DeltaTime() * zoom_speed;
+			transform.position += glm::normalize(glm::cross(cam_right, world_up)) * Locator::GetTimer()->DeltaTime() * zoom_speed;
 		}
 		else
 		{
-			transform.pos += cam_forward * Locator::GetTimer()->DeltaTime() * zoom_speed;
+			transform.position += cam_forward * Locator::GetTimer()->DeltaTime() * zoom_speed;
 		}
 	}
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_S))
 	{
-		transform.pos -= cam_forward * Locator::GetTimer()->DeltaTime() * zoom_speed;
+		transform.position -= cam_forward * Locator::GetTimer()->DeltaTime() * zoom_speed;
 	}
 
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_Q))
 	{
-		transform.pos -= world_up * Locator::GetTimer()->DeltaTime() * zoom_speed;
+		transform.position -= world_up * Locator::GetTimer()->DeltaTime() * zoom_speed;
 	}
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_E))
 	{
-		transform.pos += world_up * Locator::GetTimer()->DeltaTime() * zoom_speed;
+		transform.position += world_up * Locator::GetTimer()->DeltaTime() * zoom_speed;
 	}
 
-	viewMatrix = glm::lookAt(transform.pos, transform.pos + cam_forward, world_up);
+	viewMatrix = glm::lookAt(transform.position, transform.position + cam_forward, world_up);
 }
 

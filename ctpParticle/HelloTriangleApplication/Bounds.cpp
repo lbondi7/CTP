@@ -41,3 +41,21 @@ void Bounds::Load(const std::vector<Triangle>& triangles)
 	}
 
 }
+
+void Bounds::Load(const std::vector<Triangle*>& triangles)
+{
+	for (size_t i = 0; i < triangles.size(); ++i)
+	{
+		for (size_t j = 0; j < 3; ++j)
+		{
+			max.x = std::max(triangles[i]->vertices[j].x, max.x);
+			max.y = std::max(triangles[i]->vertices[j].y, max.y);
+			max.z = std::max(triangles[i]->vertices[j].z, max.z);
+										 
+			min.x = std::min(triangles[i]->vertices[j].x, min.x);
+			min.y = std::min(triangles[i]->vertices[j].y, min.y);
+			min.z = std::min(triangles[i]->vertices[j].z, min.z);
+		}
+	}
+
+}

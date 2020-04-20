@@ -19,7 +19,7 @@ Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, const Transform& tr
     glm::mat4 modelMatrix = glm::mat4(1.0f);
 
     modelMatrix = glm::scale(modelMatrix, transform.scale);
-    modelMatrix = glm::translate(modelMatrix, transform.pos);
+    modelMatrix = glm::translate(modelMatrix, transform.position);
     for (size_t i = 0; i < 3; i++)
     {
         vertices[i] = modelMatrix * localVertices[i];
@@ -99,7 +99,7 @@ void Triangle::Update(const glm::vec3& p)
 //    //    // 1 face    
 //    //    glm::dot(normal, p1) * glm::dot(normal, p1) / Utillities::Dot2(normal));
 //}
-
+//
 //float Triangle::UdTriangle(glm::vec3 p)
 //{
 //    //glm::vec3 ba = vertices[1] - vertices[0]; glm::vec3 pa = p - vertices[0];
@@ -126,6 +126,7 @@ void Triangle::operator=(const Triangle& other)
     localVertices = other.localVertices;
     vertices = other.vertices;
     edges = other.edges;
+    other_edge = other.other_edge;
     normal = other.normal;
     min = other.min;
     max = other.max;

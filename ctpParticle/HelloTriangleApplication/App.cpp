@@ -71,6 +71,7 @@ void CTPApp::initVulkan() {
 	createDepthResources();
 	createFramebuffers();
 	createSyncObjects();
+
 }
 
 void CTPApp::cleanup() {
@@ -82,6 +83,7 @@ void CTPApp::cleanup() {
 		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(device, inFlightFences[i], nullptr);
+		//vkDestroyFence(device, imagesInFlight[i], nullptr);
 	}
 
 	vkDestroyCommandPool(device, commandPool, nullptr);
@@ -148,13 +150,25 @@ void CTPApp::cleanupSwapChain() {
 	vkDestroySwapchainKHR(device, swapchain.swapChain, nullptr);
 
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+	vkResetFences(device, MAX_FRAMES_IN_FLIGHT, compute.fences.data());
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		vkDestroyFence(device, compute.fences[i], nullptr);
+	}
 
-
+	vkFreeCommandBuffers(device, compute.commandPool, static_cast<uint32_t>(compute.commandBuffers.size()), compute.commandBuffers.data());
 	vkDestroyPipelineLayout(device, compute.pipelineLayout, nullptr);
-	vkDestroyDescriptorSetLayout(device, compute.descriptorSetLayout, nullptr);
 	vkDestroyPipeline(device, compute.pipeline, nullptr);
-	vkDestroyFence(device, compute.fence, nullptr);
+	//vkDestroyFence(device, compute.fence, nullptr);
+
+	vkDestroySemaphore(device, graphicsSemaphore, nullptr);
+	vkDestroySemaphore(device, compute.semaphore, nullptr);
+	vkDestroyDescriptorSetLayout(device, compute.descriptorSetLayout, nullptr);
+
 	vkDestroyCommandPool(device, compute.commandPool, nullptr);
+
+	//compute.fences.clear();
+
 }
 
 void CTPApp::createRenderPass() {
@@ -385,7 +399,8 @@ void CTPApp::createSyncObjects() {
 	}
 }
 
-void CTPApp::prepareFrame(uint32_t& imageIndex) {
+void CTPApp::prepareFrame(uint32_t& imageIndex) 
+{
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	VkResult result = vkAcquireNextImageKHR(device, swapchain.swapChain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -421,7 +436,7 @@ void CTPApp::endFrame(uint32_t& imageIndex)
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffers[imageIndex];
 
-	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame], graphicsSemaphore };
+	VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -440,11 +455,9 @@ void CTPApp::endFrame(uint32_t& imageIndex)
 	VkSwapchainKHR swapChains[] = { swapchain.swapChain };
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
-
 	presentInfo.pImageIndices = &imageIndex;
 
 	result = vkQueuePresentKHR(presentQueue, &presentInfo);
-
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
 		framebufferResized = false;
 		recreateSwapChain();

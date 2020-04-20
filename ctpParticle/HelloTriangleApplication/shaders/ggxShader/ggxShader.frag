@@ -42,10 +42,9 @@ layout(binding = 1) uniform sampler2D texSampler;
 // }
 
 
-// DO NOT MULTIPLY BY COS THETA
+// see http://www.filmicworlds.com/2014/04/21/optimizing-ggx-shaders-with-dotlh/
 vec3 shadingSpecularGGX(vec3 N, vec3 V, vec3 L, float roughness, vec3 F0)
 {
-    // see http://www.filmicworlds.com/2014/04/21/optimizing-ggx-shaders-with-dotlh/
     vec3 H = normalize(V + L);
 
     float dotLH = max(dot(L, H), 0.0);
@@ -69,24 +68,7 @@ vec3 shadingSpecularGGX(vec3 N, vec3 V, vec3 L, float roughness, vec3 F0)
     // G (remapped hotness, see Unreal Shading)
     float k = (alpha + 2 * roughness + 1) / 8.0;
     float G = dotNL / (mix(dotNL, 1, k) * mix(dotNV, 1, k));
-    // '* dotNV' - canceled by normalization
 
-    // orginal G:
-    /*
-    {
-        float k = alpha / 2.0;
-        float k2 = k * k;
-        float invK2 = 1.0 - k2;
-        float vis = 1 / (dotLH * dotLH * invK2 + k2);
-
-        vec3 FV = mix(vec3(F_b), vec3(F_a), F0) * vis;
-        vec3 specular = D * FV / 4.0f;
-        return specular * dotNL;
-    }
-    */
-
-    // '/ dotLN' - canceled by lambert
-    // '/ dotNV' - canceled by G
     return D * F * G / 4.0;
 }
 
@@ -110,12 +92,15 @@ void main() {
    vec3 invViewDir = normalize(lightConsts.cameraPos - fragPosition);
    vec3 totalLight = vec3(0);
 
-   for(int i  = 0; i < lightConsts.lightCount; ++i)
+   for(int i = 0; i < lightConsts.lightCount; ++i)
    {
+      if(lights[i].col.x == -1)
+         continue;
+         
       vec3 lightVec = fragPosition - lights[i].pos.xyz;
       vec3 lightDir = normalize(fragPosition - lights[i].pos.xyz);
       vec3 invLightDir = normalize(lights[i].pos.xyz - fragPosition);
-      totalLight += shadingGGX(normal, invViewDir, invLightDir, lights[i].col.xyz, 0.01, 0.99);
+      totalLight += shadingGGX(normal, invViewDir, invLightDir, lights[i].col.xyz, 0.01, 0.9);
    }
 
 

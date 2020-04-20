@@ -7,6 +7,7 @@ class Mouse;
 struct Mesh;
 struct Image;
 struct Shaders;
+class ThreadManager;
 
 struct Locator
 {
@@ -40,6 +41,10 @@ public:
 
 	static Shaders* GetShader() { return shader; }
 
+	static void InitThreadManager(ThreadManager* _tm) { tm = _tm; }
+
+	static ThreadManager* GetThreadManager() { return tm; }
+
 private:
 	static Timer* timer;
 	static Devices* devices;
@@ -48,5 +53,6 @@ private:
 	static Mesh* mesh;
 	static Image* image;
 	static Shaders* shader;
+	static ThreadManager* tm;
 };
 

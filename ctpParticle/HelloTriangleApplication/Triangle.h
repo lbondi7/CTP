@@ -14,6 +14,8 @@ struct Triangle
 
 	float ShorestDistance(glm::vec3 p);
 
+	glm::vec3 FindPoint();
+
 	float UdTriangle(glm::vec3 p);
 
 	void operator =(const Triangle& other);

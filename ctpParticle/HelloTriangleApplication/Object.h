@@ -12,7 +12,7 @@ public:
 
 	const Transform& GetTransform() { return transform; }
 	void SetTransform(const Transform& t) { transform = t; }
-	void SetPos(const glm::vec3& pos) { transform.pos = pos; }
+	void SetPos(const glm::vec3& pos) { transform.position = pos; }
 	void SetScale(const glm::vec3& scale) { transform.scale = scale; }
 	void SetRot(const glm::vec3& rot) { transform.rot = rot; }
 

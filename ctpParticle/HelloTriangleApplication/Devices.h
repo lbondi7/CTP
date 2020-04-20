@@ -39,6 +39,8 @@ public:
 
 	QueueFamilyIndices& GetQueueFamiliesIndices() { return queueFamilyIndices; }
 
+	QueueFamilyIndices QueueFamily();
+
 private:
 
 	VkDevice device;

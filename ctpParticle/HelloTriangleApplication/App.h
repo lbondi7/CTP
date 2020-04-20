@@ -9,8 +9,10 @@
 struct ComputeStuff {
 	VkQueue queue;
 	VkCommandPool commandPool;
-	VkCommandBuffer commandBuffer;
-	VkFence fence;
+	//VkCommandBuffer commandBuffer;
+	//VkFence fence;
+	std::vector<VkCommandBuffer> commandBuffers;
+	std::vector<VkFence> fences;
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorSet descriptorSet;
 	VkPipelineLayout pipelineLayout;

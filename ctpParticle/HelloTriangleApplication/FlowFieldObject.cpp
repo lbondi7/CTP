@@ -35,7 +35,76 @@ void FfObject::Load(const std::string& filepath, const Transform& _transform)
 	{
 		Triangle tri(vertices[indices[i]].pos, vertices[indices[i + 1]].pos, vertices[indices[i + 2]].pos, _transform);
 
-		triangles.push_back(tri);
+		triangles.emplace_back(tri);
+	}
+
+	if (triangles.size() > 50)
+	{
+		for (auto tri : triangles)
+		{
+			brokenTriangles[GetGridNum(tri.center)].emplace_back(tri);
+			//if (tri.center.x < transform.pos.x)
+			//{
+			//	if (tri.center.z < transform.pos.z)
+			//	{
+			//		if (tri.center.y < transform.pos.y)
+			//		{
+			//			brokentriangles[0].emplace_back(tri);
+			//		}
+			//		else
+			//		{
+			//			brokentriangles[4].emplace_back(tri);
+			//		}
+			//	}
+			//	else
+			//	{
+			//		if (tri.center.y < transform.pos.y)
+			//		{
+			//			brokentriangles[1].emplace_back(tri);
+			//		}
+			//		else
+			//		{
+			//			brokentriangles[5].emplace_back(tri);
+			//		}
+			//	}
+			//}
+			//else
+			//{
+			//	if (tri.center.z < transform.pos.z)
+			//	{
+			//		if (tri.center.y < transform.pos.y)
+			//		{
+			//			brokentriangles[3].emplace_back(tri);
+			//		}
+			//		else
+			//		{
+			//			brokentriangles[7].emplace_back(tri);
+			//		}
+			//	}
+			//	else
+			//	{
+			//		if (tri.center.y < transform.pos.y)
+			//		{
+			//			brokentriangles[2].emplace_back(tri);
+			//		}
+			//		else
+			//		{
+			//			brokentriangles[6].emplace_back(tri);
+			//		}
+			//	}
+			//}
+		}
+	}
+
+	for (auto& tri: triangles)
+	{
+		min.x = std::min(min.x, tri.min.x);
+		min.y = std::min(min.y, tri.min.y);
+		min.z = std::min(min.z, tri.min.z);
+
+		max.x = std::max(max.x, tri.max.x);
+		max.y = std::max(max.y, tri.max.y);
+		max.z = std::max(max.z, tri.max.z);
 	}
 }
 
@@ -53,4 +122,58 @@ void FfObject::Update()
 	//{
 	//	triangles[i].Update(transform.pos);
 	//}
+}
+
+int FfObject::GetGridNum(const glm::vec3& p1)
+{
+	if (p1.x < transform.position.x)
+	{
+		if (p1.z < transform.position.z)
+		{
+			if (p1.y < transform.position.y)
+			{
+				return 0;
+			}
+			else
+			{
+				return 4;
+			}
+		}
+		else
+		{
+			if (p1.y < transform.position.y)
+			{
+				return 1;
+			}
+			else
+			{
+				return 5;
+			}
+		}
+	}
+	else
+	{
+		if (p1.z < transform.position.z)
+		{
+			if (p1.y < transform.position.y)
+			{
+				return 3;
+			}
+			else
+			{
+				return 7;
+			}
+		}
+		else
+		{
+			if (p1.y < transform.position.y)
+			{
+				return 2;
+			}
+			else
+			{
+				return 6;
+			}
+		}
+	}
 }

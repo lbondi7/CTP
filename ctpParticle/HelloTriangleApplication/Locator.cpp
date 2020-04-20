@@ -7,3 +7,4 @@ Mouse* Locator::mouse = nullptr;
 Mesh* Locator::mesh = nullptr;
 Image* Locator::image = nullptr;
 Shaders* Locator::shader = nullptr;
+ThreadManager* Locator::tm;

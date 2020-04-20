@@ -13,8 +13,9 @@ public:
 
 	void Create(const std::vector<Light>& pl);
 
-	void Recreate(const std::vector<Light>& pl);
+	//void Recreate(const std::vector<Light>& pl);
 
+	void Recreate(const std::vector<Light>* pl);
 
 	const std::vector<Light>& Lights() { return lights; }
 
@@ -26,10 +27,8 @@ private:
 	std::vector<Bounds> bounds;
 	Bounds bound;
 
-	//std::vector<std::vector<std::vector<LightShits>>> lights;
-
-	int cube_per_axis = 10;
-	int cube_per_axis_squared = 0;
-	int cube_per_axis_cubed = 0;
+	int voxels_per_axis = 10;
+	int voxels_per_axis_squared = 0;
+	int voxel_per_axis_cubed = 0;
 };
 

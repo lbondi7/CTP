@@ -119,6 +119,11 @@ uint32_t Devices::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags prop
 	throw std::runtime_error("failed to find suitable memory type!");
 }
 
+QueueFamilyIndices Devices::QueueFamily()
+{
+	return queueFamilyIndices;
+}
+
 QueueFamilyIndices Devices::FindQueueFamilies(VkSurfaceKHR surface) {
 
 	QueueFamilyIndices indices;

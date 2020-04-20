@@ -3,6 +3,7 @@
 #include "Object.h"
 #include "Buffer.h"
 #include "VkHelper.h"
+#include "Constants.h"
 
 #include "glm/glm.hpp"
 #include <vector>
@@ -71,20 +72,18 @@ public:
 
 	Buffer& UBuffer() { return uniformBuffer; }
 
-	//Buffer& CompPBuffer() { return computeParticleBuffer; }
-
-	std::vector<Particle>& PsParticles() { return particles; }
+	std::vector<Particle>& Particles() { return particles; }
 	
 	const std::vector<Particle>& ConstPsParticles() { return particles; }
 
-	Particle& PsParticle(int i) { return particles[i]; }
+	Particle& Particles(int i) { return particles[i]; }
 
 	void SetParticleVelocityFromTarget(int i, const glm::vec3& newDest);
 
 
 private:
 
-	int amount = 256 * 64;
+	int amount = 256 * 512;
 
 	std::vector<Particle> particles;
 
@@ -98,7 +97,7 @@ private:
 	const glm::mat4* view = nullptr;
 	glm::mat4* perspective = nullptr;
 
-	UniformBufferParticle ubp;
+	UniformBuffer ubp;
 
 	bool lifeEnabled = false;
 };

@@ -211,6 +211,7 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="Mouse.h" />
     <ClInclude Include="Object.h" />
+    <ClInclude Include="Output.h" />
     <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="PoolableThread.h" />
     <ClInclude Include="Scene.h" />

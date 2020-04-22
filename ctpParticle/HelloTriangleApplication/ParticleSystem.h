@@ -89,7 +89,6 @@ private:
 
 	Buffer particleBuffer;
 	Buffer uniformBuffer;
-	Buffer computeParticleBuffer;
 	Texture texture;
 
 	glm::vec3 pos;

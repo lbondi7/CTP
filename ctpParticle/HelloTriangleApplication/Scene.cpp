@@ -15,6 +15,7 @@
 #include "ThreadManager.h"
 #include "DebugPrinter.h"
 #include "Utillities.h"
+#include "Output.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -43,6 +44,8 @@
 #include <limits>
 
 using namespace std::chrono_literals;
+
+Output output;
 
 Scene::~Scene()
 {
@@ -910,7 +913,7 @@ void Scene::Update()
 
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_SPACE))
 	{
-
+		output.Outputy();
 	}
 	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_H))
 	{
@@ -937,13 +940,13 @@ void Scene::Update()
 
 	//lgh.Recreate(&lights);
 
-	uboLight.lightCount = lgh.Lights().size();
+	//uboLight.lightCount = lgh.Lights().size();
 
-	lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
+	//lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
 	//	//lightBuffer.CopyMem(lights.data(), sizeof(Light) * lights.size());
 	
-	lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
-	lightBuffer.CopyMem(lgh.Lights().data(), sizeof(Light) * lgh.Lights().size());
+	//lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
+	//lightBuffer.CopyMem(lgh.Lights().data(), sizeof(Light) * lgh.Lights().size());
 
 	//frameCount++;
 	//if (frameCount > frameSkipCount) frameCount = 0;
@@ -964,6 +967,8 @@ void Scene::drawFrame()
 
 		updateUniformBuffer(imageIndex);
 	}
+
+	output.Update();
 
 	endFrame(imageIndex);
 

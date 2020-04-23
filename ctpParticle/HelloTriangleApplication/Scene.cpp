@@ -98,7 +98,7 @@ void Scene::mainLoop() {
 		if(updateDelay > 0)
 			updateDelay--;
 
-		std::this_thread::sleep_for(1ms);
+		//std::this_thread::sleep_for(1ms);
 	}
 	vkDeviceWaitIdle(device);
 }
@@ -775,14 +775,10 @@ void Scene::createUniformBuffers()
 
 	lightUboBuffer.UpdateDescriptor(sizeof(LightUBO));
 
-
-
 	object.GetModel().uniform.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBuffer));
 
 	object.GetModel().uniform.UpdateDescriptor(sizeof(UniformBuffer));
-
-
 }
 
 void Scene::updateUniformBuffer(uint32_t currentImage) {
@@ -911,9 +907,6 @@ void Scene::drawFrame()
 
 	endFrame(imageIndex);
 
-	//vkWaitForFences(device, 1, &compute.fence, VK_TRUE, UINT64_MAX);
-	//vkResetFences(device, 1, &compute.fence);
-	//vkQueueWaitIdle(graphicsQueue);
 
 	vkWaitForFences(device, 1, &compute.fences[currentFrame], VK_TRUE, UINT64_MAX);
 	vkResetFences(device, 1, &compute.fences[currentFrame]);
@@ -951,9 +944,6 @@ void Scene::Cleanup()
 	lightBuffer.DestoryBuffer();
 	ffmodel_buffer.DestoryBuffer();
 	triangle_ubo_buffer.DestoryBuffer();
-
-
-
 
 	CTPApp::cleanup();
 }

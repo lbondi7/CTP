@@ -10,7 +10,7 @@
 
 struct LightUBO {
 	alignas(16) glm::vec3 camPos;
-	alignas(2) uint16_t lightCount;
+	alignas(4) int lightCount;
 };
 
 struct ParticleUBO {
@@ -23,8 +23,8 @@ struct ParticleUBO {
 struct TriangleUBO {
 	int triangle_count = 0;
 	int vertex_per_triangle = 0;
-	glm::vec4 min = { 0, 0, 0, 0 };
-	glm::vec4 max = { 0, 0, 0, 0 };
+	alignas(16) glm::vec4 min = { 0, 0, 0, 0 };
+	alignas(16) glm::vec4 max = { 0, 0, 0, 0 };
 };
 
 class Scene : public CTPApp

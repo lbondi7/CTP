@@ -11,7 +11,7 @@ struct Output {
 
 	void Outputy()
 	{
-		std::string fn = "timestampsSDFGPU.txt";
+		std::string fn = "timestampsNOLGH.txt";
 
 		std::ofstream file;
 		file.open(fn);

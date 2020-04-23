@@ -27,7 +27,7 @@ private:
 	std::vector<Bounds> bounds;
 	Bounds bound;
 
-	int voxels_per_axis = 10;
+	int voxels_per_axis = 5;
 	int voxels_per_axis_squared = 0;
 	int voxel_per_axis_cubed = 0;
 };

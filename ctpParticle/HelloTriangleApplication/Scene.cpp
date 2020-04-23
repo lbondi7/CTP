@@ -725,80 +725,6 @@ void Scene::BuildComputeCommandBuffer()
 
 		vkEndCommandBuffer(compute.commandBuffers[i]);
 	}
-
-	//VkCommandBufferBeginInfo beginInfo = {};
-	//beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-
-	//if (vkBeginCommandBuffer(compute.commandBuffer, &beginInfo) != VK_SUCCESS) {
-	//	throw std::runtime_error("failed to begin recording command buffer!");
-	//}
-
-	//VkBufferMemoryBarrier buffer_barrier{};
-
-	//buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	//buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	//buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-	//buffer_barrier.srcAccessMask = 0;
-	//buffer_barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-	//buffer_barrier.srcQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value();
-	//buffer_barrier.dstQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value();
-	//buffer_barrier.buffer = particle_system.PBuffer().buffer;
-	//buffer_barrier.size = particle_system.PBuffer().size;
-
-	//vkCmdPipelineBarrier(
-	//	compute.commandBuffer,
-	//	VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-	//	VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-	//	0,
-	//	0, nullptr,
-	//	1, &buffer_barrier,
-	//	0, nullptr);
-
-	//vkCmdBindPipeline(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipeline);
-	//vkCmdBindDescriptorSets(compute.commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipelineLayout, 0, 1, &compute.descriptorSet, 0, 0);
-
-	////vkCmdDispatch(compute.commandBuffer, (int)ffModel.triangles.size(), 1, 1);
-	//vkCmdDispatch(compute.commandBuffer, particle_system.ParticleCount() / 256, 1, 1);
-	//
-
-	////VkBufferMemoryBarrier buffer_barrier2{};
-
-	////buffer_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	////buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	////buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	//			  
-	//buffer_barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; 
-	//buffer_barrier.dstAccessMask = 0;
-	//buffer_barrier.srcQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value(); 
-	//buffer_barrier.dstQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value();
-	//buffer_barrier.buffer = particle_system.PBuffer().buffer;
-	//buffer_barrier.size = particle_system.PBuffer().size;
-
-	//vkCmdPipelineBarrier(
-	//	compute.commandBuffer,
-	//	VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-	//	VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-	//	0,
-	//	0, nullptr,
-	//	1, &buffer_barrier,
-	//	0, nullptr);
-
-	//vkEndCommandBuffer(compute.commandBuffer);
-}
-
-glm::vec3 Scene::getFlowField(glm::vec3 pos)
-{
-	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
-	glm::vec3 vel = glm::vec3(-pos.y, pos.x, pos.x) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z));
-	//glm::vec3 vel = glm::vec3(-pos.y, pos.x, pos.x) / glm::length(pos);
-	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
-	//vel.x = std::sqrt((pos.x * pos.x) + (pos.y * pos.y));
-	//vel.y = 0;
-	//vel.z = 0;
-
-	return vel;
 }
 
 void Scene::createUniformBuffers() 
@@ -812,14 +738,14 @@ void Scene::createUniformBuffers()
 		lights[i].pos = particle_system.Particles(i).position;
 	}
 
-	lightBuffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lights.size());
-	lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, lights.data(), lightBuffer.memProperties);
+	//lightBuffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lights.size());
+	//lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, lights.data(), lightBuffer.memProperties);
 
 	lightBuffer.UpdateDescriptor(sizeof(Light) * lights.size());
 
 	uboLight.camPos = camera.GetTransform().position;
-	uboLight.lightCount = particle_system.ParticleCount();
+	//uboLight.lightCount = particle_system.ParticleCount();
 
 	lgh.Create(lights);
 
@@ -827,10 +753,19 @@ void Scene::createUniformBuffers()
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lgh.Lights().size());
 	lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, lgh.Lights().data(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
+	lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
+
 	particle_ubo_buffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(ParticleUBO));
 
 	particle_ubo_buffer.UpdateDescriptor(sizeof(ParticleUBO));
+
+	ParticleUBO particle_ubo;
+	particle_ubo.delta_time = Locator::GetTimer()->DeltaTime();
+	particle_ubo.particle_count = particle_system.ParticleCount();
+	particle_ubo.randomVec = glm::vec2(Utillities::GetRandomFloat(0.0f, 1.0f), Utillities::GetRandomFloat(0.0f, 1.0f));
+	particle_ubo.resolution = glm::vec2(WIDTH, HEIGHT);
+	particle_ubo_buffer.CopyMem(&particle_ubo, sizeof(particle_ubo));
 
 
 
@@ -840,10 +775,14 @@ void Scene::createUniformBuffers()
 
 	lightUboBuffer.UpdateDescriptor(sizeof(LightUBO));
 
+
+
 	object.GetModel().uniform.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(UniformBuffer));
 
 	object.GetModel().uniform.UpdateDescriptor(sizeof(UniformBuffer));
+
+
 }
 
 void Scene::updateUniformBuffer(uint32_t currentImage) {
@@ -870,7 +809,7 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	ParticleUBO particle_ubo;
 	particle_ubo.delta_time = Locator::GetTimer()->DeltaTime();
 	particle_ubo.particle_count = particle_system.ParticleCount();
-	particle_ubo.randomVec = glm::vec2(rand(rd), rand(rd));
+	particle_ubo.randomVec = glm::vec2(Utillities::GetRandomFloat(0.0f, 1.0f), Utillities::GetRandomFloat(0.0f, 1.0f));
 	particle_ubo.resolution = glm::vec2(WIDTH, HEIGHT);
 
 	particle_ubo_buffer.CopyMem(&particle_ubo, sizeof(particle_ubo));
@@ -887,7 +826,7 @@ void Scene::LoadAssets()
 
 	particle_system.Create(graphicsQueue, &camera.ViewMatrix(), &perspective);
 
-	nearestTri.resize(particle_system.ParticleCount());
+	//nearestTri.resize(particle_system.ParticleCount());
 
 	object.Init("square", "blank", graphicsQueue);
 
@@ -940,13 +879,13 @@ void Scene::Update()
 
 	//lgh.Recreate(&lights);
 
-	//uboLight.lightCount = lgh.Lights().size();
+	uboLight.lightCount = lgh.Lights().size();
 
-	//lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
-	//	//lightBuffer.CopyMem(lights.data(), sizeof(Light) * lights.size());
+	lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
+	//lightBuffer.CopyMem(lights.data(), sizeof(Light) * lights.size());
 	
-	//lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
-	//lightBuffer.CopyMem(lgh.Lights().data(), sizeof(Light) * lgh.Lights().size());
+	lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
+	lightBuffer.CopyMem(lgh.Lights().data(), sizeof(Light) * lgh.Lights().size());
 
 	//frameCount++;
 	//if (frameCount > frameSkipCount) frameCount = 0;

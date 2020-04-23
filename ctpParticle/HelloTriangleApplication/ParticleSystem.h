@@ -14,7 +14,7 @@ struct Particle
 	alignas(16) glm::vec4 velocity;
 	alignas(4) float alpha = 0.25f;
 	alignas(4) bool goToTri = false;
-	alignas(4) float ranDirDuration = 0.0f;
+	alignas(4) float ranDirDuration = -1.0f;
 	alignas(4) int targetTri = 0;
 	alignas(16) glm::vec4 targetPoint = { 0.0f, 0.0f, 0.0f, 1.0f };
 	//float life = 0.0f;
@@ -83,7 +83,7 @@ public:
 
 private:
 
-	int amount = 256 * 512;
+	int amount = 256 * 128;
 
 	std::vector<Particle> particles;
 

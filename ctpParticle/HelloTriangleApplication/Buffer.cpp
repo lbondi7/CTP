@@ -198,13 +198,6 @@ void Buffer::SetupDescriptors(int amount)
 	descriptors.resize(amount);
 }
 
-void Buffer::UpdateDescriptor(int i, VkDeviceSize _range, VkDeviceSize _offset)
-{
-	descriptors[i].buffer = buffer;
-	descriptors[i].offset = _offset;
-	descriptors[i].range = _range;
-}
-
 void Buffer::DestoryBuffer()
 {
 	if (buffer)

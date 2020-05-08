@@ -76,7 +76,7 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 	}
 	Locator::GetDevices()->EndSingleTimeCommands(copyCmd, 1, graphicsQueue);
 
-	particleBuffer.UpdateDescriptor();
+	particleBuffer.UpdateDescriptor(sizeof(Particle) * amount);
 
 	stagingBuffer.DestoryBuffer();
 

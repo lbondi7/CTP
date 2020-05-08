@@ -48,6 +48,17 @@ layout(std140, binding = 3) readonly buffer Trianlges
    Triangle triangles[];
 };
 
+struct Light
+{
+   vec4 col;
+   vec4 pos;
+};
+
+layout(std140, binding = 4) buffer Lights
+{
+   Light lights[];
+};
+
 layout (local_size_x = 256) in;
 
 // vec3 getFlowField(vec3 pos)
@@ -201,4 +212,5 @@ void main() {
 
     particles[index].vel = vec4(vVel, 0.0);
     particles[index].pos = vec4(vPos, 0.0);
+    lights[index].pos = vec4(vPos, 0.0);
 }

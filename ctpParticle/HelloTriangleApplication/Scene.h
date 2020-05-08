@@ -63,7 +63,10 @@ private:
 	Buffer ffmodel_buffer;
 
 	Buffer lightBuffer;
+
 	Buffer lightUboBuffer;
+
+	Buffer particleLightBuffer;
 
 	std::vector<Light> lights;
 	LightUBO uboLight;

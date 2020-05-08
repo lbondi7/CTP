@@ -144,7 +144,6 @@ void Scene::createDescriptorSetLayout() {
 	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create pipeline layout!");
 	}
-
 }
 
 void Scene::createDescriptorSets() {
@@ -498,6 +497,12 @@ void Scene::createCompute() {
 
 	triangle_ubo_buffer.UpdateDescriptor(sizeof(triUBO));
 
+	particleLightBuffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lights.size());
+	particleLightBuffer.StageBuffer(particleLightBuffer.size, compute.queue, lights.data(), particleLightBuffer.memProperties, compute.commandPool);
+
+	particleLightBuffer.UpdateDescriptor(sizeof(Light) * lights.size());
+
 	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
 	VkDescriptorSetLayoutBinding storageLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
@@ -506,7 +511,9 @@ void Scene::createCompute() {
 
 	VkDescriptorSetLayoutBinding storage2LayoutBinding = VkHelper::createDescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, storageLayoutBinding,  ubo2LayoutBinding, storage2LayoutBinding };
+	VkDescriptorSetLayoutBinding storage3LayoutBinding = VkHelper::createDescriptorLayoutBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, storageLayoutBinding,  ubo2LayoutBinding, storage2LayoutBinding, storage3LayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
 
 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &compute.descriptorSetLayout) != VK_SUCCESS) {
@@ -537,7 +544,8 @@ void Scene::createCompute() {
 		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &particle_ubo_buffer.descriptor),
 		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &particle_system.PBuffer().descriptor),
 		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &triangle_ubo_buffer.descriptor),
-		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3, &ffmodel_buffer.descriptor)
+		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3, &ffmodel_buffer.descriptor),
+		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4, &particleLightBuffer.descriptor)
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -613,14 +621,14 @@ void Scene::createCompute() {
 		throw std::runtime_error("failed to create compute semaphore!");
 	}
 
-	//VkSubmitInfo submitInfo{};
-	//submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	//submitInfo.signalSemaphoreCount = 1;
-	//submitInfo.pSignalSemaphores = &compute.semaphore;
-	//if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, nullptr) != VK_SUCCESS) {
-	//	throw std::runtime_error("failed to sync compute semaphore!");
-	//}
-	//vkQueueWaitIdle(graphicsQueue);
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &compute.semaphore;
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, NULL) != VK_SUCCESS) {
+		throw std::runtime_error("failed to sync compute semaphore!");
+	}
+	vkQueueWaitIdle(graphicsQueue);
 
 
 	BuildComputeCommandBuffer();
@@ -742,7 +750,7 @@ void Scene::createUniformBuffers()
 	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lights.size());
 	//lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, lights.data(), lightBuffer.memProperties);
 
-	lightBuffer.UpdateDescriptor(sizeof(Light) * lights.size());
+	//lightBuffer.UpdateDescriptor(sizeof(Light) * lights.size());
 
 	uboLight.camPos = camera.GetTransform().position;
 	//uboLight.lightCount = particle_system.ParticleCount();
@@ -766,8 +774,6 @@ void Scene::createUniformBuffers()
 	particle_ubo.randomVec = glm::vec2(Utillities::GetRandomFloat(0.0f, 1.0f), Utillities::GetRandomFloat(0.0f, 1.0f));
 	particle_ubo.resolution = glm::vec2(WIDTH, HEIGHT);
 	particle_ubo_buffer.CopyMem(&particle_ubo, sizeof(particle_ubo));
-
-
 
 
 	lightUboBuffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -864,16 +870,16 @@ void Scene::Update()
 	//DoShit();
 	particle_system.Update();
 
-	for (size_t i = 0; i < particle_system.ParticleCount(); i++)
-	{
-		lights[i].pos = particle_system.Particles(i).position;
-	}
+	//for (size_t i = 0; i < particle_system.ParticleCount(); i++)
+	//{
+	//	lights[i].pos = particle_system.Particles(i).position;
+	//}
 	uboLight.camPos = camera.GetTransform().position;
 	//uboLight.lightCount = particle_system.ParticleCount();
 
 	//lgh.Recreate(lights);
 
-	//lgh.Recreate(&lights);
+	lgh.Recreate(&lights);
 
 	uboLight.lightCount = lgh.Lights().size();
 
@@ -896,22 +902,18 @@ void Scene::drawFrame()
 	uint32_t imageIndex;
 	prepareFrame(imageIndex);
 
-	if (updateDelay <= 0)
-	{
-		Update();
+	Update();
 
-		updateUniformBuffer(imageIndex);
-	}
+	updateUniformBuffer(imageIndex);
 
-	output.Update();
+	//output.Update();
 
 	endFrame(imageIndex);
-
 
 	vkWaitForFences(device, 1, &compute.fences[currentFrame], VK_TRUE, UINT64_MAX);
 	vkResetFences(device, 1, &compute.fences[currentFrame]);
 
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT };
+	//VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_VERTEX_INPUT_BIT };
 
 	VkSubmitInfo computeSubmitInfo{};
 	computeSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

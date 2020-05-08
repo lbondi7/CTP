@@ -83,7 +83,7 @@ public:
 
 private:
 
-	int amount = 256 * 128;
+	int amount = 256 * 256;
 
 	std::vector<Particle> particles;
 

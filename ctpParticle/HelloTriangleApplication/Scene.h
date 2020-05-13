@@ -35,6 +35,8 @@ public:
 
 	void run();
 
+	void RecreateSwapChain();
+
 	void LocatorSetup();
 
 private:
@@ -92,6 +94,8 @@ private:
 
 	void createDescriptorSetLayout();
 
+	void createPipelineLayout();
+
 	void createDescriptorSets();
 
 	void createGraphicsPipeline();
@@ -111,5 +115,6 @@ private:
 	//void UpdateParticleBehaviour();
 
 	void Cleanup();
+	void CleanUpObjects();
 };
 

@@ -33,7 +33,7 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 
 	for (size_t i = 0; i < amount; ++i)
 	{
-		particles[i].position = glm::vec4(Utillities::GetRandomVec3(glm::vec3(-100.0f), glm::vec3(100.0f)), 1.0f);
+		particles[i].position = glm::vec4(Utillities::GetRandomVec3(glm::vec3(-500.0f), glm::vec3(500.0f)), 1.0f);
 		particles[i].velocity = { 0.0f, 2.0f, 0.0f, 1.0f};
 	}
 

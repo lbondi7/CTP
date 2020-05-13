@@ -24,10 +24,12 @@ public:
 
 	void WaitForThreads();
 
+	bool IsInitialised() { return initilised; }
 
 private:
 
 	std::vector<std::unique_ptr<PoolableThread>> threads;
+	bool initilised = false;
 
 	static std::mutex threads_mutex;
 };

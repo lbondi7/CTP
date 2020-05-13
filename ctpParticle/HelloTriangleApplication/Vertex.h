@@ -11,7 +11,7 @@
 
 #include <array>
 
-#include "VkHelper.h"
+#include "VkInitializer.h"
 
 struct Vertex {
 	glm::vec3 pos;
@@ -21,16 +21,16 @@ struct Vertex {
 	glm::vec2 texCoord;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
-		return VkHelper::createVertexBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
+		return VkInitializer::VertexBindingDescription(0, sizeof(Vertex), VK_VERTEX_INPUT_RATE_VERTEX);
 	}
 
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
 
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = { 
-		VkHelper::createVertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)),
-		VkHelper::createVertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal)),
-		VkHelper::createVertexAttributeDescription(0, 2, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, color)),
-		VkHelper::createVertexAttributeDescription(0, 3, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord))
+		VkInitializer::VertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, pos)),
+		VkInitializer::VertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32_SFLOAT, offsetof(Vertex, normal)),
+		VkInitializer::VertexAttributeDescription(0, 2, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Vertex, color)),
+		VkInitializer::VertexAttributeDescription(0, 3, VK_FORMAT_R32G32_SFLOAT, offsetof(Vertex, texCoord))
 		};
 
 		return attributeDescriptions;

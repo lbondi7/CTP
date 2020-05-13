@@ -191,6 +191,7 @@
     <ClCompile Include="Utillities.cpp" />
     <ClCompile Include="VkHelper.cpp" />
     <ClCompile Include="VkInitializer.cpp" />
+    <ClCompile Include="VkManager.cpp" />
     <ClCompile Include="VkSetup.cpp" />
     <ClCompile Include="VkSetupHelper.cpp" />
   </ItemGroup>
@@ -228,6 +229,7 @@
     <ClInclude Include="VkConstants.h" />
     <ClInclude Include="VkHelper.h" />
     <ClInclude Include="VkInitializer.h" />
+    <ClInclude Include="VkManager.h" />
     <ClInclude Include="VkSetup.h" />
     <ClInclude Include="VkSetupHelper.h" />
   </ItemGroup>

@@ -13,10 +13,10 @@ layout(location = 1) out vec2 fragTexCoord;
 void main() {
 
     float alpha = inAlpha[0];
-    float size = 3.0;
+    float size = 2.0;
     vec4 offset = vec4(-size, size, 0, 1);
     vec4 vertexPos = gl_in[0].gl_Position + offset;
-    vec4 colour = vec4(255.0 / 255.0, 0.0 / 255.0, 255.0 / 255.0, alpha);
+    vec4 colour = vec4(255.0 / 235.0, 0.0 / 255.0, 255.0 / 255.0, alpha);
 
 
     gl_Position = vertexPos;

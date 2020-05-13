@@ -12,6 +12,7 @@
 #include "Mesh.h"
 #include "Image.h"
 #include "Constants.h"
+#include "DebugPrinter.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -62,8 +63,11 @@ void CTPApp::initVulkan() {
 	Locator::GetDevices()->CreateLogicalDevice(surface);
 	Locator::GetDevices()->CreateQueue(graphicsQueue, Queues::GRAPHICS);
 	Locator::GetDevices()->CreateQueue(presentQueue, Queues::PRESENT);
+
 	//Locator::GetDevices()->CreateQueue(compute.queue, Queues::COMPUTE);
 	device = Locator::GetDevices()->GetDevice();
+	vkManager.Init();
+	
 	swapchain.Init(instance);
 	swapchain.CreateSurface(window);
 	swapchain.Create(window);
@@ -83,7 +87,6 @@ void CTPApp::cleanup() {
 		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(device, inFlightFences[i], nullptr);
-		//vkDestroyFence(device, imagesInFlight[i], nullptr);
 	}
 
 	vkDestroyCommandPool(device, commandPool, nullptr);
@@ -101,31 +104,6 @@ void CTPApp::cleanup() {
 	glfwDestroyWindow(window);
 
 	glfwTerminate();
-}
-
-void CTPApp::recreateSwapChain() {
-	int width = 0, height = 0;
-	while (width == 0 || height == 0) {
-		glfwGetFramebufferSize(window, &width, &height);
-		glfwWaitEvents();
-	}
-
-	vkDeviceWaitIdle(device);
-
-	cleanupSwapChain();
-
-	//graphics.createSwapChain(physicalDevice, surface, device, window);
-	//graphics.createImageViews(device);
-	//graphics.createRenderPass(device, physicalDevice);
-	//createGraphicsPipeline();
-	createDepthResources();
-	createFramebuffers();
-	//createUniformBuffers();
-	//scene.CreateUniformBuffers();
-	//createDescriptorPool();
-	//createDescriptorSets();
-	//createCommandBuffers();
-
 }
 
 void CTPApp::cleanupSwapChain() {
@@ -150,25 +128,48 @@ void CTPApp::cleanupSwapChain() {
 	vkDestroySwapchainKHR(device, swapchain.swapChain, nullptr);
 
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-	vkResetFences(device, MAX_FRAMES_IN_FLIGHT, compute.fences.data());
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-	{
-		vkDestroyFence(device, compute.fences[i], nullptr);
-	}
+
+	//vkDestroyFence(device, compute.fence, nullptr);
+
+	//vkDestroySemaphore(device, graphicsSemaphore, nullptr);
+}
+
+void CTPApp::cleanupCompute()
+{
+	vkDestroyPipeline(device, compute.pipeline, nullptr);
 
 	vkFreeCommandBuffers(device, compute.commandPool, static_cast<uint32_t>(compute.commandBuffers.size()), compute.commandBuffers.data());
 	vkDestroyPipelineLayout(device, compute.pipelineLayout, nullptr);
-	vkDestroyPipeline(device, compute.pipeline, nullptr);
-	//vkDestroyFence(device, compute.fence, nullptr);
-
-	vkDestroySemaphore(device, graphicsSemaphore, nullptr);
-	vkDestroySemaphore(device, compute.semaphore, nullptr);
 	vkDestroyDescriptorSetLayout(device, compute.descriptorSetLayout, nullptr);
 
+	vkDestroySemaphore(device, compute.semaphore, nullptr);
+	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+	{
+		//vkResetFences(device, 1, &compute.fences[i]);
+		vkDestroyFence(device, compute.fences[i], nullptr);
+	}
 	vkDestroyCommandPool(device, compute.commandPool, nullptr);
+}
 
-	//compute.fences.clear();
+void CTPApp::recreateSwapChain() {
+	int width = 0, height = 0;
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(window, &width, &height);
+		glfwWaitEvents();
+	}
 
+	vkDeviceWaitIdle(device);
+
+	cleanupSwapChain();
+	cleanupCompute();
+
+
+	swapchain.Init(instance);
+	swapchain.CreateSurface(window);
+	swapchain.Create(window);
+	createRenderPass();
+	createDepthResources();
+	createFramebuffers();
 }
 
 void CTPApp::createRenderPass() {
@@ -396,6 +397,7 @@ void CTPApp::createSyncObjects() {
 			vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create synchronization objects for a frame!");
 		}
+		//availableFences[i] = vkManager.GetAvailableFence();
 	}
 }
 
@@ -458,8 +460,8 @@ void CTPApp::endFrame(uint32_t& imageIndex)
 	presentInfo.pImageIndices = &imageIndex;
 
 	result = vkQueuePresentKHR(presentQueue, &presentInfo);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-		framebufferResized = false;
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		//framebufferResized = false;
 		recreateSwapChain();
 	}
 	else if (result != VK_SUCCESS) {

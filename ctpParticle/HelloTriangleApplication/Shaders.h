@@ -15,7 +15,6 @@ struct Shaders
 
 	void DestroyShaders();
 
-	VkShaderModule shader;
 	std::vector<VkShaderModule> shaders;
 	std::map<std::string, int> shaderMap;
 	int shaderCount;

@@ -252,6 +252,7 @@ void Devices::EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBuffer
 	vkQueueSubmit(queue, 1, &submitInfo, fence);
 	vkQueueWaitIdle(queue);
 
+	vkDestroyFence(device, fence, nullptr);
 	vkFreeCommandBuffers(device, cmdPool, cmdBufferCount, &commandBuffer);
 }
 
@@ -272,6 +273,7 @@ void Devices::EndSingleTimeCommands(VkCommandBuffer commandBuffer, int cmdBuffer
 	vkQueueSubmit(queue, 1, &submitInfo, fence);
 	vkQueueWaitIdle(queue);
 
+	vkDestroyFence(device, fence, nullptr);
 	vkFreeCommandBuffers(device, _cmdPool, cmdBufferCount, &commandBuffer);
 }
 

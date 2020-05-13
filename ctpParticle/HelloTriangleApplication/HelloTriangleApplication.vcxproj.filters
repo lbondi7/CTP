@@ -141,6 +141,9 @@
     <ClCompile Include="Utillities.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="VkManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VkConstants.h">
@@ -246,6 +249,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Output.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="VkManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

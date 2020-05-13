@@ -51,7 +51,7 @@ void ThreadManager::Init(int num_of_threads, bool override_max_threads)
 	{
 		threads.emplace_back(std::move(std::make_unique<PoolableThread>(i)));
 	}
-	
+	initilised = true;
 
 }
 

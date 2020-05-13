@@ -5,6 +5,7 @@
 #include "Buffer.h"
 #include "Object.h"
 #include "SwapChain.h"
+#include "VkManager.h"
 
 struct ComputeStuff {
 	VkQueue queue;
@@ -26,7 +27,7 @@ struct ComputeStuff {
 class CTPApp {
 public:
 
-	void run();
+	//void run();
 
 protected:
 
@@ -43,6 +44,11 @@ protected:
 	VkQueue presentQueue;
 
 	VkRenderPass renderPass;
+
+	VkManager vkManager;
+
+	//VkFence availableFences[2];
+	//VkFence availableFences[3];
 
 	VkDescriptorSetLayout descriptorSetLayout;
 
@@ -88,6 +94,8 @@ protected:
 	void recreateSwapChain();
 
 	void cleanupSwapChain();
+
+	void cleanupCompute();
 
 	void createRenderPass();
 

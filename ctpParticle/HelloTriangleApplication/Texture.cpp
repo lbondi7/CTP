@@ -3,7 +3,7 @@
 #include "Devices.h"
 #include "Buffer.h"
 #include "Image.h"
-#include "VkHelper.h"
+#include "VkInitializer.h"
 
 #include <stdexcept>
 
@@ -37,7 +37,7 @@ void Texture::Load(const std::string imagePath, VkQueue queue, VkFormat format, 
 
 	transitionImageLayout(format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, queue);
 
-	VkHelper::CreateImageView(device, image, imageView, format, VK_IMAGE_ASPECT_COLOR_BIT);
+	VkInitializer::ImageView(device, image, imageView, format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	CreateTextureSampler();
 
@@ -46,7 +46,6 @@ void Texture::Load(const std::string imagePath, VkQueue queue, VkFormat format, 
 	descriptor.sampler = sampler;
 
 	staging.DestoryBuffer();
-
 }
 
 void Texture::createImage(VkFormat format, VkImageUsageFlags usage) {
@@ -109,7 +108,7 @@ void Texture::transitionImageLayout(VkFormat format, VkImageLayout oldLayout, Vk
 	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-		if (VkHelper::HasStencilComponent(format)) {
+		if (VkInitializer::HasStencilComponent(format)) {
 			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 		}
 	}
@@ -218,21 +217,9 @@ void Texture::CreateTextureSampler() {
 
 void Texture::Destroy()
 {
-	if (imageView)
-	{
-		vkDestroyImageView(device, imageView, nullptr);
-	}
-	if (image)
-	{
-		vkDestroyImage(device, image, nullptr);
-	}
-	if (memory)
-	{
-		vkFreeMemory(device, memory, nullptr);
-	}
-	if (sampler)
-	{
-		vkDestroySampler(device, sampler, nullptr);
-	}
+	vkDestroyImageView(device, imageView, nullptr);
+	vkDestroyImage(device, image, nullptr);
+	vkFreeMemory(device, memory, nullptr);
+	vkDestroySampler(device, sampler, nullptr);
 
 }

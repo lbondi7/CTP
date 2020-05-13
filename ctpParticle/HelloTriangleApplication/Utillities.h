@@ -4,14 +4,19 @@
 
 #include <iostream>
 #include <random>
+#include <string>
 
 struct Utillities {
 
 
 	static float Dot2(const glm::vec3& v) { return glm::dot(v, v); }
 
-	static void DebugPrint(const glm::vec3& v) {
-		std::cout << "x: " << v.x << ", " << "y: " << v.y << ", " << "z: " << v.z << std::endl;
+	//static std::string DebugPrint(const glm::vec3& v) {
+	//	 << "x: " << v.x << ", " << "y: " << v.y << ", " << "z: " << v.z << std::endl;
+	//}
+
+	static std::string V3ToString(std::string name, const glm::vec3& v) {
+		return name + " | x: " + std::to_string(v.x) + ", y: " + std::to_string(v.y) + ", z: " + std::to_string(v.z);
 	}
 
 	static void DebugPrint(const char* word) {

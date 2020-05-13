@@ -1,7 +1,7 @@
 #include "SwapChain.h"
 #include "Locator.h"
 #include "Devices.h"
-#include "VkHelper.h"
+#include "VkInitializer.h"
 
 #include <stdexcept>
 #include <algorithm>
@@ -73,7 +73,7 @@ void SwapChain::Create(GLFWwindow* window) {
 	swapChainImageViews.resize(swapChainImages.size());
 
 	for (uint32_t i = 0; i < swapChainImages.size(); i++) {
-		VkHelper::CreateImageView(device, swapChainImages[i], swapChainImageViews[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+		VkInitializer::ImageView(device, swapChainImages[i], swapChainImageViews[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 }
 

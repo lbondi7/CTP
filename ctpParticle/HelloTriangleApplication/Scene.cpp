@@ -58,6 +58,7 @@ void Scene::run() {
 	initVulkan();
 	LocatorSetup();
 	createDescriptorSetLayout();
+	createPipelineLayout();
 	createGraphicsPipeline();
 	LoadAssets();
 	createUniformBuffers();
@@ -67,6 +68,38 @@ void Scene::run() {
 	createCommandBuffers();
 	mainLoop();
 	Cleanup();
+}
+
+void Scene::RecreateSwapChain() {
+	int width = 0, height = 0;
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(window, &width, &height);
+		glfwWaitEvents();
+	}
+
+	vkDeviceWaitIdle(device);
+
+	//vkDestroyPipeline(device, objectPipeline, nullptr);
+	//vkDestroyPipeline(device, pSystemPipeline, nullptr);
+	CleanUpObjects();
+	cleanupSwapChain();
+	cleanupCompute();
+
+	vkDestroySurfaceKHR(swapchain.instance, swapchain.surface, nullptr);
+
+	swapchain.CreateSurface(window);
+	swapchain.Create(window);
+	createRenderPass();
+	createPipelineLayout();
+	createGraphicsPipeline();
+	createDepthResources();
+	createFramebuffers();
+	LoadAssets();
+	createUniformBuffers();
+	createDescriptorPool();
+	createDescriptorSets();
+	createCompute();
+	createCommandBuffers();
 }
 
 void Scene::LocatorSetup()
@@ -94,11 +127,6 @@ void Scene::mainLoop() {
 		glfwPollEvents();
 		Locator::GetTimer()->GetTimePoint((float)glfwGetTime());
 		drawFrame();
-		
-		if(updateDelay > 0)
-			updateDelay--;
-
-		//std::this_thread::sleep_for(1ms);
 	}
 	vkDeviceWaitIdle(device);
 }
@@ -106,12 +134,12 @@ void Scene::mainLoop() {
 void Scene::createDescriptorPool() {
 
 	std::vector<VkDescriptorPoolSize> poolSizes = {
-		VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 8),
-		VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2),
-		VkHelper::createDescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 6),
+		VkInitializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 8),
+		VkInitializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2),
+		VkInitializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 6),
 	};
 
-	VkDescriptorPoolCreateInfo poolInfo = VkHelper::createDescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
+	VkDescriptorPoolCreateInfo poolInfo = VkInitializer::DescriptorPoolInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(),
 		8);
 
 	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
@@ -121,21 +149,25 @@ void Scene::createDescriptorPool() {
 
 void Scene::createDescriptorSetLayout() {
 
-	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT);
+	VkDescriptorSetLayoutBinding uboLayoutBinding = VkInitializer::DescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT);
 
-	VkDescriptorSetLayoutBinding samplerLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+	VkDescriptorSetLayoutBinding samplerLayoutBinding = VkInitializer::DescriptorLayoutBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
 	
-	VkDescriptorSetLayoutBinding lightLayoutBinding = VkHelper::createDescriptorLayoutBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
+	VkDescriptorSetLayoutBinding lightLayoutBinding = VkInitializer::DescriptorLayoutBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
 	
-	VkDescriptorSetLayoutBinding lightUboLayoutBinding = VkHelper::createDescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
+	VkDescriptorSetLayoutBinding lightUboLayoutBinding = VkInitializer::DescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding, lightLayoutBinding, lightUboLayoutBinding };
-	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
+	VkDescriptorSetLayoutCreateInfo layoutInfo = VkInitializer::DescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
 
 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor set layout!");
 	}
 
+}
+
+void Scene::createPipelineLayout()
+{
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = 1;
@@ -160,8 +192,8 @@ void Scene::createDescriptorSets() {
 	}
 
 	std::vector<VkWriteDescriptorSet> descriptorWrites = {
-	VkHelper::writeDescSet(pSystemDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &particle_system.UBuffer().descriptor),
-	VkHelper::writeDescSet(pSystemDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &particle_system.PsTexture().descriptor)
+	VkInitializer::WriteDescSet(pSystemDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &particle_system.UBuffer().descriptor),
+	VkInitializer::WriteDescSet(pSystemDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &particle_system.PsTexture().descriptor)
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -171,10 +203,10 @@ void Scene::createDescriptorSets() {
 	}
 
 	descriptorWrites = {
-	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &object.GetModel().uniform.descriptor),
-	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor),
-	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2, &lightBuffer.descriptor),
-	VkHelper::writeDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3, &lightUboBuffer.descriptor),
+	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &object.GetModel().uniform.descriptor),
+	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor),
+	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2, &lightBuffer.descriptor),
+	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3, &lightUboBuffer.descriptor),
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -190,14 +222,14 @@ void Scene::createGraphicsPipeline() {
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-	VkViewport viewport = VkHelper::createViewport(0.0f, 0.0f, (float)swapchain.extent.width, (float)swapchain.extent.height, 0.0f, 1.0f);
+	VkViewport viewport = VkInitializer::Viewport(0.0f, 0.0f, (float)swapchain.extent.width, (float)swapchain.extent.height, 0.0f, 1.0f);
 
-	//VkViewport viewport = VkHelper::createViewport(0, 0, swapchain.swapChainExtent.width, swapchain.swapChainExtent.height, 0.0f, 1.0f);
-	VkRect2D scissor = VkHelper::createScissorRect({ 0, 0 }, swapchain.extent);
+	//VkViewport viewport = VkInitializer::createViewport(0, 0, swapchain.swapChainExtent.width, swapchain.swapChainExtent.height, 0.0f, 1.0f);
+	VkRect2D scissor = VkInitializer::ScissorRect({ 0, 0 }, swapchain.extent);
 
-	VkPipelineViewportStateCreateInfo viewportState = VkHelper::createViewPortStateInfo(1, 1, &viewport, &scissor);
+	VkPipelineViewportStateCreateInfo viewportState = VkInitializer::ViewportStateInfo(1, 1, &viewport, &scissor);
 
-	VkPipelineRasterizationStateCreateInfo rasterizer = VkHelper::createRasteriser(
+	VkPipelineRasterizationStateCreateInfo rasterizer = VkInitializer::Rasteriser(
 		VK_FALSE, VK_FALSE,
 		VK_POLYGON_MODE_FILL, 1.0f,
 		VK_CULL_MODE_BACK_BIT,
@@ -206,10 +238,10 @@ void Scene::createGraphicsPipeline() {
 
 
 	VkPipelineMultisampleStateCreateInfo multisampling =
-		VkHelper::createMultiSampling(VK_FALSE, VK_SAMPLE_COUNT_1_BIT);
+		VkInitializer::MultiSampling(VK_FALSE, VK_SAMPLE_COUNT_1_BIT);
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment =
-		VkHelper::createColourBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
+		VkInitializer::ColourBlendAttachment(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT, VK_FALSE);
 
 	//colorBlendAttachment.blendEnable = VK_TRUE;
 	//colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
@@ -219,10 +251,10 @@ void Scene::createGraphicsPipeline() {
 	//colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	//colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 
-	VkPipelineColorBlendStateCreateInfo colorBlending = VkHelper::createColourBlendStateInfo(
+	VkPipelineColorBlendStateCreateInfo colorBlending = VkInitializer::ColourBlendStateInfo(
 		VK_FALSE, VK_LOGIC_OP_COPY, 1, &colorBlendAttachment, { 0.0f, 0.0f, 0.0f, 0.0f });
 
-	VkPipelineDepthStencilStateCreateInfo depthStencil = VkHelper::createDepthStencilInfo(
+	VkPipelineDepthStencilStateCreateInfo depthStencil = VkInitializer::DepthStencilInfo(
 		VK_TRUE, VK_TRUE,
 		VK_COMPARE_OP_LESS,
 		VK_FALSE, VK_FALSE);
@@ -388,11 +420,11 @@ void Scene::createCommandBuffers() {
 
 		VkDeviceSize offsets[] = { 0 };
 
-		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
-		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
-		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
-		vkCmdBindIndexBuffer(commandBuffers[i], object.GetModel().index.buffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(object.GetModel().indices.size()), 1, 0, 0, 0);
+		//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
+		//vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
+		//vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
+		//vkCmdBindIndexBuffer(commandBuffers[i], object.GetModel().index.buffer, 0, VK_INDEX_TYPE_UINT32);
+		//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(object.GetModel().indices.size()), 1, 0, 0, 0);
 
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pSystemDescSet, 0, nullptr);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pSystemPipeline);
@@ -479,8 +511,8 @@ void Scene::createCompute() {
 	}
 
 	ffmodel_buffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Triangle) * ffModel.triangles.size());
-	ffmodel_buffer.StageBuffer(ffmodel_buffer.size, compute.queue, ffModel.triangles.data(), ffmodel_buffer.memProperties, compute.commandPool);
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sizeof(Triangle) * ffModel.triangles.size());
+	ffmodel_buffer.StageBuffer(ffmodel_buffer.size, compute.queue, ffModel.triangles.data(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, compute.commandPool);
 	ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
 
 	TriangleUBO triUBO{};
@@ -503,18 +535,18 @@ void Scene::createCompute() {
 
 	particleLightBuffer.UpdateDescriptor(sizeof(Light) * lights.size());
 
-	VkDescriptorSetLayoutBinding uboLayoutBinding = VkHelper::createDescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+	VkDescriptorSetLayoutBinding uboLayoutBinding = VkInitializer::DescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-	VkDescriptorSetLayoutBinding storageLayoutBinding = VkHelper::createDescriptorLayoutBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+	VkDescriptorSetLayoutBinding storageLayoutBinding = VkInitializer::DescriptorLayoutBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-	VkDescriptorSetLayoutBinding ubo2LayoutBinding = VkHelper::createDescriptorLayoutBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+	VkDescriptorSetLayoutBinding ubo2LayoutBinding = VkInitializer::DescriptorLayoutBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-	VkDescriptorSetLayoutBinding storage2LayoutBinding = VkHelper::createDescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+	VkDescriptorSetLayoutBinding storage2LayoutBinding = VkInitializer::DescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-	VkDescriptorSetLayoutBinding storage3LayoutBinding = VkHelper::createDescriptorLayoutBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+	VkDescriptorSetLayoutBinding storage3LayoutBinding = VkInitializer::DescriptorLayoutBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, storageLayoutBinding,  ubo2LayoutBinding, storage2LayoutBinding, storage3LayoutBinding };
-	VkDescriptorSetLayoutCreateInfo layoutInfo = VkHelper::createDescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
+	VkDescriptorSetLayoutCreateInfo layoutInfo = VkInitializer::DescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
 
 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &compute.descriptorSetLayout) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create compute descriptor set layout!");
@@ -541,11 +573,11 @@ void Scene::createCompute() {
 	}
 
 	std::vector<VkWriteDescriptorSet> descriptorWrites = {
-		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &particle_ubo_buffer.descriptor),
-		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &particle_system.PBuffer().descriptor),
-		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &triangle_ubo_buffer.descriptor),
-		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3, &ffmodel_buffer.descriptor),
-		VkHelper::writeDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4, &particleLightBuffer.descriptor)
+		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &particle_ubo_buffer.descriptor),
+		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &particle_system.PBuffer().descriptor),
+		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &triangle_ubo_buffer.descriptor),
+		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3, &ffmodel_buffer.descriptor),
+		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4, &particleLightBuffer.descriptor)
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -581,10 +613,10 @@ void Scene::createCompute() {
 	//	throw std::runtime_error("failed to create compute fences!");
 	//}
 
-	compute.commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-	compute.fences.resize(MAX_FRAMES_IN_FLIGHT);
+	compute.commandBuffers.resize(3);
+	compute.fences.resize(2);
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	for (size_t i = 0; i < 3; i++)
 	{
 		VkCommandBufferAllocateInfo cmdAllocInfo = {};
 		cmdAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -595,6 +627,9 @@ void Scene::createCompute() {
 		if (vkAllocateCommandBuffers(device, &cmdAllocInfo, &compute.commandBuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to allocate compute command buffers!");
 		}
+
+		if (i > 1)
+			continue;
 
 		// Fence for compute CB sync
 		VkFenceCreateInfo fenceCreateInfo{};
@@ -607,28 +642,26 @@ void Scene::createCompute() {
 
 	}
 
-	VkSemaphoreCreateInfo computeSemaphoreCreateInfo{};
-	computeSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	if (vkCreateSemaphore(device, &computeSemaphoreCreateInfo, nullptr, &compute.semaphore) != VK_SUCCESS)
-	{
-		throw std::runtime_error("failed to create compute semaphore!");
-	}
-
-	VkSemaphoreCreateInfo graphicsSemaphoreCreateInfo{};
-	graphicsSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	if (vkCreateSemaphore(device, &graphicsSemaphoreCreateInfo, nullptr, &graphicsSemaphore) != VK_SUCCESS)
-	{
-		throw std::runtime_error("failed to create compute semaphore!");
-	}
-
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &compute.semaphore;
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, NULL) != VK_SUCCESS) {
-		throw std::runtime_error("failed to sync compute semaphore!");
-	}
-	vkQueueWaitIdle(graphicsQueue);
+	//VkSemaphoreCreateInfo computeSemaphoreCreateInfo{};
+	//computeSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	//if (vkCreateSemaphore(device, &computeSemaphoreCreateInfo, nullptr, &compute.semaphore) != VK_SUCCESS)
+	//{
+	//	throw std::runtime_error("failed to create compute semaphore!");
+	//}
+	//VkSemaphoreCreateInfo graphicsSemaphoreCreateInfo{};
+	//graphicsSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	//if (vkCreateSemaphore(device, &graphicsSemaphoreCreateInfo, nullptr, &graphicsSemaphore) != VK_SUCCESS)
+	//{
+	//	throw std::runtime_error("failed to create compute semaphore!");
+	//}
+	//VkSubmitInfo submitInfo{};
+	//submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	//submitInfo.signalSemaphoreCount = 1;
+	//submitInfo.pSignalSemaphores = &compute.semaphore;
+	//if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, NULL) != VK_SUCCESS) {
+	//	throw std::runtime_error("failed to sync compute semaphore!");
+	//}
+	//vkQueueWaitIdle(graphicsQueue);
 
 
 	BuildComputeCommandBuffer();
@@ -679,7 +712,7 @@ void Scene::BuildComputeCommandBuffer()
 {
 	//vkQueueWaitIdle(compute.queue);
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	for (size_t i = 0; i < 3; i++)
 	{
 		VkCommandBufferBeginInfo beginInfo = {};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -713,7 +746,7 @@ void Scene::BuildComputeCommandBuffer()
 
 		vkCmdBindPipeline(compute.commandBuffers[i], VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipeline);
 		vkCmdBindDescriptorSets(compute.commandBuffers[i], VK_PIPELINE_BIND_POINT_COMPUTE, compute.pipelineLayout, 0, 1, &compute.descriptorSet, 0, 0);
-		vkCmdDispatch(compute.commandBuffers[i], particle_system.ParticleCount() / 256, 1, 1);
+		vkCmdDispatch(compute.commandBuffers[i], particle_system.ParticleCount() / COMPUTE_PROCESS_NUM, 1, 1);
 
 		buffer_barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 		buffer_barrier.dstAccessMask = 0;
@@ -819,7 +852,8 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 
 void Scene::LoadAssets()
 {
-	Locator::GetThreadManager()->Init(20, true);
+	if(!Locator::GetThreadManager()->IsInitialised())
+		Locator::GetThreadManager()->Init(20, true);
 
 	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	perspective[1][1] *= -1;
@@ -841,7 +875,7 @@ void Scene::LoadAssets()
 
 	Transform trans;
 	trans.position = { 0.0f, 0.0f, 0.0f };
-	trans.scale = glm::vec3(30.0f);
+	trans.scale = glm::vec3(60.0f);
 	ffModel.Load("bunny", trans);
 
 	//kdTree.Init(ffModel.triangles);
@@ -851,43 +885,87 @@ void Scene::LoadAssets()
 
 void Scene::Update()
 {
+	//if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_SPACE))
+	//{
+	//	output.Outputy();
+	//}
+	//else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_H))
+	//{
+	//}
+	//else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_J))
+	//{
+	//}
 
-	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_SPACE))
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_J))
 	{
-		output.Outputy();
-	}
-	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_H))
-	{
+		Transform trans;
+		trans.position = { 0.0f, 0.0f, 0.0f };
+		trans.scale = glm::vec3(30.0f);
+		ffModel.Load("cube", trans);
 
-	}
-	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_J))
-	{
+		ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+		ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
 
+		TriangleUBO triUBO{};
+
+		triUBO.triangle_count = ffModel.triangles.size();
+		triUBO.vertex_per_triangle = 3;
+		triUBO.max = ffModel.max;
+		triUBO.min = ffModel.min;
+
+		triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
 	}
+	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_K))
+	{
+		Transform trans;
+		trans.position = { 0.0f, 0.0f, 0.0f };
+		trans.scale = glm::vec3(30.0f);
+		ffModel.Load("cat", trans);
+
+		ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+		ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
+
+		TriangleUBO triUBO{};
+
+		triUBO.triangle_count = ffModel.triangles.size();
+		triUBO.vertex_per_triangle = 3;
+		triUBO.max = ffModel.max;
+		triUBO.min = ffModel.min;
+
+		triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+	}
+
+
+	//particleLightBuffer.CopyMem(lights.data(), sizeof(Light) * lights.size());
 
 	//CheckParticles();
 
 	//DoShit();
 	particle_system.Update();
+	//std::string pos = Utillities::V3ToString("P" + std::to_string(0), particle_system.Particles(0).position);
+	//DebugPrinter::Print(pos);
 
-	//for (size_t i = 0; i < particle_system.ParticleCount(); i++)
-	//{
-	//	lights[i].pos = particle_system.Particles(i).position;
-	//}
 	uboLight.camPos = camera.GetTransform().position;
 	//uboLight.lightCount = particle_system.ParticleCount();
 
 	//lgh.Recreate(lights);
 
-	lgh.Recreate(&lights);
+	//lgh.Recreate(&lights);
 
-	uboLight.lightCount = lgh.Lights().size();
+	//for (int i = 0; i < lights.size(); ++i)
+	//{
+	//	std::string pos = Utillities::V3ToString("P" + std::to_string(i), lights[i].pos);
+	//	DebugPrinter::Print(pos);
+	//}
 
-	lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
+	//uboLight.lightCount = lgh.Lights().size();
+
+	//lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO));
 	//lightBuffer.CopyMem(lights.data(), sizeof(Light) * lights.size());
 	
-	lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
-	lightBuffer.CopyMem(lgh.Lights().data(), sizeof(Light) * lgh.Lights().size());
+	//lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
+	//lightBuffer.CopyMem(lgh.Lights().data(), sizeof(Light) * lgh.Lights().size());
+
 
 	//frameCount++;
 	//if (frameCount > frameSkipCount) frameCount = 0;
@@ -898,6 +976,15 @@ void Scene::Update()
 
 void Scene::drawFrame()
 {
+
+	if (framebufferResized)
+	{
+		//vkWaitForFences(device, 1, &compute.fences[currentFrame], VK_TRUE, UINT64_MAX);
+		//vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+		framebufferResized = false;
+		RecreateSwapChain();
+	}
+
 	Locator::GetMouse()->Update();
 	uint32_t imageIndex;
 	prepareFrame(imageIndex);
@@ -918,7 +1005,7 @@ void Scene::drawFrame()
 	VkSubmitInfo computeSubmitInfo{};
 	computeSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	computeSubmitInfo.commandBufferCount = 1;
-	computeSubmitInfo.pCommandBuffers = &compute.commandBuffers[currentFrame];
+	computeSubmitInfo.pCommandBuffers = &compute.commandBuffers[imageIndex];
 	//computeSubmitInfo.pWaitDstStageMask = waitStages;
 	//computeSubmitInfo.waitSemaphoreCount = 1;
 	//computeSubmitInfo.pWaitSemaphores = &graphicsSemaphore;
@@ -930,14 +1017,22 @@ void Scene::drawFrame()
 		throw std::runtime_error("failed to submit compute command buffer!");
 	}
 
+	//std::string ym = "Current Frame : " + std::to_string(currentFrame) + " | Image Index : " + std::to_string(imageIndex);
+	//DebugPrinter::Print(ym);
+
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void Scene::Cleanup()
 {
-	vkDestroyPipeline(device, objectPipeline, nullptr);
-	vkDestroyPipeline(device, pSystemPipeline, nullptr);
+	CleanUpObjects();
 
+	cleanupCompute();
+	CTPApp::cleanup();
+}
+
+void Scene::CleanUpObjects()
+{
 	particle_system.Destroy();
 	object.Destroy();
 
@@ -946,6 +1041,6 @@ void Scene::Cleanup()
 	lightBuffer.DestoryBuffer();
 	ffmodel_buffer.DestoryBuffer();
 	triangle_ubo_buffer.DestoryBuffer();
-
-	CTPApp::cleanup();
+	vkDestroyPipeline(device, objectPipeline, nullptr);
+	vkDestroyPipeline(device, pSystemPipeline, nullptr);
 }

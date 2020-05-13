@@ -2,7 +2,7 @@
 
 #include "Object.h"
 #include "Buffer.h"
-#include "VkHelper.h"
+#include "VkInitializer.h"
 #include "Constants.h"
 
 #include "glm/glm.hpp"
@@ -24,19 +24,19 @@ struct Particle
 	//float ranDirDuration = 0.0f;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
-		return VkHelper::createVertexBindingDescription(0, sizeof(Particle), VK_VERTEX_INPUT_RATE_VERTEX);
+		return VkInitializer::VertexBindingDescription(0, sizeof(Particle), VK_VERTEX_INPUT_RATE_VERTEX);
 	}
 
 	static std::vector<VkVertexInputAttributeDescription> getAttributeDescriptions() {
 
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
-		VkHelper::createVertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, position)),
-		VkHelper::createVertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, velocity)),
-		VkHelper::createVertexAttributeDescription(0, 2, VK_FORMAT_R32_SFLOAT, offsetof(Particle, alpha)),
-		VkHelper::createVertexAttributeDescription(0, 3, VK_FORMAT_R32_SINT, offsetof(Particle, goToTri)),
-		VkHelper::createVertexAttributeDescription(0, 4, VK_FORMAT_R32_SFLOAT, offsetof(Particle, ranDirDuration)),
-		VkHelper::createVertexAttributeDescription(0, 5, VK_FORMAT_R32_SINT, offsetof(Particle, targetTri)),
-		VkHelper::createVertexAttributeDescription(0, 6, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, targetPoint))
+		VkInitializer::VertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, position)),
+		VkInitializer::VertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, velocity)),
+		VkInitializer::VertexAttributeDescription(0, 2, VK_FORMAT_R32_SFLOAT, offsetof(Particle, alpha)),
+		VkInitializer::VertexAttributeDescription(0, 3, VK_FORMAT_R32_SINT, offsetof(Particle, goToTri)),
+		VkInitializer::VertexAttributeDescription(0, 4, VK_FORMAT_R32_SFLOAT, offsetof(Particle, ranDirDuration)),
+		VkInitializer::VertexAttributeDescription(0, 5, VK_FORMAT_R32_SINT, offsetof(Particle, targetTri)),
+		VkInitializer::VertexAttributeDescription(0, 6, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, targetPoint))
 		};
 
 		return attributeDescriptions;
@@ -83,7 +83,7 @@ public:
 
 private:
 
-	int amount = 256 * 256;
+	int amount = COMPUTE_PROCESS_NUM * 128;
 
 	std::vector<Particle> particles;
 

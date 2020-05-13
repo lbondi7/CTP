@@ -16,6 +16,7 @@ const std::vector<const char*> validationLayers = {
 #ifdef _DEBUG
 	"VK_LAYER_KHRONOS_validation",
 #endif
+	"VK_LAYER_KHRONOS_validation",
 	"VK_LAYER_LUNARG_monitor"
 };
 

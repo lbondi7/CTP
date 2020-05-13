@@ -43,7 +43,7 @@ struct Triangle
 	vec4 max;
 };
 
-layout(std140, binding = 3) readonly buffer Trianlges
+layout(std140, binding = 3) readonly buffer Triangles
 {
    Triangle triangles[];
 };
@@ -154,57 +154,54 @@ void main() {
     vec3 vVel = particles[index].vel.xyz;
     vec3 vPos = particles[index].pos.xyz;
 
+    // vec3 bufferAmount = vec3(3, 3, 3);
+    // vec3 min = model.min.xyz - bufferAmount;
+    // vec3 max = model.max.xyz - bufferAmount;
 
-    // if(isInside(vPos, model.min.xyz, model.max.xyz))
-    // {
-        if(particles[index].goToTri)
+    if(particles[index].goToTri)
+    {
+        float length1 = length(particles[index].targetPoint.xyz - vPos);
+        float length2 = length(particles[index].targetPoint.xyz - (triangles[particles[index].targetTri].normal.xyz * 0.001));
+        if(length1 < length2)
         {
-            float length1 = length(particles[index].targetPoint.xyz - vPos);
-            float length2 = length(particles[index].targetPoint.xyz - (triangles[particles[index].targetTri].normal.xyz * 0.001));
-            if(length1 < length2)
-            {
-                // vec3 norm = triangles[particles[index].targetTri].normal.xyz - triangles[particles[index].targetTri].center.xyz;
-                // norm = normalize(norm);
-                // vec3 pPos = vPos - triangles[particles[index].targetTri].center.xyz;
-                // pPos = normalize(pPos);
-                // vec3 dir = cross(norm, pPos);
-                // dir  = normalize(dir);
-                
-                // vec2 rd = ((ubp.randomVec.xy - gl_GlobalInvocationID.xy) / ubp.resolution.xy) / ubp.deltaTime;
-                // vec3 dir = vec3(random(rd));
-                // dir = normalize(dir);
-                // vVel = dir * 10.0;
-                particles[index].randDirDur = 0.1;
-                particles[index].goToTri = false;
-            }
+            // vec3 norm = triangles[particles[index].targetTri].normal.xyz - triangles[particles[index].targetTri].center.xyz;
+            // norm = normalize(norm);
+            // vec3 pPos = vPos - triangles[particles[index].targetTri].center.xyz;
+            // pPos = normalize(pPos);
+            // vec3 dir = cross(norm, pPos);
+            // dir  = normalize(dir);
+            
+            // vec2 rd = ((ubp.randomVec.xy - gl_GlobalInvocationID.xy) / ubp.resolution.xy) / ubp.deltaTime;
+            // vec3 dir = vec3(random(rd));
+            // dir = normalize(dir);
+            // vVel = dir * 10.0;
+            //int point = clamp(int(vVel.x), 0, 2);
+            //vVel = cross(triangles[particles[index].targetTri].normal.xyz, triangles[particles[index].targetTri].vertices[point].xyz - triangles[particles[index].targetTri].center.xyz);
+            particles[index].randDirDur = 0.1;
+            particles[index].goToTri = false;
         }
-        else
+    }
+    else
+    {
+        particles[index].randDirDur -= dt;
+        if(particles[index].randDirDur <= 0.0)
         {
-            particles[index].randDirDur -= dt;
-            if(particles[index].randDirDur <= 0.0)
+            float np = 1000000.0;
+            float dist = 0.0;
+            for(int i = 0; i < model.triCount; ++i)
             {
-                float np = 1000000.0;
-                float dist = 0.0;
-                for(int i = 0; i < model.triCount; ++i)
+                dist = udTriangle(vPos,triangles[i].vertices[0].xyz, triangles[i].vertices[1].xyz, triangles[i].vertices[2].xyz);
+                if(dist < np)
                 {
-                    dist = udTriangle(vPos,triangles[i].vertices[0].xyz, triangles[i].vertices[1].xyz, triangles[i].vertices[2].xyz);
-                    if(dist < np)
-                    {
-                        particles[index].targetPoint = vec4(FindPoint(triangles[i]), 1.0);
-                        vVel = normalize(particles[index].targetPoint.xyz - vPos) * 50.0;
-                        particles[index].targetTri = i;
-                        np = dist;
-                    }
+                    particles[index].targetPoint = vec4(FindPoint(triangles[i]), 1.0);
+                    vVel = normalize(particles[index].targetPoint.xyz - vPos) * 50.0;
+                    particles[index].targetTri = i;
+                    np = dist;
                 }
-                particles[index].goToTri = true;
             }
+            particles[index].goToTri = true;
         }
-    // }
-    // else
-    // {
-    //     vVel = normalize(vec3(0) - vPos) * 10.0;
-    // }
-
+    }
 
     vVel = clamp(vVel, -10000, 10000);
     vPos += vVel * dt; 

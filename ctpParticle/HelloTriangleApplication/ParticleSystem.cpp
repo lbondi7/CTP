@@ -42,7 +42,7 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 		//particles[i].position = glm::vec4(Utillities::GetRandomVec3(glm::vec3(-500.0f), glm::vec3(500.0f)), 1.0f);
 		particles[i].velocity = glm::vec4(Utillities::GetRandomVec3(glm::vec3(-5.0f), glm::vec3(5.0f)), 1.0f);
 		//particles[i].colour = glm::vec4(Utillities::GetRandomVec3(glm::vec3(0.0f), glm::vec3(1.0f)), Utillities::GetRandomFloat(0.0, 1.0f));
-		particles[i].colour = glm::vec4(col, Utillities::GetRandomFloat(0.0, 1.0f));
+		particles[i].colour = glm::vec4(col, Utillities::GetRandomFloat(0.0, 0.01f));
 
 		if (i % am == 0 && i != 0)
 		{

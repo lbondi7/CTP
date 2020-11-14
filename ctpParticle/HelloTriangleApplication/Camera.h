@@ -36,7 +36,7 @@ private:
 
 	float zoom_speed = 50.0f;
 	float look_at_pos_distance = 500.0f;
-	float x_angle = 0.0f;
+	float x_angle = 4.0f;
 	float y_angle = 0.0f;
 	float orbit_speed = 0.2f;
 

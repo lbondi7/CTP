@@ -2,8 +2,13 @@
 
 #include "glm/glm.hpp"
 
+
+//const int WIDTH = 1920;
+//const int HEIGHT = 1080;
 const int WIDTH = 1280;
 const int HEIGHT = 720;
+//const int WIDTH = 450;
+//const int HEIGHT = 230;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 

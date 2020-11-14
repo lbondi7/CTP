@@ -45,6 +45,9 @@
 
 using namespace std::chrono_literals;
 
+#include <algorithm>
+
+
 Output output;
 
 Scene::~Scene()
@@ -157,6 +160,8 @@ void Scene::createDescriptorSetLayout() {
 	
 	VkDescriptorSetLayoutBinding lightUboLayoutBinding = VkInitializer::DescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
 
+	//VkDescriptorSetLayoutBinding texture3DLayoutBinding = VkInitializer::DescriptorLayoutBinding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding, lightLayoutBinding, lightUboLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkInitializer::DescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
 
@@ -207,6 +212,7 @@ void Scene::createDescriptorSets() {
 	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor),
 	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2, &particle_system.PBuffer().descriptor),
 	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3, &lightUboBuffer.descriptor),
+	//VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4, &texture3Ddescriptor),
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -510,10 +516,12 @@ void Scene::createCompute() {
 		throw std::runtime_error("failed to create compute command pool!");
 	}
 
-	ffmodel_buffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, sizeof(Triangle) * ffModel.triangles.size());
-	ffmodel_buffer.StageBuffer(ffmodel_buffer.size, compute.queue, ffModel.triangles.data(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, compute.commandPool);
-	ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+	ffmodel_buffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+		sizeof(Triangle) * 500000);
+	//ffmodel_buffer.StageBuffer(ffmodel_buffer.size, compute.queue, ffModel.triangles.data(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, compute.commandPool);
+	//ffmodel_buffer.Map(sizeof(Triangle) * 500000, 0);
+	ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * 500000);
 
 	TriangleUBO triUBO{};
 
@@ -543,7 +551,7 @@ void Scene::createCompute() {
 
 	VkDescriptorSetLayoutBinding storage2LayoutBinding = VkInitializer::DescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-/*	VkDescriptorSetLayoutBinding storage3LayoutBinding = VkInitializer::DescriptorLayoutBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)*/;
+	//VkDescriptorSetLayoutBinding storage3LayoutBinding = VkInitializer::DescriptorLayoutBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, storageLayoutBinding,  ubo2LayoutBinding, storage2LayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkInitializer::DescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
@@ -577,7 +585,7 @@ void Scene::createCompute() {
 		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &particle_system.PBuffer().descriptor),
 		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &triangle_ubo_buffer.descriptor),
 		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3, &ffmodel_buffer.descriptor),
-		//VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4, &particleLightBuffer.descriptor)
+		//VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 4, &texture3Ddescriptor)
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -857,7 +865,7 @@ void Scene::LoadAssets()
 	perspective = glm::perspective(glm::radians(45.0f), (float)WIDTH / (float)HEIGHT, 0.1f, 1000.0f);
 	perspective[1][1] *= -1;
 
-	camera.Setup(glm::vec3(-10, 3.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), false);
+	camera.Setup(glm::vec3(0.0f, 0.0f, 10.0f), glm::vec3(0.0f, 0.0f, 0.0f), false);
 
 	particle_system.Create(graphicsQueue, &camera.ViewMatrix(), &perspective);
 
@@ -875,7 +883,7 @@ void Scene::LoadAssets()
 	Transform trans;
 	trans.position = { 0.0f, 0.0f, 0.0f };
 	trans.scale = glm::vec3(20.0f);
-	ffModel.Load("bunny", trans);
+	ffModel.Load("dog", trans);
 
 	//kdTree.Init(ffModel.triangles);
 
@@ -895,44 +903,82 @@ void Scene::Update()
 	//{
 	//}
 
-	//if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_J))
-	//{
-	//	Transform trans;
-	//	trans.position = { 0.0f, 0.0f, 0.0f };
-	//	trans.scale = glm::vec3(30.0f);
-	//	ffModel.Load("cube", trans);
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_J))
+	{
+		Transform trans;
+		trans.position = { 0.0f, 0.0f, 0.0f };
+		trans.scale = glm::vec3(30.0f);
+		ffModel.Load("cat", trans);
 
-	//	ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
-	//	ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
+		//ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+		ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
 
-	//	TriangleUBO triUBO{};
+		TriangleUBO triUBO{};
 
-	//	triUBO.triangle_count = ffModel.triangles.size();
-	//	triUBO.vertex_per_triangle = 3;
-	//	triUBO.max = ffModel.max;
-	//	triUBO.min = ffModel.min;
+		triUBO.triangle_count = ffModel.triangles.size();
+		triUBO.vertex_per_triangle = 3;
+		triUBO.max = ffModel.max;
+		triUBO.min = ffModel.min;
 
-	//	triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
-	//}
-	//else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_K))
-	//{
-	//	Transform trans;
-	//	trans.position = { 0.0f, 0.0f, 0.0f };
-	//	trans.scale = glm::vec3(30.0f);
-	//	ffModel.Load("cat", trans);
+		triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+	}
+	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_H))
+	{
+		Transform trans;
+		trans.position = { 0.0f, 0.0f, 0.0f };
+		trans.scale = glm::vec3(30.0f);
+		ffModel.Load("dog", trans);
 
-	//	ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
-	//	ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
+		//ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+		ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
 
-	//	TriangleUBO triUBO{};
+		TriangleUBO triUBO{};
 
-	//	triUBO.triangle_count = ffModel.triangles.size();
-	//	triUBO.vertex_per_triangle = 3;
-	//	triUBO.max = ffModel.max;
-	//	triUBO.min = ffModel.min;
+		triUBO.triangle_count = ffModel.triangles.size();
+		triUBO.vertex_per_triangle = 3;
+		triUBO.max = ffModel.max;
+		triUBO.min = ffModel.min;
 
-	//	triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
-	//}
+		triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+	}
+	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_G))
+	{
+		Transform trans;
+		trans.position = { 0.0f, 0.0f, 0.0f };
+		trans.scale = glm::vec3(30.0f);
+		ffModel.Load("heart", trans);
+
+		//ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+		ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
+
+		TriangleUBO triUBO{};
+
+		triUBO.triangle_count = ffModel.triangles.size();
+		triUBO.vertex_per_triangle = 3;
+		triUBO.max = ffModel.max;
+		triUBO.min = ffModel.min;
+
+		triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+	}
+	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_F))
+	{
+		Transform trans;
+		trans.position = { 0.0f, 0.0f, 0.0f };
+		trans.scale = glm::vec3(30.0f);
+		ffModel.Load("bunny", trans);
+
+		//ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+		ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
+
+		TriangleUBO triUBO{};
+
+		triUBO.triangle_count = ffModel.triangles.size();
+		triUBO.vertex_per_triangle = 3;
+		triUBO.max = ffModel.max;
+		triUBO.min = ffModel.min;
+
+		triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+	}
 
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_L))
 	{
@@ -949,6 +995,28 @@ void Scene::Update()
 	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_3))
 	{
 		particle_ubo.flowType = 3;
+	}
+
+	auto dt = Locator::GetTimer()->DeltaTime();
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_RIGHT))
+	{
+		uboLight.roughness += dt * dt;
+		uboLight.roughness = std::min(uboLight.roughness, 1.0f);
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_LEFT))
+	{
+		uboLight.roughness -= dt * dt;
+		uboLight.roughness = std::max(uboLight.roughness, 0.00f);
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_UP))
+	{
+		uboLight.metallic += dt * dt;
+		uboLight.metallic = std::min(uboLight.metallic, 1.0f);
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_DOWN))
+	{
+		uboLight.metallic -= dt * dt;
+		uboLight.metallic = std::max(uboLight.metallic, 0.00f);
 	}
 
 

@@ -16,7 +16,7 @@ void main() {
     float size = 3.0;
     vec4 offset = vec4(-size, size, 0, 1);
     vec4 vertexPos = gl_in[0].gl_Position + offset;
-    vec4 colour = inAlpha[0];
+    vec4 colour = vec4(inAlpha[0].xyz, 0.8);
 
 
     gl_Position = vertexPos;

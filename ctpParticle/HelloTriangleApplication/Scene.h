@@ -12,6 +12,8 @@ struct LightUBO {
 	alignas(16) glm::vec3 camPos;
 	alignas(4) int lightCount;
 	alignas(4) int frameNum;
+	alignas(4) float roughness = 0.01;
+	alignas(4) float metallic = 0.99;
 };
 
 struct ParticleUBO {
@@ -19,7 +21,7 @@ struct ParticleUBO {
 	int particle_count = 0;
 	glm::vec2 resolution = {WIDTH, HEIGHT};
 	glm::vec2 randomVec = { 1.0, 1.0 };
-	int flow = 0;
+	int flow = 1;
 	int flowType = 1;
 };
 

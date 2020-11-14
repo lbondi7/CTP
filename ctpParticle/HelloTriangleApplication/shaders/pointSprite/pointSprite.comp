@@ -141,27 +141,27 @@ float udTriangle( vec3 p, vec3 a, vec3 b, vec3 c )
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 
-vec3 getColour(vec3 pos, vec3 prevCol, vec3 min, vec3 max)
+vec3 getColour(vec3 pos, vec3 min, vec3 max)
 {
     vec3 col = vec3(0);
 
 
     col.x = (clamp(pos.y, min.y, max.y) - min.y) / (max.y - min.y);
     //col.y = (clamp(pos.x, min.x, max.x) - min.x) / (max.x - min.x);
-    col.z = (clamp(pos.z, min.z, max.z) - min.z) / (max.z - min.z);
+    col.z = (clamp(1.0 - pos.y, min.y, max.y) - min.y) / (max.y - min.y);
 
-    if(col.x > 1.0)
-    {
-        col.x = 0;
-    }
-    if(col.y > 1.0)
-    {
-        col.y = 0;
-    }
-    if(col.z > 1.0)
-    {
-        col.z = 0;
-    }
+    // if(col.x > 1.0)
+    // {
+    //     col.x = 0;
+    // }
+    // if(col.y > 1.0)
+    // {
+    //     col.y = 0;
+    // }
+    // if(col.z > 1.0)
+    // {
+    //     col.z = 0;
+    // }
 
     return col;
 }
@@ -264,16 +264,10 @@ void main() {
 
         vPos = particles[index].pos.xyz + vVel * dt; 
     }
-    vec4 col = vec4(getColour(particles[index].pos.xyz, particles[index].col.xyz,
-     model.min.xyz - vec3(2), model.max.xyz + vec3(2)), 1) + (vec4(0.01, 0.01, 0.01, 0.1) * dt);
+    vec4 col = vec4(getColour(particles[index].pos.xyz,
+     model.min.xyz - vec3(2), model.max.xyz + vec3(2)),  particles[index].col.w);
 
     particles[index].col = col;
     particles[index].vel = vec4(vVel, 0.0);
     particles[index].pos = vec4(vPos, 0.0);
-
-    if(vPos.x < ubp.min.x)
-    {
-        ubp.min.x = vPos.x;
-    }
-
 }

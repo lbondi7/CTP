@@ -3,11 +3,16 @@
 
 struct Light
 {
+	vec4 pos;
+   vec4 vel;
    vec4 col;
-   vec4 pos;
+   bool goToTri;
+   float randDirDur;
+   int targetTri;
+   vec4 targetPoint;
 };
 
-layout(std140, binding = 2) buffer Lights
+layout(std140, binding = 2) readonly buffer Lights
 {
    Light lights[];
 };
@@ -16,6 +21,7 @@ layout(binding = 3) uniform uboLight
 {
    vec3 cameraPos;
    int lightCount;
+   int frameNum;
 } lightConsts;
 
 layout(location = 0) in vec4 fragColor;
@@ -25,7 +31,6 @@ layout(location = 3) in vec3 fragNormal;
 
 layout(location = 0) out vec4 outColor;
 layout(binding = 1) uniform sampler2D texSampler;
-
 
 
 // vec3 CalPointLight(Light pointLight, vec3 normal, vec3 viewDir)
@@ -95,8 +100,75 @@ vec3 shadingGGX(vec3 N, vec3 V, vec3 L, vec3 color, float roughness, float metal
 ////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+bool isInside(vec3 pos, vec3 min, vec3 max)
+{
+    if((pos.x <= max.x && pos.x >= min.x) &&
+    (pos.y <= max.y && pos.y >= min.y) &&
+    (pos.z <= max.z && pos.z >= min.z))
+        return true;
+
+    return false;
+}
+
+void getLights(inout Light l[1])
+{
+   vec3 vMin = vec3(1.0 / 0.0);
+   vec3 vMax = vec3(-(1.0 / 0.0));
+   for(int i = 0; i < lightConsts.lightCount; ++i)
+   {
+      if(lights[i].col.x == -1)
+      {
+         continue;
+      }
+
+      vMin.x = min(vMin.x, lights[i].pos.x);
+      vMin.y = min(vMin.y, lights[i].pos.y);
+      vMin.z = min(vMin.z, lights[i].pos.z);
+
+      vMax.x = max(vMax.x, lights[i].pos.x);
+      vMax.y = max(vMax.y, lights[i].pos.y);
+      vMax.z = max(vMax.z, lights[i].pos.z);  
+   }
+
+
+   vec3 voxelSize = (vMax - vMin) / 1;
+   int numOfLights[1];
+
+   vec3 bound = vMin;
+   for(int i = 0; i < 1; ++i)
+   {
+      for(int j = 0; j < lightConsts.lightCount; ++i)
+      {
+         if(isInside(lights[j].pos.xyz, bound, bound + voxelSize)){
+            l[i].pos += lights[j].pos;
+            l[i].col += lights[j].col;
+            ++numOfLights[i];
+         }
+      }
+   }
+
+   for(int i = 0; i < 1; ++i)
+   {
+      for(int j = 0; j < lightConsts.lightCount; ++i)
+      {
+         if(isInside(lights[j].pos.xyz, bound, bound + voxelSize)){
+            l[i].pos /= numOfLights[i];
+            l[i].col /= numOfLights[i];
+         }
+      }
+   }
+
+
+}
+
 void main() {
   
+  //if(lightConsts.frameNum == 1)
+  //{
+
+   // Light l[1];
+   // getLights(l);
+
    vec3 normal = normalize(fragNormal);
    vec3 viewVec = fragPosition - lightConsts.cameraPos;
    vec3 viewDir = normalize(fragPosition - lightConsts.cameraPos);
@@ -111,10 +183,23 @@ void main() {
       vec3 lightVec = fragPosition - lights[i].pos.xyz;
       vec3 lightDir = normalize(fragPosition - lights[i].pos.xyz);
       vec3 invLightDir = normalize(lights[i].pos.xyz - fragPosition);
-      totalLight += shadingGGX(normal, invViewDir, invLightDir, lights[i].col.xyz, 0.01, 0.9);
+      totalLight += (shadingGGX(normal, invViewDir, invLightDir, lights[i].col.xyz, 0.01, 0.99) * lights[i].col.w);
    }
 
+   // for(int i = 0; i < 1; ++i)
+   // {
+   //    if(l[i].col.x == -1)
+   //       continue;
+         
+   //    vec3 lightVec = fragPosition - l[i].pos.xyz;
+   //    vec3 lightDir = normalize(fragPosition - l[i].pos.xyz);
+   //    vec3 invLightDir = normalize(l[i].pos.xyz - fragPosition);
+   //    totalLight += (shadingGGX(normal, invViewDir, invLightDir, l[i].col.xyz, 0.01, 0.99) * l[i].col.w);
+   // }
 
-  outColor = fragColor * texture(texSampler, fragTexCoord) * vec4(totalLight, 1.0);
-  //outColor = fragColor * texture(texSampler, fragTexCoord) * vec4(TotalLight, 1.0);
+  outColor = vec4(totalLight, 1.0);
+
+  //outColor = fragColor * texture(texSampler, fragTexCoord) * vec4(totalLight, 1.0);
+  //}
+  //outColor = vec4(1, 1, 1, 1);
 }

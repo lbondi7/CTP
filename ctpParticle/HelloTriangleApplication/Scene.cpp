@@ -205,7 +205,7 @@ void Scene::createDescriptorSets() {
 	descriptorWrites = {
 	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &object.GetModel().uniform.descriptor),
 	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &object.GetTexture().descriptor),
-	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2, &lightBuffer.descriptor),
+	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2, &particle_system.PBuffer().descriptor),
 	VkInitializer::WriteDescSet(objectDescSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3, &lightUboBuffer.descriptor),
 	};
 
@@ -420,11 +420,11 @@ void Scene::createCommandBuffers() {
 
 		VkDeviceSize offsets[] = { 0 };
 
-		//vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
-		//vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
-		//vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
-		//vkCmdBindIndexBuffer(commandBuffers[i], object.GetModel().index.buffer, 0, VK_INDEX_TYPE_UINT32);
-		//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(object.GetModel().indices.size()), 1, 0, 0, 0);
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &objectDescSet, 0, nullptr);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, objectPipeline);
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &object.GetModel().vertex.buffer, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], object.GetModel().index.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(object.GetModel().indices.size()), 1, 0, 0, 0);
 
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &pSystemDescSet, 0, nullptr);
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pSystemPipeline);
@@ -433,7 +433,7 @@ void Scene::createCommandBuffers() {
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
-		buffer_barrier.srcAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+		buffer_barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		buffer_barrier.dstAccessMask = 0;
 		buffer_barrier.srcQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value();
 		buffer_barrier.dstQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value();
@@ -442,7 +442,7 @@ void Scene::createCommandBuffers() {
 
 		vkCmdPipelineBarrier(
 			commandBuffers[i],
-			VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			0,
 			0, nullptr,
@@ -529,11 +529,11 @@ void Scene::createCompute() {
 
 	triangle_ubo_buffer.UpdateDescriptor(sizeof(triUBO));
 
-	particleLightBuffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lights.size());
-	particleLightBuffer.StageBuffer(particleLightBuffer.size, compute.queue, lights.data(), particleLightBuffer.memProperties, compute.commandPool);
+	//particleLightBuffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lights.size());
+	//particleLightBuffer.StageBuffer(particleLightBuffer.size, compute.queue, lights.data(), particleLightBuffer.memProperties, compute.commandPool);
 
-	particleLightBuffer.UpdateDescriptor(sizeof(Light) * lights.size());
+	//particleLightBuffer.UpdateDescriptor(sizeof(Light) * lights.size());
 
 	VkDescriptorSetLayoutBinding uboLayoutBinding = VkInitializer::DescriptorLayoutBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -543,9 +543,9 @@ void Scene::createCompute() {
 
 	VkDescriptorSetLayoutBinding storage2LayoutBinding = VkInitializer::DescriptorLayoutBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
 
-	VkDescriptorSetLayoutBinding storage3LayoutBinding = VkInitializer::DescriptorLayoutBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT);
+/*	VkDescriptorSetLayoutBinding storage3LayoutBinding = VkInitializer::DescriptorLayoutBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)*/;
 
-	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, storageLayoutBinding,  ubo2LayoutBinding, storage2LayoutBinding, storage3LayoutBinding };
+	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, storageLayoutBinding,  ubo2LayoutBinding, storage2LayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = VkInitializer::DescSetLayoutInfo(static_cast<uint32_t>(bindings.size()), bindings.data());
 
 	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &compute.descriptorSetLayout) != VK_SUCCESS) {
@@ -577,7 +577,7 @@ void Scene::createCompute() {
 		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, &particle_system.PBuffer().descriptor),
 		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2, &triangle_ubo_buffer.descriptor),
 		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3, &ffmodel_buffer.descriptor),
-		VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4, &particleLightBuffer.descriptor)
+		//VkInitializer::WriteDescSet(compute.descriptorSet, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4, &particleLightBuffer.descriptor)
 	};
 
 	vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
@@ -676,7 +676,7 @@ void Scene::createCompute() {
 		{
 			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
 			nullptr,
-			0,
+			VK_ACCESS_SHADER_READ_BIT,
 			VK_ACCESS_SHADER_WRITE_BIT,
 			Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value(),
 			Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value(),
@@ -684,7 +684,7 @@ void Scene::createCompute() {
 			0,
 			particle_system.PBuffer().size
 		};
-		vkCmdPipelineBarrier(transferCmd, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		vkCmdPipelineBarrier(transferCmd, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			0, 0, nullptr, 1, &acquire_buffer_barrier, 0, nullptr);
 
 		VkBufferMemoryBarrier release_buffer_barrier =
@@ -728,7 +728,7 @@ void Scene::BuildComputeCommandBuffer()
 		buffer_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		buffer_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-		buffer_barrier.srcAccessMask = 0;
+		buffer_barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		buffer_barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 		buffer_barrier.srcQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value();
 		buffer_barrier.dstQueueFamilyIndex = Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value();
@@ -737,7 +737,7 @@ void Scene::BuildComputeCommandBuffer()
 
 		vkCmdPipelineBarrier(
 			compute.commandBuffers[i],
-			VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			0,
 			0, nullptr,
@@ -788,13 +788,13 @@ void Scene::createUniformBuffers()
 	uboLight.camPos = camera.GetTransform().position;
 	//uboLight.lightCount = particle_system.ParticleCount();
 
-	lgh.Create(lights);
+	//lgh.Create(lights);
 
-	lightBuffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lgh.Lights().size());
-	lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, lgh.Lights().data(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	//lightBuffer.CreateBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(Light) * lgh.Lights().size());
+	//lightBuffer.StageBuffer(lightBuffer.size, graphicsQueue, lgh.Lights().data(), VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
+	//lightBuffer.UpdateDescriptor(sizeof(Light) * lgh.Lights().size());
 
 	particle_ubo_buffer.CreateBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, sizeof(ParticleUBO));
@@ -841,12 +841,11 @@ void Scene::updateUniformBuffer(uint32_t currentImage) {
 	std::random_device rd;
 	std::uniform_real_distribution<float> rand(0.0f, 1.0f);
 
-	ParticleUBO particle_ubo;
 	particle_ubo.delta_time = Locator::GetTimer()->DeltaTime();
 	particle_ubo.particle_count = particle_system.ParticleCount();
 	particle_ubo.randomVec = glm::vec2(Utillities::GetRandomFloat(0.0f, 1.0f), Utillities::GetRandomFloat(0.0f, 1.0f));
 	particle_ubo.resolution = glm::vec2(WIDTH, HEIGHT);
-
+	particle_ubo.flow = flow;
 	particle_ubo_buffer.CopyMem(&particle_ubo, sizeof(particle_ubo));
 }
 
@@ -868,14 +867,14 @@ void Scene::LoadAssets()
 
 	Transform transform;
 	transform.position = { -210.0f, 180.0f, 0.0f };
-	transform.scale = glm::vec3(500.0f);
+	transform.scale = glm::vec3(100.0f);
 	//transform.scale = { 4.0f, 4.0f, 4.0f };
 
 	object.SetTransform(transform);
 
 	Transform trans;
 	trans.position = { 0.0f, 0.0f, 0.0f };
-	trans.scale = glm::vec3(60.0f);
+	trans.scale = glm::vec3(20.0f);
 	ffModel.Load("bunny", trans);
 
 	//kdTree.Init(ffModel.triangles);
@@ -896,43 +895,60 @@ void Scene::Update()
 	//{
 	//}
 
-	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_J))
+	//if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_J))
+	//{
+	//	Transform trans;
+	//	trans.position = { 0.0f, 0.0f, 0.0f };
+	//	trans.scale = glm::vec3(30.0f);
+	//	ffModel.Load("cube", trans);
+
+	//	ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+	//	ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
+
+	//	TriangleUBO triUBO{};
+
+	//	triUBO.triangle_count = ffModel.triangles.size();
+	//	triUBO.vertex_per_triangle = 3;
+	//	triUBO.max = ffModel.max;
+	//	triUBO.min = ffModel.min;
+
+	//	triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+	//}
+	//else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_K))
+	//{
+	//	Transform trans;
+	//	trans.position = { 0.0f, 0.0f, 0.0f };
+	//	trans.scale = glm::vec3(30.0f);
+	//	ffModel.Load("cat", trans);
+
+	//	ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
+	//	ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
+
+	//	TriangleUBO triUBO{};
+
+	//	triUBO.triangle_count = ffModel.triangles.size();
+	//	triUBO.vertex_per_triangle = 3;
+	//	triUBO.max = ffModel.max;
+	//	triUBO.min = ffModel.min;
+
+	//	triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+	//}
+
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_L))
 	{
-		Transform trans;
-		trans.position = { 0.0f, 0.0f, 0.0f };
-		trans.scale = glm::vec3(30.0f);
-		ffModel.Load("cube", trans);
-
-		ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
-		ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
-
-		TriangleUBO triUBO{};
-
-		triUBO.triangle_count = ffModel.triangles.size();
-		triUBO.vertex_per_triangle = 3;
-		triUBO.max = ffModel.max;
-		triUBO.min = ffModel.min;
-
-		triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+		flow = !flow;
 	}
-	else if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_K))
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_1))
 	{
-		Transform trans;
-		trans.position = { 0.0f, 0.0f, 0.0f };
-		trans.scale = glm::vec3(30.0f);
-		ffModel.Load("cat", trans);
-
-		ffmodel_buffer.UpdateDescriptor(sizeof(Triangle) * ffModel.triangles.size());
-		ffmodel_buffer.CopyMem(ffModel.triangles.data(), sizeof(Triangle) * ffModel.triangles.size());
-
-		TriangleUBO triUBO{};
-
-		triUBO.triangle_count = ffModel.triangles.size();
-		triUBO.vertex_per_triangle = 3;
-		triUBO.max = ffModel.max;
-		triUBO.min = ffModel.min;
-
-		triangle_ubo_buffer.CopyMem(&triUBO, sizeof(triUBO));
+		particle_ubo.flowType = 1;
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_2))
+	{
+		particle_ubo.flowType = 2;
+	}
+	if (Locator::GetKeyboard()->IsKeyPressed(GLFW_KEY_3))
+	{
+		particle_ubo.flowType = 3;
 	}
 
 
@@ -946,6 +962,9 @@ void Scene::Update()
 	//DebugPrinter::Print(pos);
 
 	uboLight.camPos = camera.GetTransform().position;
+	uboLight.lightCount = particle_system.Particles().size();
+	uboLight.frameNum = static_cast<int>(currentFrame);
+	lightUboBuffer.CopyMem(&uboLight, sizeof(LightUBO), 0);
 	//uboLight.lightCount = particle_system.ParticleCount();
 
 	//lgh.Recreate(lights);
@@ -970,7 +989,7 @@ void Scene::Update()
 	//frameCount++;
 	//if (frameCount > frameSkipCount) frameCount = 0;
 
-	object.Update();
+	//object.Update();
 	camera.Update();
 }
 
@@ -1038,7 +1057,7 @@ void Scene::CleanUpObjects()
 
 	particle_ubo_buffer.DestoryBuffer();
 	lightUboBuffer.DestoryBuffer();
-	lightBuffer.DestoryBuffer();
+	//lightBuffer.DestoryBuffer();
 	ffmodel_buffer.DestoryBuffer();
 	triangle_ubo_buffer.DestoryBuffer();
 	vkDestroyPipeline(device, objectPipeline, nullptr);

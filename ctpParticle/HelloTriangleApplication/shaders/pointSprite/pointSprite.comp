@@ -6,13 +6,15 @@ layout(binding = 0) uniform UniformBufferParticle {
     int particleCount;
     vec2 resolution;
     vec2 randomVec;
+    int flow;
+    int flowType;
 } ubp;
 
 struct Particle
 {
 	vec4 pos;
     vec4 vel;
-    float alpha;
+    vec4 col;
     bool goToTri;
     float randDirDur;
     int targetTri;
@@ -48,31 +50,42 @@ layout(std140, binding = 3) readonly buffer Triangles
    Triangle triangles[];
 };
 
-struct Light
-{
-   vec4 col;
-   vec4 pos;
-};
+// struct Light
+// {
+//    vec4 col;
+//    vec4 pos;
+// };
 
-layout(std140, binding = 4) buffer Lights
-{
-   Light lights[];
-};
+// layout(std140, binding = 4) buffer Lights
+// {
+//    Light lights[];
+// };
 
 layout (local_size_x = 256) in;
 
-// vec3 getFlowField(vec3 pos)
-// {
-// 	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, -pos.x * pos.y) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
-// 	vec3 vel = vec3(-pos.y, pos.x, pos.x) / sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z));
-// 	//glm::vec3 vel = (glm::vec3(-pos.y, pos.x, 0) / std::sqrt((pos.x * pos.x) + (pos.y * pos.y)));
-//     //vec3 vel = vec3(0.0);
-// 	//vel.x = sqrt((pos.x * pos.x) + (pos.y * pos.y));
-// 	//vel.y = 0;
-// 	//vel.z = 0;
+vec3 getFlowField(vec3 pos)
+{
+    vec3 vel = vec3(0, 0, 0);
 
-// 	return vel;
-// }
+    if(ubp.flowType == 1)
+    {
+	    vel = (vec3(-pos.y, pos.x, -pos.x * pos.y) / sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z)));
+    }
+    else if(ubp.flowType == 2)
+    {
+	    vel = vec3(-pos.y, pos.x, pos.x) / sqrt((pos.x * pos.x) + (pos.y * pos.y) + (pos.z * pos.z));
+    }
+    else if(ubp.flowType == 3)
+    {
+	    vel = (vec3(-pos.y, pos.x, 0) / sqrt((pos.x * pos.x) + (pos.y * pos.y)));
+    }
+    //vec3 vel = vec3(0.0);
+	//vel.x = sqrt((pos.x * pos.x) + (pos.y * pos.y));
+	//vel.y = 0;
+	//vel.z = 0;
+
+	return vel;
+}
 
 vec3 FindPoint(Triangle tri)
 {
@@ -128,6 +141,31 @@ float udTriangle( vec3 p, vec3 a, vec3 b, vec3 c )
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 
+vec3 getColour(vec3 pos, vec3 prevCol, vec3 min, vec3 max)
+{
+    vec3 col = vec3(0);
+
+
+    col.x = (clamp(pos.y, min.y, max.y) - min.y) / (max.y - min.y);
+    //col.y = (clamp(pos.x, min.x, max.x) - min.x) / (max.x - min.x);
+    col.z = (clamp(pos.z, min.z, max.z) - min.z) / (max.z - min.z);
+
+    if(col.x > 1.0)
+    {
+        col.x = 0;
+    }
+    if(col.y > 1.0)
+    {
+        col.y = 0;
+    }
+    if(col.z > 1.0)
+    {
+        col.z = 0;
+    }
+
+    return col;
+}
+
 bool isInside(vec3 pos, vec3 min, vec3 max)
 {
     if((pos.x <= max.x && pos.x >= min.x) &&
@@ -151,63 +189,91 @@ void main() {
     vec3 vel = vec3(0, 1, 0);
     float delt =  (1.0 / 60.0);
 
-    vec3 vVel = particles[index].vel.xyz;
-    vec3 vPos = particles[index].pos.xyz;
 
-    // vec3 bufferAmount = vec3(3, 3, 3);
-    // vec3 min = model.min.xyz - bufferAmount;
-    // vec3 max = model.max.xyz - bufferAmount;
+    vec3 vVel = vec3(0, 0, 0);
+    vec3 vPos = vec3(0, 0, 0);
 
-    if(particles[index].goToTri)
+    if(ubp.flow == 0)
     {
-        float length1 = length(particles[index].targetPoint.xyz - vPos);
-        float length2 = length(particles[index].targetPoint.xyz - (triangles[particles[index].targetTri].normal.xyz * 0.001));
-        if(length1 < length2)
+        vVel = particles[index].vel.xyz;
+        vPos = particles[index].pos.xyz;
+
+        if(particles[index].goToTri)
         {
-            // vec3 norm = triangles[particles[index].targetTri].normal.xyz - triangles[particles[index].targetTri].center.xyz;
-            // norm = normalize(norm);
-            // vec3 pPos = vPos - triangles[particles[index].targetTri].center.xyz;
-            // pPos = normalize(pPos);
-            // vec3 dir = cross(norm, pPos);
-            // dir  = normalize(dir);
-            
-            // vec2 rd = ((ubp.randomVec.xy - gl_GlobalInvocationID.xy) / ubp.resolution.xy) / ubp.deltaTime;
-            // vec3 dir = vec3(random(rd));
-            // dir = normalize(dir);
-            // vVel = dir * 10.0;
-            //int point = clamp(int(vVel.x), 0, 2);
-            //vVel = cross(triangles[particles[index].targetTri].normal.xyz, triangles[particles[index].targetTri].vertices[point].xyz - triangles[particles[index].targetTri].center.xyz);
-            particles[index].randDirDur = 0.1;
-            particles[index].goToTri = false;
-        }
-    }
-    else
-    {
-        particles[index].randDirDur -= dt;
-        if(particles[index].randDirDur <= 0.0)
-        {
-            float np = 1000000.0;
-            float dist = 0.0;
-            for(int i = 0; i < model.triCount; ++i)
+            float length1 = length(particles[index].targetPoint.xyz - vPos);
+            float length2 = length(particles[index].targetPoint.xyz - (triangles[particles[index].targetTri].normal.xyz * 0.001));
+            if(length1 < length2)
             {
-                dist = udTriangle(vPos,triangles[i].vertices[0].xyz, triangles[i].vertices[1].xyz, triangles[i].vertices[2].xyz);
-                if(dist < np)
-                {
-                    particles[index].targetPoint = vec4(FindPoint(triangles[i]), 1.0);
-                    vVel = normalize(particles[index].targetPoint.xyz - vPos) * 50.0;
-                    particles[index].targetTri = i;
-                    np = dist;
-                }
+                // vec3 norm = triangles[particles[index].targetTri].normal.xyz - triangles[particles[index].targetTri].center.xyz;
+                // norm = normalize(norm);
+                // vec3 pPos = vPos - triangles[particles[index].targetTri].center.xyz;
+                // pPos = normalize(pPos);
+                // vec3 dir = cross(norm, pPos);
+                // dir  = normalize(dir);
+                
+                // vec2 rd = ((ubp.randomVec.xy - gl_GlobalInvocationID.xy) / ubp.resolution.xy) / ubp.deltaTime;
+                // vec3 dir = vec3(random(rd));
+                // dir = normalize(dir);
+                // vVel = dir * 10.0;
+                //int point = clamp(int(vVel.x), 0, 2);
+                //vVel = cross(triangles[particles[index].targetTri].normal.xyz, triangles[particles[index].targetTri].vertices[point].xyz - triangles[particles[index].targetTri].center.xyz);
+                particles[index].randDirDur = 0.1;
+                particles[index].goToTri = false;
             }
-            particles[index].goToTri = true;
         }
+        else
+        {
+            particles[index].randDirDur -= dt;
+            if(particles[index].randDirDur <= 0.0)
+            {
+                float nearestPoint = 1.0 / 0.0;
+                float dist = -(1.0 / 0.0);
+                for(int i = 0; i < model.triCount; ++i)
+                {
+                    dist = udTriangle(vPos,triangles[i].vertices[0].xyz, triangles[i].vertices[1].xyz, triangles[i].vertices[2].xyz);
+                    if(dist < nearestPoint)
+                    {
+                        particles[index].targetPoint = vec4(FindPoint(triangles[i]), 1.0);
+                        vVel = normalize(particles[index].targetPoint.xyz - vPos) * (50.0 * (ubp.flowType * ubp.flowType));
+                        particles[index].targetTri = i;
+                        nearestPoint = dist;
+                    }
+                }
+                particles[index].goToTri = true;
+            }
+        }
+
+        vVel = clamp(vVel, -10000, 10000);
+        vPos = vPos + vVel * dt; 
+        vPos = clamp(vPos, -100000, 100000);
+
     }
+    else{
 
-    vVel = clamp(vVel, -10000, 10000);
-    vPos += vVel * dt; 
-    vPos = clamp(vPos, -100000, 100000);
+        particles[index].randDirDur = 0.1;
+        particles[index].goToTri = false;
+        particles[index].targetPoint = vec4(FindPoint(triangles[0]), 1.0);
+        vec3 p = particles[index].pos.xyz;
+        p.x += random(ubp.randomVec);
+        p.y += random(ubp.randomVec);
+        p.z += random(ubp.randomVec);
+        vVel = getFlowField(p) * 100.0;
+        // vVel.x *= random(ubp.randomVec);
+        // vVel.y *= random(ubp.randomVec);
+        // vVel.z *= random(ubp.randomVec);
 
+        vPos = particles[index].pos.xyz + vVel * dt; 
+    }
+    vec4 col = vec4(getColour(particles[index].pos.xyz, particles[index].col.xyz,
+     model.min.xyz - vec3(2), model.max.xyz + vec3(2)), 1) + (vec4(0.01, 0.01, 0.01, 0.1) * dt);
+
+    particles[index].col = col;
     particles[index].vel = vec4(vVel, 0.0);
     particles[index].pos = vec4(vPos, 0.0);
-    lights[index].pos = vec4(vPos, 0.0);
+
+    if(vPos.x < ubp.min.x)
+    {
+        ubp.min.x = vPos.x;
+    }
+
 }

@@ -12,7 +12,7 @@ struct Particle
 {
 	alignas(16) glm::vec4 position;
 	alignas(16) glm::vec4 velocity;
-	alignas(4) float alpha = 0.25f;
+	alignas(16) glm::vec4 colour;
 	alignas(4) bool goToTri = false;
 	alignas(4) float ranDirDuration = -1.0f;
 	alignas(4) int targetTri = 0;
@@ -32,7 +32,7 @@ struct Particle
 		std::vector<VkVertexInputAttributeDescription> attributeDescriptions = {
 		VkInitializer::VertexAttributeDescription(0, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, position)),
 		VkInitializer::VertexAttributeDescription(0, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, velocity)),
-		VkInitializer::VertexAttributeDescription(0, 2, VK_FORMAT_R32_SFLOAT, offsetof(Particle, alpha)),
+		VkInitializer::VertexAttributeDescription(0, 2, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, colour)),
 		VkInitializer::VertexAttributeDescription(0, 3, VK_FORMAT_R32_SINT, offsetof(Particle, goToTri)),
 		VkInitializer::VertexAttributeDescription(0, 4, VK_FORMAT_R32_SFLOAT, offsetof(Particle, ranDirDuration)),
 		VkInitializer::VertexAttributeDescription(0, 5, VK_FORMAT_R32_SINT, offsetof(Particle, targetTri)),
@@ -83,7 +83,7 @@ public:
 
 private:
 
-	int amount = COMPUTE_PROCESS_NUM * 128;
+	int amount = COMPUTE_PROCESS_NUM * 16;
 
 	std::vector<Particle> particles;
 

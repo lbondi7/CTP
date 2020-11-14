@@ -11,6 +11,7 @@
 struct LightUBO {
 	alignas(16) glm::vec3 camPos;
 	alignas(4) int lightCount;
+	alignas(4) int frameNum;
 };
 
 struct ParticleUBO {
@@ -18,6 +19,8 @@ struct ParticleUBO {
 	int particle_count = 0;
 	glm::vec2 resolution = {WIDTH, HEIGHT};
 	glm::vec2 randomVec = { 1.0, 1.0 };
+	int flow = 0;
+	int flowType = 1;
 };
 
 struct TriangleUBO {
@@ -64,11 +67,12 @@ private:
 
 	Buffer ffmodel_buffer;
 
-	Buffer lightBuffer;
-
 	Buffer lightUboBuffer;
 
-	Buffer particleLightBuffer;
+
+	ParticleUBO particle_ubo;
+
+	bool flow = false;
 
 	std::vector<Light> lights;
 	LightUBO uboLight;

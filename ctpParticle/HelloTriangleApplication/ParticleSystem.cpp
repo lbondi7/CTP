@@ -31,10 +31,25 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 
 	particles.resize(amount);
 
+	glm::vec3 col = Utillities::GetRandomVec3(glm::vec3(0.0f), glm::vec3(1.0f));
+	int am = amount / 10;
+	float y = -200;
 	for (size_t i = 0; i < amount; ++i)
 	{
-		particles[i].position = glm::vec4(Utillities::GetRandomVec3(glm::vec3(-500.0f), glm::vec3(500.0f)), 1.0f);
-		particles[i].velocity = { 0.0f, 2.0f, 0.0f, 1.0f};
+		glm::vec3 pos = Utillities::GetRandomVec3(glm::vec3(-500.0f), glm::vec3(500.0f));
+		pos.y = y;
+		particles[i].position = glm::vec4(pos, 1.0f);
+		//particles[i].position = glm::vec4(Utillities::GetRandomVec3(glm::vec3(-500.0f), glm::vec3(500.0f)), 1.0f);
+		particles[i].velocity = glm::vec4(Utillities::GetRandomVec3(glm::vec3(-5.0f), glm::vec3(5.0f)), 1.0f);
+		//particles[i].colour = glm::vec4(Utillities::GetRandomVec3(glm::vec3(0.0f), glm::vec3(1.0f)), Utillities::GetRandomFloat(0.0, 1.0f));
+		particles[i].colour = glm::vec4(col, Utillities::GetRandomFloat(0.0, 1.0f));
+
+		if (i % am == 0 && i != 0)
+		{
+			col = Utillities::GetRandomVec3(glm::vec3(0.0f), glm::vec3(1.0f));
+			y += 400 / 10;
+		}
+
 	}
 
 	particleBuffer.CreateBuffer(VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
@@ -56,7 +71,7 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 		{
 			VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
 			nullptr,
-			VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+			VK_ACCESS_SHADER_READ_BIT,
 			0,
             Locator::GetDevices()->GetQueueFamiliesIndices().graphicsFamily.value(),
             Locator::GetDevices()->GetQueueFamiliesIndices().computeFamily.value(),
@@ -67,7 +82,7 @@ void ParticleSystem::Create(VkQueue graphicsQueue, const glm::mat4* _view, glm::
 
 		vkCmdPipelineBarrier(
 			copyCmd,
-			VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 			0,
 			0, nullptr,
